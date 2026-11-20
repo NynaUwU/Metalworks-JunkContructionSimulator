@@ -48,14 +48,157 @@
 - Eletroímã (só aço e ferro) e engate rápido (E ou sinal)
 - Depósito do galpão com os componentes novos; tudo na loja
 
-## Marco 4 — Elétrica
-- Bateria, fios (ferramenta de fiação), botão, alavanca, relé, luzes
-- Sensores e portas lógicas (E/OU/NÃO); componentes elétricos acionando motores e pistões
+---
 
-## Marco 5 — Salvar e polir
-- Salvar/carregar o mundo e construções
-- Sons (solda, corte, motores), mais efeitos
-- Opções (gráficos, FOV, teclas), limpeza de fragmentos
+# Próximos passos
+
+## Decisões tomadas
+- **Lógica é de graça:** sinais não gastam energia, como no Wiremod e no Scrap Mechanic.
+- **Fios:** lógica e energia elétrica aparecem. Ligações mecânicas (tanque → motor → câmbio → rodas) são
+  invisíveis, como no ACF, e só aparecem com a ferramenta de transmissão na mão.
+- **Dois níveis de máquina:**
+  - **simples** (componentes dos Marcos 2 e 3): funcionam sem energia, mas com pouca força;
+  - **de verdade** (motores e câmbios estilo ACF, luzes, atuadores avançados): fortes, mas precisam de
+    combustível ou bateria.
+- **Motor simples do Marco 2 continua, mas limitado:** bom só para veículo pessoal, para andar por aí.
+- **Programação dentro do jogo:** chip **FPGA** (editor visual de portas lógicas).
+- **Parte militar do ACF** (blindagem, canhões, torres...) fica para o Marco 6.
+- **O salvamento vem primeiro.**
+
+## v0.7 — Salvamento
+Objetivo: nunca mais refazer tudo.
+- [ ] Formato de save com versão, para os saves antigos continuarem abrindo nas versões novas. Guarda:
+  - peças: forma, material e posição;
+  - montagens: ancorada, congelada, velocidade;
+  - soldas e isoladores;
+  - juntas: ajustes, teclas e fios;
+  - controles, pontos e jogador.
+- [ ] Mundo inteiro: menu Esc → Salvar / Carregar / Novo mundo, em vários espaços com nome, data e miniatura
+- [ ] Salvamento automático a cada 5 min e ao sair, guardando os 3 últimos
+- [ ] Sucata do mapa: o que foi pego ou reciclado fica salvo (o mapa não volta a encher ao carregar)
+- [ ] Construções individuais: mirar numa máquina e salvar tudo o que está ligado a ela (solda, juntas, fios),
+  com nome e miniatura
+- [ ] Carregar construção: escolher na lista, aparece uma "prévia fantasma" na frente para posicionar
+  (girar, afastar) e confirmar
+  - a decidir: grátis ou custando os pontos das peças
+- [ ] Pasta dos saves acessível pelo menu ("Abrir pasta"), para trocar construções com amigos
+- [ ] Testes: salvar → carregar → conferir peças, soldas, juntas funcionando e fios
+
+## Marco 4 — Lógica, energia, sensores e trem de força
+Inspirado no Wiremod e no ACF do Garry's Mod (sem nada de NPCs nem geradores de efeitos).
+
+### v0.8 — 4A: Sinais
+- [ ] Sistema de portas:
+  - cada peça tem entradas e saídas com nome e tipo (número, vetor, ângulo, texto, peça, lista);
+  - atualiza só o que mudou; os chips de tempo rodam a cada tick.
+- [ ] Componentes atuais ganham portas. Exemplos:
+  - pistão: saída Extensão;
+  - servo: saída Ângulo;
+  - guincho: saída Cabo;
+  - ímã e engate: saída Grudado.
+- [ ] Fiação porta → porta:
+  - clicar na peça abre o menu de portas;
+  - isoladores continuam;
+  - a cor do fio indica o tipo do sinal.
+- [ ] Chip lógico (um chip, vários modos):
+  - lógica: AND, OR, NOT, XOR, NAND, NOR, XNOR;
+  - aritmética, comparação e trigonometria;
+  - memória: latch, D-latch, SR, toggle, contador;
+  - seleção: mín/máx, if, select, router, mux/demux;
+  - tempo: timer, pulser, onda quadrada/serra, monoestável, delay, derivada, acumulador, suavizador;
+  - bits, vetor/ângulo e texto.
+- [ ] Ferramenta Depurador: mirar numa peça mostra o valor de todas as portas ao vivo
+- [ ] Nomear componentes (o nome aparece no menu de portas e no Depurador)
+- [ ] Assento vira "Pod":
+  - saídas W, A, S, D, Espaço, Shift, mouse, ponto mirado e ocupado;
+  - as teclas do modo edição continuam valendo.
+- [ ] Entradas novas: valor constante, Adv. Input (+/− com limites), Dual Input, keypad com senha,
+  teclado numérico usado a pé
+- [ ] Mostradores (sem energia): indicador (cor pelo valor), pixel, display de 7 segmentos, tela de valores,
+  tela de texto
+- [ ] Testes de todos os modos do chip
+
+### v0.9 — 4B: Energia elétrica
+- [ ] Rede elétrica:
+  - tudo o que está ligado por **fio de energia** (visível e diferente do fio de lógica) divide a mesma carga;
+  - a rede tem portas de leitura: carga, % e consumo.
+- [ ] Bateria em tamanhos, com carga em Wh
+- [ ] Fontes: gerador (ligado a um motor por transmissão), painel solar pequeno, estação de recarga paga com pontos
+- [ ] Relé de potência e chave: um sinal de lógica liga e desliga um circuito de energia
+- [ ] Luz e holofote (cor, brilho, alcance), que gastam energia
+- [ ] Medidor de energia (vira sinal de lógica)
+- [ ] Testes: carga e descarga, relé, rede dividida
+
+### v0.10 — 4C: Sensores
+- [ ] Ranger:
+  - laser que mede a distância;
+  - opcional: posição, normal, velocidade, cor, material e peça atingida;
+  - lista de ignorados.
+- [ ] Velocímetro: total, km/h, X/Y/Z local e velocidade angular
+- [ ] Giroscópio: pitch, yaw, roll
+- [ ] GPS: X/Y/Z e memória de pontos
+- [ ] Marcador de peça (simples e avançado, com lista)
+- [ ] Localizador (beacon) + sensor de beacon (distância e direção até um localizador)
+- [ ] Target Finder:
+  - procura num raio, com quantidade máxima;
+  - filtros: jogador, material, cor, nome, tipo de componente, localizadores.
+- [ ] Zona: detecta quando algo entra num volume
+- [ ] Detector de impacto: força da batida e quem bateu
+- [ ] Receptor de laser + ferramenta laser (ponteiro)
+- [ ] Balança: peso apoiado em cima
+- [ ] Testes de cada sensor
+
+### v0.11 — 4D: Trem de força estilo ACF
+- [ ] Ferramenta Transmissão:
+  - liga tanque → motor, motor → câmbio, câmbio → câmbio e câmbio → cubos de roda;
+  - ligações invisíveis (aparecem só com a ferramenta na mão);
+  - limite de distância; quebra se esticar 1,5×; sem loops;
+  - lado esquerdo/direito automático.
+- [ ] Cubo de roda: eixo livre soldado no chassi, onde a roda é soldada
+- [ ] Motores:
+  - tipos: monocilíndrico, 4 em linha, V8, V12, diesel, rotativo, elétrico (bateria) e turbina, com força
+    ajustada às massas do jogo;
+  - simulação: RPM com volante de inércia, curva de torque, marcha lenta, corte de giro, partida;
+  - sem combustível, desliga;
+  - portas: Acelerador e Ligado → RPM, Torque, Potência e Consumo.
+- [ ] Câmbios:
+  - tipos: manual (até 10 marchas + diferencial final), automático (pontos de troca), CVT, transfer
+    (reduzida/alta), diferencial, diferencial duplo (tanque), embreagem avulsa;
+  - limite de torque;
+  - portas: Marcha, Sobe, Desce, Embreagem, Freio, Esq/Dir e Esterço.
+- [ ] Física das rodas:
+  - cada roda pede força pela diferença de velocidade e o motor reparte o que tem;
+  - reação no chassi, freio, aderência dos pneus.
+- [ ] Combustível: tanques de gasolina e diesel em tamanhos e um posto de combustível (pontos)
+- [ ] Som do motor seguindo o RPM
+- [ ] Motor simples do Marco 2 limitado (pouca força e velocidade: só veículo pessoal)
+- [ ] Carro de exemplo novo com motor, câmbio e cubos
+- [ ] Testes: aceleração, troca de marcha, esterçamento de tanque, falta de combustível, ligação quebrando
+
+### v0.12 — 4E: Avançado
+- [ ] FPGA: chip com editor visual
+  - dentro dele, arrasta e liga portas lógicas;
+  - entradas e saídas configuráveis;
+  - circuitos salvos e carregados.
+- [ ] Atuadores: propulsor vetorial, hoverball (mantém altura), forcer (empurra à distância), gimbal
+  (aponta para um vetor), peso ajustável, congelador por sinal, "User" (aperta E sozinho)
+- [ ] Rádio: canais sem fio entre máquinas
+- [ ] Memória: guardar valores, RAM/ROM, HD (guarda mesmo depois de sair)
+- [ ] Telas avançadas: console de letras, tela de pixels, osciloscópio, indicador no HUD, câmera externa
+- [ ] Pintor: muda a cor de uma peça por sinal
+
+## Marco 5 — Polimento
+- [ ] Sons: solda, corte, impactos, componentes
+- [ ] Mais efeitos
+- [ ] Teclas remapeáveis e mais opções
+- [ ] Limpeza de fragmentos e reposição de sucata (como no original)
+
+## Marco 6 — ACF militar
+- [ ] Blindagem: espessura × ângulo, dano por componente
+- [ ] Canhões e munição
+- [ ] Tripulação
+- [ ] Torres: anel, motor de torre, estabilizador
+- [ ] Radar/IRST e mísseis
 
 ## Futuro
 - Multiplayer

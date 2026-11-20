@@ -14,7 +14,8 @@ const HOLD_MAX_SPIN := 18.0
 static var _physics_material: PhysicsMaterial
 static var _rubber_material: PhysicsMaterial
 
-var anchored := false             ## soldada ao chão: fica parada (congelada)
+var anchored := false             ## soldada ao chão: fica parada
+var frozen := false               ## congelada pelo Gravitador (botão direito)
 var hold_part: Part = null
 var hold_grab_local := Vector3.ZERO
 var hold_target := Transform3D.IDENTITY
@@ -74,7 +75,18 @@ func set_anchored(value: bool) -> void:
 		clear_hold()
 		linear_velocity = Vector3.ZERO
 		angular_velocity = Vector3.ZERO
-	freeze = value
+	freeze = anchored or frozen
+
+
+func set_frozen(value: bool) -> void:
+	frozen = value
+	if value:
+		clear_hold()
+		linear_velocity = Vector3.ZERO
+		angular_velocity = Vector3.ZERO
+	freeze = anchored or frozen
+	if not freeze:
+		sleeping = false
 
 
 func is_held() -> bool:

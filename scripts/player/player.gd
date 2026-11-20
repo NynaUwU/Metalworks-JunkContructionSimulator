@@ -18,6 +18,7 @@ signal toast_requested(text: String)
 signal interact_requested(target: Node)
 signal seat_changed(seated: bool)
 signal edit_requested
+signal config_requested(joint: MechJoint)
 
 const INTERACT_DISTANCE := 3.5
 const SEAT_EYE := Vector3(0, 0.92, 0.04)   ## olhos em relação à base do assento
@@ -148,15 +149,15 @@ func interact_hint() -> String:
 	var t := interact_target()
 	if t == null:
 		return ""
-	var key := "Clique" if is_seated() else "F"
+	var key := "Clique" if is_seated() else "E"
 	if t is Part:
 		var part := t as Part
 		if part.device:
 			return "%s: %s" % [key, part.device.hint()]
 		if part.interact_kind == "assento" and not is_seated():
-			return "F: sentar"
+			return "E: sentar"
 		return ""
-	return "F: %s" % t.get_meta("interact_label", "usar")
+	return "E: %s" % t.get_meta("interact_label", "usar")
 
 
 # --- Assento -------------------------------------------------------------------
@@ -174,7 +175,7 @@ func sit(p_seat: Part) -> void:
 	pitch = deg_to_rad(-8.0)
 	Build.active_seat = seat
 	seat_changed.emit(true)
-	toast("Sentado · Tab: modo edição (teclas) · F: levantar")
+	toast("Sentado · Tab: modo edição (teclas) · E: levantar")
 
 
 func stand_up() -> void:
@@ -236,7 +237,7 @@ func teleport(pos: Vector3) -> void:
 
 # --- Controles (botões, alavancas) ---------------------------------------------
 
-## Tecla F: usar o que está na mira (controle, assento, terminal) ou levantar.
+## Tecla E: usar o que está na mira (controle, assento, terminal) ou levantar.
 func use_interact() -> void:
 	if is_seated():
 		stand_up()
@@ -266,11 +267,15 @@ func _release_device() -> void:
 		_using = null
 
 
-func _scroll_device(steps: int) -> bool:
-	var t := interact_target()
-	if t is Part and (t as Part).device:
-		return (t as Part).device.scroll(steps)
-	return false
+## Ajustando uma alavanca variável (E ou clique segurado + mouse para cima/baixo)?
+func is_adjusting() -> bool:
+	return _using != null and _using.kind == "potenciometro" and is_instance_valid(_using.part)
+
+
+## Movimento vertical do mouse enquanto segura uma alavanca variável.
+func adjust_device(mouse_dy: float) -> void:
+	if is_adjusting():
+		_using.drag(mouse_dy)
 
 
 func _update_aim() -> void:
@@ -287,6 +292,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
+		if is_adjusting():
+			adjust_device(motion.relative.y)   # a câmera fica parada enquanto ajusta
+			return
+		if not is_seated() and current().handle_input(event):
+			return   # ex.: Gravitador girando a peça com E + mouse
 		var sens := Settings.mouse_sensitivity
 		yaw -= motion.relative.x * sens
 		pitch = clampf(pitch - motion.relative.y * sens, deg_to_rad(-89), deg_to_rad(89))
@@ -310,17 +320,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		use_interact()
 		get_viewport().set_input_as_handled()
 		return
-	if event.is_action_pressed("wheel_up") and _scroll_device(1):
-		get_viewport().set_input_as_handled()
-		return
-	if event.is_action_pressed("wheel_down") and _scroll_device(-1):
-		get_viewport().set_input_as_handled()
-		return
-	# E solta a peça flutuando com qualquer ferramenta na mão.
-	if event.is_action_pressed("release") and not current().blocks_movement():
-		hand.release()
-		get_viewport().set_input_as_handled()
-		return
 	for action in ["move_forward", "move_back", "move_left", "move_right"]:
 		if event.is_action_pressed(action) and not event.is_echo():
 			var now := Time.get_ticks_msec() / 1000.0
@@ -331,7 +330,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # --- Física --------------------------------------------------------------------
 
-## Sentado: F levanta, Tab abre o modo edição, clique usa botões/alavancas.
+## Sentado: E levanta, Tab abre o modo edição, clique usa botões/alavancas
+## (clique segurado + mouse para cima/baixo ajusta a alavanca variável).
 func _seated_input(event: InputEvent) -> void:
 	if event.is_action_pressed("interact"):
 		use_interact()
@@ -341,10 +341,6 @@ func _seated_input(event: InputEvent) -> void:
 		_use_device_press()
 	elif event.is_action_released("primary"):
 		_release_device()
-	elif event.is_action_pressed("wheel_up"):
-		_scroll_device(1)
-	elif event.is_action_pressed("wheel_down"):
-		_scroll_device(-1)
 	else:
 		return
 	get_viewport().set_input_as_handled()

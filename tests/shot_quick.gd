@@ -94,6 +94,36 @@ func _insulators() -> void:
 	await _shot("i1_isoladores")
 
 
+func _v05() -> void:
+	# Componentes novos lado a lado
+	var o := Vector3(6, 0.02, 2)
+	var kinds := ["motor", "servo", "pistao", "servo_linear", "dobradica", "pino", "esferica"]
+	for i in kinds.size():
+		var b := Components.bounds(kinds[i])
+		Components.spawn(kinds[i], Transform3D(Basis(), o + Vector3(i * 0.9, -b.position.y + 0.02, 0)))
+	await _frames(20)
+	player.teleport(o + Vector3(2.7, 0.03, 2.6))
+	_look_from_eye(o + Vector3(2.7, 0.25, 0))
+	await _frames(10)
+	await _shot("v1_componentes")
+	# Gravitador segurando e girando um bloco
+	var crate := Build.spawn_box(Vector3(1, 0.5, 0.5), "ferro", Transform3D(Basis(), o + Vector3(-3, 0.27, 2)))
+	await _frames(10)
+	player.select_tool(0)
+	var grav: HandTool = player.tools[0]
+	_look_from_eye(crate.global_position)
+	await _frames(3)
+	grav.grab()
+	grav.hold_distance = 2.5
+	await _frames(5)
+	grav.rotating = true
+	grav._rotate_by(Vector2(140, -60))
+	grav.rotating = false
+	player.pitch = deg_to_rad(5)
+	await _frames(40)
+	await _shot("v2_gravitador")
+
+
 func _bisect_sit() -> void:
 	player.sit(world.demo_seat)
 	for i in 30:

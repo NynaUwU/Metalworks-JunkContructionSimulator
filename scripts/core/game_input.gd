@@ -8,11 +8,8 @@ const KEYS := {
 	"move_left": [KEY_A],
 	"move_right": [KEY_D],
 	"jump": [KEY_SPACE],
-	"modifier": [KEY_SHIFT],      # Shift: girar a peça segurada / correr
-	"roll_left": [KEY_Q],         # Shift+Q: girar peça
-	"roll_right": [KEY_E],        # Shift+E: girar peça
-	"release": [KEY_E],           # E: devolve a física à peça flutuando
-	"rotate_cut": [KEY_R],        # R: muda o ângulo do corte
+	"modifier": [KEY_SHIFT],      # Shift: correr / girar em passos de 45° (Gravitador)
+	"rotate_cut": [KEY_R],        # R: ângulo do corte · Gravitador: descongelar
 	"align": [KEY_T],             # T: alinha a peça segurada à grade do mundo
 	"free_cut": [KEY_CTRL],       # Ctrl: corte livre (sem grade)
 	"tool_1": [KEY_1],
@@ -20,7 +17,7 @@ const KEYS := {
 	"tool_3": [KEY_3],
 	"tool_4": [KEY_4],
 	"seat_edit": [KEY_TAB],       # Tab: modo edição do assento
-	"interact": [KEY_F],           # F: usar (loja, assentos...)
+	"interact": [KEY_E],           # E: usar (loja, assento, botões) · Gravitador: girar
 	"help": [KEY_H],
 	"pause": [KEY_ESCAPE],
 	"toggle_fps": [KEY_F3],

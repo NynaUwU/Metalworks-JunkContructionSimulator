@@ -1,6 +1,6 @@
 class_name ShopStation
 extends Node3D
-## Loja: um terminal (aperte F) e uma plataforma de ENTREGA onde os itens comprados aparecem.
+## Loja: um terminal (aperte E) e uma plataforma de ENTREGA onde os itens comprados aparecem.
 
 const PAD_OFFSET := Vector3(0, 0, -4.2)   ## posição da plataforma de entrega (local)
 const PAD_SIZE := 3.2
@@ -23,7 +23,7 @@ func _ready() -> void:
 	screen.rotation.x = deg_to_rad(-12)
 	terminal.add_child(screen)
 	StationBuilder.label_sign(self, "LOJA", Vector3(0, 2.25, 0))
-	StationBuilder.label_sign(self, "aperte F no terminal", Vector3(0, 1.85, 0), 38, Color(1, 1, 1, 0.85))
+	StationBuilder.label_sign(self, "aperte E no terminal", Vector3(0, 1.85, 0), 38, Color(1, 1, 1, 0.85))
 
 	# Plataforma de entrega (dá para soldar nela, como no chão)
 	var pad := StationBuilder.solid_box(self, Vector3(PAD_SIZE, 0.08, PAD_SIZE), PAD_OFFSET + Vector3(0, 0.04, 0), pad_mat)

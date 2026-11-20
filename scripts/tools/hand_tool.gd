@@ -1,27 +1,31 @@
 class_name HandTool
 extends GameTool
-## Mão / "arma de física".
+## Gravitador (no estilo da physics gun do Garry's Mod).
 ##
-## - Clique esquerdo segurado: pega a peça mirada; ela flutua e segue a mira.
-## - Soltar o clique: a peça FICA flutuando no lugar.
-## - Ela só volta a ter gravidade ao apertar E ou ao pegar outra peça.
-## - Shift + W/S/A/D/Q/E: gira a peça em passos de 15°.  T: alinha à grade.
-## - Roda do mouse: aproxima/afasta.
+## - Clique segurado: pega a peça; ela segue a mira e gira junto com você.
+## - Soltar o clique: a peça volta a ter física (dá para arremessar).
+## - Botão direito (segurando): CONGELA a peça no lugar.
+## - E + mover o mouse: gira a peça. Com Shift: em passos de 15°.
+## - Roda do mouse: aproxima/afasta.  T: alinha à grade do mundo.
+## - R mirando numa peça congelada: descongela (e o que estiver ligado por juntas).
+## - R duas vezes rápido: descongela tudo.
 
-const ROT_STEP := deg_to_rad(15.0)
-const ROT_REPEAT_DELAY := 0.28
-const ROT_REPEAT_RATE := 0.09
 const MIN_DIST := 1.2
-const MAX_DIST := 18.0
+const MAX_DIST := 30.0
+const ROTATE_SENS := 0.006          ## rad por pixel
+const SNAP := deg_to_rad(15.0)
+const DOUBLE_TAP := 0.35
 
 var hold_part: Part = null
 var grab_local := Vector3.ZERO     ## ponto de pega (coordenadas da peça)
-var hold_basis := Basis()          ## orientação desejada da peça (mundo)
+var rel_basis := Basis()           ## orientação da peça em relação ao "giro" do jogador
 var hold_target := Transform3D()
 var hold_distance := 3.0
-var holding := false               ## botão pressionado agora
+var holding := false
+var rotating := false              ## E segurado: o mouse gira a peça
 
-var _rot_timers := {}
+var _snap_accum := Vector2.ZERO
+var _last_r := -10.0
 var _excepted: Assembly = null
 var _beam: MeshInstance3D
 var _glow: MeshInstance3D
@@ -29,7 +33,7 @@ var _glow: MeshInstance3D
 
 func _init(p_player: Player) -> void:
 	super(p_player)
-	tool_name = "Mão"
+	tool_name = "Gravitador"
 	key_hint = "1"
 
 
@@ -75,39 +79,60 @@ func _build_viewmodel() -> void:
 
 
 func unequip() -> void:
-	# Trocar de ferramenta não derruba a peça: ela continua flutuando.
-	holding = false
-	_set_player_exception(null)
+	drop()
 	super()
 
 
-func blocks_movement() -> bool:
-	return holding and Input.is_action_pressed("modifier")
+## Enquanto gira a peça (E), o movimento do mouse é da ferramenta, não da câmera.
+func captures_mouse() -> bool:
+	return holding and rotating
 
 
 func handle_input(event: InputEvent) -> bool:
+	if event is InputEventMouseMotion:
+		if captures_mouse():
+			_rotate_by((event as InputEventMouseMotion).relative)
+			return true
+		return false
 	if event.is_action_pressed("primary"):
-		_grab()
+		grab()
 		return true
 	if event.is_action_released("primary"):
-		holding = false
+		drop()
 		return true
-	if event.is_action_pressed("release") and not blocks_movement():
-		release()
+	if holding and event.is_action_pressed("secondary"):
+		freeze_held()
+		return true
+	if holding and event.is_action_pressed("interact"):
+		rotating = true
+		_snap_accum = Vector2.ZERO
+		return true
+	if event.is_action_released("interact") and rotating:
+		rotating = false
 		return true
 	if holding and event.is_action_pressed("wheel_up"):
-		hold_distance = clampf(hold_distance + 0.4, MIN_DIST, MAX_DIST)
+		hold_distance = clampf(hold_distance + 0.5, MIN_DIST, MAX_DIST)
 		return true
 	if holding and event.is_action_pressed("wheel_down"):
-		hold_distance = clampf(hold_distance - 0.4, MIN_DIST, MAX_DIST)
+		hold_distance = clampf(hold_distance - 0.5, MIN_DIST, MAX_DIST)
 		return true
-	if event.is_action_pressed("align") and hold_part:
-		hold_basis = ConvexGeo.snap_basis(hold_basis)
+	if holding and event.is_action_pressed("align"):
+		_set_world_basis(ConvexGeo.snap_basis(_world_basis()))
+		return true
+	if event.is_action_pressed("rotate_cut") and not holding:   # R
+		var now := Time.get_ticks_msec() / 1000.0
+		if now - _last_r < DOUBLE_TAP:
+			unfreeze_all()
+			_last_r = -10.0
+		else:
+			unfreeze_aimed()
+			_last_r = now
 		return true
 	return false
 
 
-func _grab() -> void:
+## Pega a peça mirada.
+func grab() -> void:
 	var part := player.aim_part()
 	if part == null:
 		return
@@ -115,22 +140,20 @@ func _grab() -> void:
 	if asm.anchored:
 		player.toast("Está soldada no chão: segure a esmerilhadeira na bolinha da solda do chão")
 		return
-	if hold_part and is_instance_valid(hold_part) and hold_part.assembly() != asm:
-		release()
-	elif hold_part and is_instance_valid(hold_part):
-		asm.clear_hold()
+	if asm.frozen:
+		asm.set_frozen(false)
 	var hit_pos: Vector3 = player.aim["position"]
 	hold_part = part
 	grab_local = part.global_transform.affine_inverse() * hit_pos
-	hold_basis = part.global_transform.basis.orthonormalized()
+	_set_world_basis(part.global_transform.basis.orthonormalized())
 	hold_distance = clampf(player.eye_position().distance_to(hit_pos), MIN_DIST, MAX_DIST)
 	holding = true
-	_rot_timers.clear()
+	rotating = false
 	_update_target()
 
 
-## Devolve a física (gravidade) à peça que estava flutuando.
-func release() -> void:
+## Solta: a peça volta a ter física e mantém a velocidade (arremesso).
+func drop() -> void:
 	if hold_part and is_instance_valid(hold_part):
 		var asm := hold_part.assembly()
 		if asm:
@@ -138,68 +161,102 @@ func release() -> void:
 			asm.sleeping = false
 	hold_part = null
 	holding = false
+	rotating = false
 	_set_player_exception(null)
 
 
-func physics_update(delta: float) -> void:
-	_tick_hold(delta)
+## Botão direito: congela a peça segurada onde ela está.
+func freeze_held() -> void:
+	if hold_part == null or not is_instance_valid(hold_part):
+		return
+	var asm := hold_part.assembly()
+	var where := hold_part.global_transform * grab_local
+	drop()
+	if asm:
+		asm.set_frozen(true)
+		spawn_sparks(where, Vector3.UP, 25, Color(0.4, 0.8, 1.0))
+		player.toast("Congelada (R mirando nela para descongelar)")
 
 
-## Chamado sempre (mesmo com outra ferramenta na mão), para manter a peça flutuando.
-func _tick_hold(delta: float) -> void:
+## R: descongela a peça mirada e tudo o que estiver ligado a ela por juntas.
+func unfreeze_aimed() -> void:
+	var part := player.aim_part()
+	if part == null:
+		return
+	var n := 0
+	for asm in Build.connected_assemblies(part.assembly()):
+		if asm.frozen:
+			asm.set_frozen(false)
+			n += 1
+	if n > 0:
+		spawn_sparks(player.aim["position"], Vector3.UP, 20, Color(0.4, 0.8, 1.0))
+		player.toast("Descongelada" if n == 1 else "%d partes descongeladas" % n)
+
+
+## R duas vezes: descongela tudo no mundo.
+func unfreeze_all() -> void:
+	var n := Build.unfreeze_all()
+	player.toast("Nada congelado" if n == 0 else "%d objeto%s descongelado%s" % [n, "" if n == 1 else "s", "" if n == 1 else "s"])
+
+
+func physics_update(_delta: float) -> void:
 	if hold_part == null:
 		return
 	if not is_instance_valid(hold_part) or not hold_part.is_inside_tree():
 		hold_part = null
 		holding = false
+		rotating = false
 		_set_player_exception(null)
 		return
 	var asm := hold_part.assembly()
-	if asm == null or asm.anchored:
-		release()
+	if asm == null or asm.anchored or asm.frozen:
+		drop()
 		return
-	if holding:
-		if Input.is_action_pressed("modifier"):
-			_rotation_keys(delta)
-		_update_target()
+	_update_target()
 	asm.set_hold(hold_part, grab_local, hold_target)
-	_set_player_exception(asm if holding else null)
+	_set_player_exception(asm)
+
+
+# --- Orientação: a peça gira junto com o "giro" (yaw) do jogador ------------------
+
+func _yaw_basis() -> Basis:
+	var f := player.aim_direction()
+	return Basis(Vector3.UP, atan2(-f.x, -f.z))
+
+
+func _world_basis() -> Basis:
+	return (_yaw_basis() * rel_basis).orthonormalized()
+
+
+func _set_world_basis(b: Basis) -> void:
+	rel_basis = (_yaw_basis().inverse() * b).orthonormalized()
+
+
+func _rotate_by(rel: Vector2) -> void:
+	var cam := player.aim_basis()
+	var right := Vector3(cam.x.x, 0, cam.x.z).normalized()
+	var delta := rel * ROTATE_SENS
+	if Input.is_action_pressed("modifier"):
+		# Shift: acumula e gira em passos de 15°.
+		_snap_accum += delta
+		delta = Vector2.ZERO
+		for i in 2:
+			while absf(_snap_accum[i]) >= SNAP:
+				var s := signf(_snap_accum[i])
+				delta[i] += s * SNAP
+				_snap_accum[i] -= s * SNAP
+	if delta == Vector2.ZERO:
+		return
+	var b := _world_basis()
+	b = Basis(Vector3.UP, delta.x) * b
+	b = Basis(right, delta.y) * b
+	_set_world_basis(b)
 
 
 func _update_target() -> void:
 	var grab_world := player.eye_position() + player.aim_direction() * hold_distance
-	hold_target = Transform3D(hold_basis, grab_world - hold_basis * grab_local)
-
-
-func _rotation_keys(delta: float) -> void:
-	var cam := player.aim_basis()
-	var right := ConvexGeo.snap_axis(Vector3(cam.x.x, 0, cam.x.z))
-	var fwd := ConvexGeo.snap_axis(Vector3(-cam.z.x, 0, -cam.z.z))
-	var rotations := {
-		"move_forward": [right, -ROT_STEP],
-		"move_back": [right, ROT_STEP],
-		"move_left": [Vector3.UP, ROT_STEP],
-		"move_right": [Vector3.UP, -ROT_STEP],
-		"roll_left": [fwd, -ROT_STEP],
-		"roll_right": [fwd, ROT_STEP],
-	}
-	for action: String in rotations:
-		if not Input.is_action_pressed(action):
-			_rot_timers.erase(action)
-			continue
-		var fire := false
-		if not _rot_timers.has(action):
-			_rot_timers[action] = ROT_REPEAT_DELAY
-			fire = true
-		else:
-			_rot_timers[action] -= delta
-			if _rot_timers[action] <= 0.0:
-				_rot_timers[action] = ROT_REPEAT_RATE
-				fire = true
-		if fire:
-			var axis: Vector3 = rotations[action][0]
-			var angle: float = rotations[action][1]
-			hold_basis = (Basis(axis, angle) * hold_basis).orthonormalized()
+	var b := _world_basis()
+	hold_target = Transform3D(b, grab_world - b * grab_local)
 
 
 func _set_player_exception(asm: Assembly) -> void:
@@ -239,7 +296,6 @@ func _process(_delta: float) -> void:
 func _on_part_replaced(old_part: Part, pieces: Array, cut_local: Plane) -> void:
 	if old_part != hold_part:
 		return
-	# Continua segurando o pedaço onde estava o ponto de pega.
 	hold_part = pieces[0] if cut_local.distance_to(grab_local) <= 0.0 else pieces[1]
 
 
@@ -247,12 +303,16 @@ func _on_part_removed(part: Part) -> void:
 	if part == hold_part:
 		hold_part = null
 		holding = false
+		rotating = false
 		_set_player_exception(null)
 
 
 func hint_text() -> String:
+	if holding and rotating:
+		return "Movendo o mouse: girar   ·   Shift: passos de 15°   ·   solte E para parar"
 	if holding:
-		return "Shift + W/S/A/D/Q/E: girar   ·   T: alinhar à grade   ·   Roda: distância"
-	if hold_part:
-		return "Peça flutuando   ·   E: soltar (volta a gravidade)   ·   Clique: pegar outra"
-	return "Clique: pegar peça   ·   Para se livrar de peças, jogue no RECICLADOR"
+		return "Botão direito: congelar   ·   E + mouse: girar   ·   Roda: distância   ·   T: alinhar à grade"
+	var part := player.aim_part()
+	if part and part.assembly().frozen:
+		return "Peça congelada   ·   R: descongelar   ·   R R: descongelar tudo   ·   Clique: pegar"
+	return "Clique: pegar   ·   R: descongelar mirada   ·   R R: descongelar tudo"

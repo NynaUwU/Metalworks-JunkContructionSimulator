@@ -319,14 +319,16 @@ func _merge(a: Assembly, b: Assembly) -> Assembly:
 	var v := (a.linear_velocity * a.mass + b.linear_velocity * b.mass) / total
 	var w := (a.angular_velocity * a.mass + b.angular_velocity * b.mass) / total
 	var anchored := a.anchored or b.anchored
-	# Se a montagem que vai sumir estava sendo segurada, a mão reaplica no próximo tick.
+	var frozen := a.frozen or b.frozen
+	# Se a montagem que vai sumir estava sendo segurada, o Gravitador reaplica no próximo tick.
 	for p in b.get_parts():
 		p.reparent(a, true)
 	b.clear_hold()
 	b.queue_free()
 	a.recompute()
+	a.frozen = frozen
 	a.set_anchored(anchored)
-	if not anchored:
+	if not anchored and not frozen:
 		a.linear_velocity = v
 		a.angular_velocity = w
 	_refresh_joints()
@@ -356,6 +358,7 @@ func refresh_assembly(asm: Assembly) -> void:
 			p.reparent(na, true)
 		na.recompute()
 		var anchored_g := _group_anchored(groups[gi])
+		na.frozen = asm.frozen
 		na.set_anchored(anchored_g)
 		if not anchored_g and not was_frozen:
 			na.linear_velocity = old_v + old_w.cross(na.world_center_of_mass() - old_com)
@@ -449,6 +452,35 @@ func _refresh_joints() -> void:
 			_remove_joint(j)
 		elif j.needs_rebuild():
 			j.rebuild(world_root)
+
+
+## Montagens ligadas a `start` por juntas (incluindo ela mesma).
+func connected_assemblies(start: Assembly) -> Array[Assembly]:
+	var out: Array[Assembly] = [start]
+	var i := 0
+	while i < out.size():
+		var asm := out[i]
+		for j in joints:
+			if not j.is_valid():
+				continue
+			var a := j.part_a.assembly()
+			var b := j.part_b.assembly()
+			if a == asm and not out.has(b):
+				out.append(b)
+			elif b == asm and not out.has(a):
+				out.append(a)
+		i += 1
+	return out
+
+
+## Descongela tudo o que foi congelado pelo Gravitador. Retorna quantas montagens.
+func unfreeze_all() -> int:
+	var n := 0
+	for c in world_root.get_children():
+		if c is Assembly and (c as Assembly).frozen and not c.is_queued_for_deletion():
+			(c as Assembly).set_frozen(false)
+			n += 1
+	return n
 
 
 ## Componentes ligados ao assento: todas as montagens alcançáveis a partir dele

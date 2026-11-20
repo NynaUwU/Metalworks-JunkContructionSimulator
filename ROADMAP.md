@@ -31,9 +31,18 @@
 - Depósito de componentes no galpão, componentes nas pilhas distantes e na loja
 - Carrinho de exemplo perto do início
 
+## ✅ v0.5 — Ajustes do Marco 2
+- Gravitador no estilo da physics gun do GMOD (congelar, E+mouse girar, R / R R descongelar)
+- Interação na tecla E
+- Dobradiça com limite; os dois lados das juntas colidem
+- Servo linear, dobradiça de pino, junta esférica
+- Motor octogonal, servo retangular com ponta redonda, pistão quase todo recolhido
+- Motor rígido/solto sem sinal; pistão volta/fica parado sem sinal
+- Alavanca variável com E + mouse, faixa só positiva; ajustes pela Fiação (botão direito)
+
 ## Marco 3 — Mais componentes
 - Guincho com cabo, mola/dobradiça de torção, propulsor/jato, eletroímã, engate rápido
-- Dobradiça com trava, servo contínuo
+- Dobradiça com trava
 
 ## Marco 4 — Elétrica
 - Bateria, fios (ferramenta de fiação), botão, alavanca, relé, luzes

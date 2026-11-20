@@ -22,18 +22,19 @@ Nome, mapa, visual e código são próprios.
 |---|---|
 | Andar / pular | W A S D / Espaço |
 | Correr | toque duplo numa tecla de andar (ou Shift) |
-| Trocar ferramenta | 1 Mão · 2 Solda · 3 Esmerilhadeira · 4 Fiação |
-| Usar (loja, assento, botão, alavanca) | F |
+| Trocar ferramenta | 1 Gravitador · 2 Solda · 3 Esmerilhadeira · 4 Fiação |
+| Usar (loja, assento, botão, alavanca) | E |
 | Modo edição do assento (sentado) | Tab |
 | Ajuda / menu / FPS / tela cheia | H / Esc / F3 / F11 |
 
-**Mão (estilo Physics Gun)**
-- Clique segurado: pega a peça, que **flutua** e segue a mira.
-- Soltar o clique: a peça **continua flutuando** no lugar.
-- **E**: devolve a gravidade à peça (pegar outra peça também devolve).
-- **Shift + W/S/A/D/Q/E**: gira em passos de 15° (repete se segurar).
-- **T**: alinha a peça à grade do mundo (90°).
-- Roda do mouse: aproxima ou afasta.
+**Gravitador (no estilo da physics gun do Garry's Mod)**
+- Clique segurado: pega a peça, que segue a mira e gira junto com você.
+- Soltar o clique: a peça volta a ter física (dá para arremessar).
+- **Botão direito** (segurando): **congela** a peça no lugar.
+- **E + mover o mouse**: gira a peça. Com **Shift**, em passos de 15°.
+- Roda do mouse: aproxima ou afasta. **T**: alinha à grade do mundo.
+- **R** mirando numa peça congelada: descongela (e o que estiver ligado a ela por juntas).
+  **R duas vezes**: descongela tudo.
 
 **Solda**
 - Segure o clique bem na emenda entre duas peças: cria um **ponto de solda** (bolinha).
@@ -49,23 +50,38 @@ Nome, mapa, visual e código são próprios.
 - Prévia **vermelha** = perto demais da borda; mire mais para dentro da face.
 - Segure o clique numa bolinha de solda para removê-la, ou num isolador para arrancá-lo.
 
-**Máquinas (motores, servos, pistões...)**
-- Componentes: **motor** (gira), **servo** (vai até um ângulo e segura), **pistão** (empurra/puxa 0,5 m),
-  **dobradiça** (gira livre), **roda** e **assento**. Ficam no depósito do galpão, espalhados pelo mapa e à venda na loja.
-- Solde a base (carcaça) na estrutura e a peça que se mexe (disco, braço, haste) no que ela deve mover.
-- **Assento:** F para sentar. Ele controla todos os componentes ligados à mesma máquina.
+**Máquinas**
+- Componentes:
+  - **motor** (gira; sem sinal fica rígido ou solto);
+  - **servo** (vai até um ângulo e segura);
+  - **pistão** (empurra 0,5 m; sem sinal volta ou fica parado);
+  - **servo linear** (vai até uma posição e segura);
+  - **dobradiça** (gira livre até quase dobrar);
+  - **dobradiça de pino** (eixo livre, volta inteira);
+  - **junta esférica** (inclina para qualquer lado);
+  - **roda** e **assento**.
+
+  Ficam no depósito do galpão, espalhados pelo mapa e à venda na loja.
+- Solde a base (carcaça) na estrutura e a peça que se mexe (disco, haste, folha, placa) no que ela deve mover.
+  Os dois lados de uma junta **colidem** entre si.
+- **Assento:** E para sentar. Ele controla todos os componentes ligados à mesma máquina.
   **Tab** abre o **modo edição**: os componentes configuráveis ficam destacados (através de tudo) e o mouse fica livre.
-  Clique num componente para escolher até 2 teclas (ou botões do mouse) por sentido, "alternar" (liga/desliga),
-  "inverter", velocidade, força e ângulo. Botão direito + arrastar gira a câmera.
-- **Controles sem teclas:** **botão** (liga enquanto aperta), **alavanca** (liga/desliga) e **alavanca variável**
-  (roda do mouse, de -1 a 1). Com a ferramenta **Fiação** (4), clique no controle, depois nas superfícies por onde
-  o fio deve passar (cada clique cria um **isolador**, opcional) e por fim no componente.
-  Botão direito num isolador remove (a esmerilhadeira também arranca).
+  Clique num componente para escolher até 2 teclas (ou botões do mouse) por sentido, "alternar", "inverter",
+  velocidade, força, ângulo e as opções de cada um. Botão direito + arrastar gira a câmera.
+- **Controles sem teclas:**
+  - **botão** (liga enquanto aperta);
+  - **alavanca** (liga/desliga);
+  - **alavanca variável** (segure **E** e mova o mouse para cima/baixo).
+- **Fiação (4):** clique no controle, depois nas superfícies por onde o fio deve passar (cada clique cria um
+  **isolador**, opcional) e por fim no componente. **Botão direito**:
+  - num isolador: remove;
+  - numa alavanca variável: alterna entre -1 a 1 e só positivo;
+  - num motor, servo ou pistão: abre os ajustes dele.
 - Perto de onde você nasce tem um **carrinho de exemplo**: sente e use W/S/A/D.
 
 **Reciclador e loja**
 - Para se livrar de peças, jogue-as no **RECICLADOR**. Cada peça vira **pontos**, conforme o peso e o metal (alumínio vale mais por kg, ferro velho vale menos).
-- No terminal da **LOJA** (tecla **F**), gaste os pontos em chapas, vigas, blocos e peças pré-cortadas, escolhendo as medidas (com limite). Os itens aparecem na plataforma **ENTREGA**.
+- No terminal da **LOJA** (tecla **E**), gaste os pontos em chapas, vigas, blocos, componentes e peças pré-cortadas, escolhendo as medidas (com limite). Os itens aparecem na plataforma **ENTREGA**.
 
 ## Estrutura do código
 
@@ -78,16 +94,16 @@ scripts/
   core/settings.gd        opções salvas (autoload "Settings")
   parts/convex_geo.gd     geometria: peças são poliedros convexos definidos por planos
   parts/part.gd           peça (forma de colisão + malha)
-  parts/assembly.gd       corpo rígido de peças soldadas + controle de "flutuar"
+  parts/assembly.gd       corpo rígido de peças soldadas (segurar / congelar)
   parts/weld.gd           ponto de solda
   player/player.gd        jogador em 1ª pessoa
-  tools/*.gd              Mão, Solda, Esmerilhadeira
+  tools/*.gd              Gravitador, Solda, Esmerilhadeira, Fiação
   ui/hud.gd               interface
   world/world.gd          mapa: terreno, pátio, estruturas e pilhas de sucata
   world/recycler.gd       reciclador (peças viram pontos)
   world/demo_builds.gd    carrinho de exemplo
   world/wire_renderer.gd  desenho dos fios
-  mech/mech_joint.gd      juntas: motor, servo, pistão, dobradiça (controle e reconstrução)
+  mech/mech_joint.gd      juntas: motor, servo, pistão, servo linear, dobradiças, esférica
   mech/components.gd      cria componentes e controles
   mech/control_device.gd  botão, alavanca e alavanca variável
   tools/wire_tool.gd      ferramenta de fiação

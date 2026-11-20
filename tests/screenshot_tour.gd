@@ -32,7 +32,7 @@ func _ready() -> void:
 	_look_from_eye(plate.global_position)
 	await _frames(3)
 	player.select_tool(0)
-	hand._grab()
+	hand.grab()
 	hand.hold_distance = 3.0
 	await _frames(40)
 	player.pitch = deg_to_rad(-8)
@@ -40,7 +40,7 @@ func _ready() -> void:
 	await _shot("03_segurando")
 
 	# 4) Solta o clique: a chapa continua flutuando; troca para a esmerilhadeira
-	hand.holding = false
+	hand.freeze_held()
 	player.select_tool(2)
 	var grinder: GrinderTool = player.tools[2]
 	grinder.angle_index = 1
@@ -62,7 +62,7 @@ func _ready() -> void:
 	await _frames(90)
 
 	# 6) Monta um "L" soldado na bancada e mostra as bolinhas de solda
-	hand.release()
+	Build.unfreeze_all()
 	var base := Build.spawn_box(Vector3(1.5, 0.1, 1.0), "aco", Transform3D(Basis(), Vector3(8, 1.06, -6)))
 	var wall := Build.spawn_box(Vector3(1.5, 0.8, 0.1), "ferro", Transform3D(Basis(), Vector3(8, 1.51, -6.45)))
 	var beam := Build.spawn_box(Vector3(0.1, 0.1, 1.2), "aluminio", Transform3D(Basis(), Vector3(8.8, 1.06, -6.0)))

@@ -11,6 +11,7 @@ signal closed
 const PICK_MARGIN := 8.0
 
 var player: Player
+var _single := false                ## aberto pela Fiação para um componente só
 var _joints: Array[MechJoint] = []
 var _hover: MechJoint = null
 var _selected: MechJoint = null
@@ -87,8 +88,23 @@ func _highlight_mat(color: Color) -> StandardMaterial3D:
 	return m
 
 
+## Ajustes de um componente só (botão direito da Fiação, a pé).
+func open_single(p_player: Player, j: MechJoint) -> void:
+	player = p_player
+	_single = true
+	_joints = [j]
+	_hover = null
+	_capture = []
+	visible = true
+	_banner.text = "AJUSTES DO COMPONENTE · Esc, Tab ou E: fechar"
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_select(j)
+
+
 func open(p_player: Player, joints: Array[MechJoint]) -> void:
 	player = p_player
+	_single = false
+	_banner.text = "MODO EDIÇÃO · clique num componente destacado para editar · botão direito + arrastar: girar a câmera · Tab: sair"
 	_joints = []
 	for j in joints:
 		if j.is_actuator() and j.is_valid():
@@ -109,6 +125,8 @@ func close() -> void:
 	if not visible:
 		return
 	visible = false
+	_single = false
+	_panel.visible = false
 	_capture = []
 	_hover = null
 	_selected = null
@@ -190,7 +208,11 @@ func _select(j: MechJoint) -> void:
 		var close_b := Button.new()
 		close_b.text = "Fechar"
 		close_b.custom_minimum_size = Vector2(0, 34)
-		close_b.pressed.connect(func() -> void: _select(null))
+		close_b.pressed.connect(func() -> void:
+			if _single:
+				close()
+			else:
+				_select(null))
 		_content.add_child(close_b)
 		_panel.visible = true
 	_refresh_highlights()
@@ -198,6 +220,9 @@ func _select(j: MechJoint) -> void:
 
 func _process(_delta: float) -> void:
 	if not visible or player == null:
+		return
+	if _single:
+		_tag.visible = false
 		return
 	if not player.is_seated():
 		close()
@@ -251,9 +276,12 @@ func _input(event: InputEvent) -> void:
 			_capture = []
 			get_viewport().set_input_as_handled()
 		return
-	if event.is_action_pressed("seat_edit") or event.is_action_pressed("pause"):
+	if event.is_action_pressed("seat_edit") or event.is_action_pressed("pause") \
+			or (_single and event.is_action_pressed("interact")):
 		close()
 		get_viewport().set_input_as_handled()
+		return
+	if _single:
 		return
 	# Botão direito segurado + arrastar: girar a câmera.
 	if event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
@@ -282,7 +310,7 @@ func _section(i: int, j: MechJoint) -> Control:
 	v.add_theme_constant_override("separation", 6)
 	panel.add_child(v)
 
-	var title := "%d · %s" % [i + 1, j.display_name()]
+	var title := j.display_name() if _single else "%d · %s" % [i + 1, j.display_name()]
 	if not j.sources.is_empty():
 		title += "   (+%d controle%s por fio)" % [j.sources.size(), "" if j.sources.size() == 1 else "s"]
 	v.add_child(_label(title, 17, Color(1.0, 0.85, 0.4)))
@@ -313,6 +341,11 @@ func _section(i: int, j: MechJoint) -> Control:
 
 	match j.type:
 		"motor":
+			var free := CheckBox.new()
+			free.text = "Solto sem comando (gira livre; desmarcado = trava)"
+			free.button_pressed = j.free_idle
+			free.toggled.connect(func(on: bool) -> void: j.free_idle = on)
+			v.add_child(free)
 			v.add_child(_slider("Velocidade", 1.0, 30.0, 0.5, j.speed, "%.1f rad/s", func(x: float) -> void: j.speed = x))
 			v.add_child(_slider("Força", 200.0, 6000.0, 100.0, j.strength, "%d N·m", func(x: float) -> void:
 				j.strength = x
@@ -323,7 +356,13 @@ func _section(i: int, j: MechJoint) -> Control:
 			v.add_child(_slider("Força", 200.0, 8000.0, 100.0, j.strength, "%d N·m", func(x: float) -> void:
 				j.strength = x
 				j.apply_strength()))
-		"pistao":
+		"pistao", "servo_linear":
+			if j.type == "pistao":
+				var hold_cb := CheckBox.new()
+				hold_cb.text = "Ficar parado sem sinal (desmarcado = volta ao início)"
+				hold_cb.button_pressed = j.hold
+				hold_cb.toggled.connect(func(on: bool) -> void: j.hold = on)
+				v.add_child(hold_cb)
 			v.add_child(_slider("Velocidade", 0.1, 3.0, 0.1, j.speed, "%.1f m/s", func(x: float) -> void: j.speed = x))
 			v.add_child(_slider("Força", 1000.0, 40000.0, 500.0, j.strength, "%d N", func(x: float) -> void:
 				j.strength = x

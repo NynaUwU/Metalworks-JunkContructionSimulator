@@ -8,20 +8,20 @@ const HELP_TEXT := """[b]CONTROLES[/b]
 W A S D — andar
 Toque duplo (ou Shift) — correr
 Espaço — pular
+E — usar (loja, assento, botão, alavanca)
 
 [b]Ferramentas[/b]
-1 — Mão (pegar peças)
+1 — Gravitador (pegar peças)
 2 — Solda
 3 — Esmerilhadeira (cortar / remover solda)
 4 — Fiação (ligar controles a componentes)
 
-[b]Mão[/b]
-Clique segurado — pegar; a peça flutua
-Soltar o clique — a peça FICA flutuando
-E — devolve a gravidade à peça
-Shift + W/S/A/D/Q/E — girar 15°
-T — alinhar à grade do mundo
-Roda do mouse — distância
+[b]Gravitador[/b]
+Clique segurado — pegar · soltar — cai (dá pra jogar)
+Botão direito (segurando) — congelar no lugar
+E + mouse — girar · com Shift: passos de 15°
+Roda do mouse — distância · T — alinhar à grade
+R mirando — descongelar · R R — descongelar tudo
 
 [b]Solda[/b]
 Segure o clique bem na emenda entre duas peças
@@ -37,18 +37,20 @@ Segure o clique numa bolinha — remove a solda
 Segure o clique num isolador — arranca
 
 [b]Máquinas[/b]
-F no assento — sentar · F de novo — levantar
+E no assento — sentar · E de novo — levantar
 Tab sentado — modo edição: clique num componente
   destacado para escolher as teclas dele
-F (ou clique sentado) — usar botão / alavanca
-Roda do mouse — ajustar alavanca variável
+E (clique, sentado) — usar botão / alavanca
+Alavanca variável: segure E e mova o mouse
+  para cima/baixo
 Fiação: clique no controle, na estrutura por onde
   o fio passa (cria isoladores) e no componente
-Fiação, botão direito num isolador — remove
+Fiação, botão direito: remove isolador, ajusta
+  componente ou faixa da alavanca variável
 
 [b]Reciclador e loja[/b]
 Jogue peças no RECICLADOR = pontos
-F no terminal da LOJA — comprar peças
+E no terminal da LOJA — comprar peças
 
 H — mostrar/ocultar ajuda
 F11 — tela cheia · F3 — FPS
@@ -223,6 +225,7 @@ func _build_ui() -> void:
 	seat_ui = SeatUI.new()
 	add_child(seat_ui)
 	player.edit_requested.connect(func() -> void: seat_ui.open(player, Build.network(player.seat)))
+	player.config_requested.connect(func(j: MechJoint) -> void: seat_ui.open_single(player, j))
 	player.seat_changed.connect(func(seated: bool) -> void:
 		if not seated:
 			seat_ui.close())
@@ -359,7 +362,7 @@ func _process(delta: float) -> void:
 	if seat_ui.visible:
 		_hint.text = ""
 	elif player.is_seated():
-		_hint.text = "Sentado   ·   Tab: modo edição (teclas)   ·   F: levantar   ·   Clique: usar botões e alavancas"
+		_hint.text = "Sentado   ·   Tab: modo edição (teclas)   ·   E: levantar   ·   Clique: usar botões e alavancas"
 	else:
 		_hint.text = player.current().hint_text()
 	var prog := player.current().progress()

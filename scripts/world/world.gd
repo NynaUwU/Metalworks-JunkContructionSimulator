@@ -407,6 +407,7 @@ func _spawn_component_depot() -> void:
 		["motor", "motor", "motor", "motor", "servo", "servo"],
 		["roda", "roda", "roda", "roda", "roda", "roda"],
 		["pistao", "pistao", "dobradica", "dobradica", "assento", "assento"],
+		["servo_linear", "servo_linear", "pino", "pino", "esferica", "esferica"],
 		["botao", "botao", "alavanca", "alavanca", "potenciometro", "potenciometro"],
 	]
 	for r in rows.size():

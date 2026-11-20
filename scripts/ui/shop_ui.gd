@@ -118,7 +118,7 @@ func _ready() -> void:
 	_buy_button.pressed.connect(_on_buy)
 	dbox.add_child(_buy_button)
 
-	box.add_child(_label("Recicle sucata para ganhar pontos · os itens aparecem na plataforma ENTREGA · Esc ou F: fechar", 13, Color(1, 1, 1, 0.55)))
+	box.add_child(_label("Recicle sucata para ganhar pontos · os itens aparecem na plataforma ENTREGA · Esc ou E: fechar", 13, Color(1, 1, 1, 0.55)))
 	Economy.points_changed.connect(func(_t: int) -> void: refresh())
 
 	_select(Catalog.ITEMS[0])

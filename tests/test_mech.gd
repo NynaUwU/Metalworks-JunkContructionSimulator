@@ -2,6 +2,8 @@ extends Node3D
 ## Testes da mecânica (motores, servos, pistões, dobradiças, controles, assento).
 ##   godot --headless --path . res://tests/test_mech.tscn
 
+const EXPECTED_CHECKS := 66
+
 var _fails := 0
 var _checks := 0
 
@@ -34,6 +36,9 @@ func _ready() -> void:
 	ground.position.y = -0.5
 	await _frames(2)
 	await _run()
+	if _checks < EXPECTED_CHECKS:
+		_fails += 1
+		print("  FALHOU só %d de %d verificações rodaram (erro no meio do teste?)" % [_checks, EXPECTED_CHECKS])
 	print("\n%d verificações, %d falhas" % [_checks, _fails])
 	get_tree().quit(1 if _fails > 0 else 0)
 
@@ -77,16 +82,16 @@ func _run() -> void:
 	_anchor(s[0])
 	var pot := Components.spawn("potenciometro", Transform3D(Basis(), Vector3(8, 0.04, 0)))[0]
 	Build.toggle_link(pot.device, sj)
-	pot.device.scroll(10)
+	pot.device.drag(-300.0)
 	check(near(pot.device.value, 1.0), "potenciômetro no máximo vale 1")
 	await _frames(90)
 	check(near(sj.angle(), sj.max_angle, 0.06), "servo vai a +45° (%.1f°)" % rad_to_deg(sj.angle()))
-	pot.device.scroll(-15)
+	pot.device.drag(225.0)
 	await _frames(90)
 	check(near(sj.angle(), -sj.max_angle * 0.5, 0.06), "potenciômetro em -0,5: servo a -22,5° (%.1f°)" % rad_to_deg(sj.angle()))
 
 	print("== Pistão")
-	var p := Components.spawn("pistao", Transform3D(Basis(), Vector3(12, 0.3, 0)))
+	var p := Components.spawn("pistao", Transform3D(Basis(), Vector3(12, 0.36, 0)))
 	var pj: MechJoint = p[0].mech
 	_anchor(p[0])
 	await _frames(20)
@@ -101,9 +106,9 @@ func _run() -> void:
 	check(near(pj.extension(), 0.0, 0.04), "soltando o botão, recolhe (%.3f m)" % pj.extension())
 
 	print("== Pistão levanta peso")
-	var load := Build.spawn_box(Vector3(1, 0.2, 1), "aco", Transform3D(Basis(), Vector3(12, 0.72, 0)))
+	var load := Build.spawn_box(Vector3(1, 0.2, 1), "aco", Transform3D(Basis(), Vector3(12, 0.82, 0)))
 	await _frames(20)
-	Build.make_weld(load, p[1], Vector3(12, 0.62, 0))
+	Build.make_weld(load, p[1], Vector3(12, 0.715, 0))
 	check(load.assembly() == p[1].assembly(), "carga soldada na haste")
 	await _frames(5)
 	check(pj.joint != null and pj.part_b.assembly() != pj.part_a.assembly(), "junta recriada depois da solda")
@@ -120,7 +125,7 @@ func _run() -> void:
 		await get_tree().physics_frame
 		lowest = minf(lowest, h[1].global_position.y)
 	check(lowest < 1.4, "folha solta da dobradiça cai girando (mais baixo y=%.2f)" % lowest)
-	check(h[1].global_position.distance_to(h[0].global_transform * Vector3(0, 0, 0.13)) < 0.3, "e continua presa no eixo")
+	check(h[1].global_position.distance_to(h[0].global_transform * Vector3(0, 0, 0.155)) < 0.3, "e continua presa no eixo")
 
 	print("== Rede do assento")
 	var chassis := Build.spawn_box(Vector3(2, 0.1, 1), "aco", Transform3D(Basis(), Vector3(30, 0.05, 0)))
@@ -164,6 +169,7 @@ func _run() -> void:
 	await _car_test()
 	await _demo_car_test()
 	await _player_test()
+	await _v05_test()
 
 
 func _key(code: Key, pressed: bool) -> InputEventKey:
@@ -338,4 +344,140 @@ func _player_test() -> void:
 	var kicked := car_seat.global_position.distance_to(before)
 	check(kicked < 0.15, "levantar do carrinho não empurra o carrinho (%.2f m)" % kicked)
 	check(player.global_position.distance_to(car_seat.global_position) < 4.0, "e o jogador desce do lado")
+	player.queue_free()
+
+
+## v0.5: limites, colisão entre os lados, opções novas, componentes novos, Gravitador.
+func _v05_test() -> void:
+	print("== Dobradiça: limite e colisão entre os lados")
+	var o := Vector3(0, 0, 60)
+	var h := Components.spawn("dobradica", Transform3D(Basis(), o + Vector3(0, 1.5, 0)))
+	_anchor(h[0])
+	var hj: MechJoint = h[0].mech
+	check(hj.joint.exclude_nodes_from_collision == false, "os dois lados da junta colidem entre si")
+	var max_angle := 0.0
+	for i in 120:
+		h[1].assembly().angular_velocity = h[0].global_basis.x * 12.0
+		await get_tree().physics_frame
+		max_angle = maxf(max_angle, absf(hj.angle()))
+	check(max_angle < deg_to_rad(176.0), "a dobradiça não gira infinitamente (máx %.0f°)" % rad_to_deg(max_angle))
+
+	print("== Motor solto x rígido")
+	var m := Components.spawn("motor", Transform3D(Basis(), o + Vector3(4, 1, 0)))
+	_anchor(m[0])
+	await _frames(10)
+	m[1].assembly().angular_velocity = m[0].global_basis.y * 6.0
+	await _frames(20)
+	check(m[1].assembly().angular_velocity.length() < 0.5, "rígido (padrão): sem sinal o eixo trava")
+	m[0].mech.free_idle = true
+	await _frames(2)
+	m[1].assembly().angular_velocity = m[0].global_basis.y * 6.0
+	await _frames(20)
+	check(m[1].assembly().angular_velocity.length() > 3.0, "solto: sem sinal o eixo continua girando (%.1f rad/s)" % m[1].assembly().angular_velocity.length())
+
+	print("== Pistão: voltar ou ficar parado")
+	var p := Components.spawn("pistao", Transform3D(Basis(), o + Vector3(8, 0.36, 0)))
+	_anchor(p[0])
+	var pj: MechJoint = p[0].mech
+	await _frames(10)
+	var exposed: float = (p[1].global_position.y + 0.3) - (p[0].global_position.y + 0.05 + 0.55)
+	check(exposed < 0.1, "parado, quase toda a haste fica dentro do corpo (%.2f m para fora)" % exposed)
+	var btn := Components.spawn("botao", Transform3D(Basis(), o + Vector3(9, 0.04, 2)))[0]
+	Build.toggle_link(btn.device, pj)
+	pj.hold = true
+	btn.device.press()
+	await _frames(15)
+	btn.device.release()
+	var mid := pj.extension()
+	await _frames(40)
+	check(mid > 0.1 and absf(pj.extension() - mid) < 0.03, "ficar parado: sem sinal fica onde estava (%.2f m)" % pj.extension())
+	pj.hold = false
+	await _frames(60)
+	check(pj.extension() < 0.03, "voltar ao início: sem sinal recolhe (%.2f m)" % pj.extension())
+
+	print("== Servo linear")
+	var sl := Components.spawn("servo_linear", Transform3D(Basis(), o + Vector3(12, 0.31, 0)))
+	_anchor(sl[0])
+	var slj: MechJoint = sl[0].mech
+	var pot := Components.spawn("potenciometro", Transform3D(Basis(), o + Vector3(13, 0.04, 2)))[0]
+	Build.toggle_link(pot.device, slj)
+	await _frames(60)
+	check(absf(slj.extension() - slj.stroke * 0.5) < 0.03, "sinal 0: servo linear vai ao meio (%.2f m)" % slj.extension())
+	pot.device.drag(-300.0)
+	await _frames(60)
+	check(absf(slj.extension() - slj.stroke) < 0.03, "sinal 1: esticado (%.2f m)" % slj.extension())
+	pot.device.toggle_range()
+	check(pot.device.positive_only and pot.device.min_value() == 0.0, "alavanca variável pode ser só positiva")
+	pot.device.drag(5000.0)
+	check(pot.device.value == 0.0, "só positiva: o mínimo é 0")
+
+	print("== Dobradiça de pino e junta esférica")
+	var pin := Components.spawn("pino", Transform3D(Basis(), o + Vector3(16, 1, 0)))
+	_anchor(pin[0])
+	await _frames(5)
+	pin[1].assembly().angular_velocity = pin[0].global_basis.x * 8.0
+	var turned := 0.0
+	var last: float = pin[0].mech.angle()
+	for i in 120:
+		await get_tree().physics_frame
+		var a: float = pin[0].mech.angle()
+		turned += absf(wrapf(a - last, -PI, PI))
+		last = a
+	check(turned > TAU, "dobradiça de pino dá volta inteira (%.0f°)" % rad_to_deg(turned))
+	var ball := Components.spawn("esferica", Transform3D(Basis(), o + Vector3(20, 0.04, 0)))
+	_anchor(ball[0])
+	await _frames(5)
+	var pivot: Vector3 = ball[0].global_transform * ball[0].mech.pivot
+	var d0: float = ball[1].global_position.distance_to(pivot)
+	ball[1].assembly().apply_impulse(Vector3(15, 0, 0), Vector3(0, 0.2, 0))
+	await _frames(60)
+	var tilt := rad_to_deg(ball[1].global_basis.y.angle_to(Vector3.UP))
+	check(tilt > 10.0 and tilt < 55.0, "junta esférica inclina e respeita o limite (%.0f°)" % tilt)
+	check(absf(ball[1].global_position.distance_to(pivot) - d0) < 0.03, "e continua presa na bola")
+
+	print("== Gravitador: congelar e descongelar")
+	var player := Player.new()
+	add_child(player)
+	await _frames(2)
+	var crate := Build.spawn_box(Vector3(0.5, 0.5, 0.5), "aco", Transform3D(Basis(), o + Vector3(0, 0.25, 10)))
+	var crate2 := Build.spawn_box(Vector3(0.5, 0.5, 0.5), "aco", Transform3D(Basis(), o + Vector3(3, 0.25, 10)))
+	await _frames(10)
+	player.select_tool(0)
+	var grav: HandTool = player.tools[0]
+	_aim(player, o + Vector3(0, 0, 12.5), crate.global_position)
+	await _frames(3)
+	grav.handle_input(_press("primary", true))
+	await _frames(5)
+	grav.hold_distance += 1.0
+	_aim(player, o + Vector3(0, 0, 12.5), crate.global_position + Vector3(0, 1.5, 0))
+	await _frames(40)
+	var lifted := crate.global_position.y
+	check(lifted > 1.0, "pegou e levantou (y=%.2f)" % lifted)
+	grav.handle_input(_press("secondary", true))
+	check(crate.assembly().frozen and crate.assembly().freeze, "botão direito congela")
+	await _frames(30)
+	check(absf(crate.global_position.y - lifted) < 0.05, "congelada fica no ar")
+	grav.handle_input(_press("primary", false))
+	_aim(player, o + Vector3(0, 0, 12.5), crate.global_position)
+	await _frames(3)
+	grav.handle_input(_press("rotate_cut", true))
+	check(not crate.assembly().frozen, "R mirando descongela")
+	await _frames(60)
+	check(crate.global_position.y < 0.4, "descongelada cai (y=%.2f)" % crate.global_position.y)
+	crate.assembly().set_frozen(true)
+	crate2.assembly().set_frozen(true)
+	await _frames(25)
+	grav.handle_input(_press("rotate_cut", true))
+	grav.handle_input(_press("rotate_cut", true))
+	check(not crate.assembly().frozen and not crate2.assembly().frozen, "R R descongela tudo")
+
+	print("== Fiação: ajustes pelo botão direito")
+	player.select_tool(3)
+	var wire: WireTool = player.tools[3]
+	var got: Array = []
+	player.config_requested.connect(func(j: MechJoint) -> void: got.append(j))
+	_aim(player, o + Vector3(12, 0, 2.6), sl[0].global_position)
+	await _frames(3)
+	wire.handle_input(_press("secondary", true))
+	check(got.size() == 1 and got[0] == slj, "botão direito no componente abre os ajustes dele")
 	player.queue_free()

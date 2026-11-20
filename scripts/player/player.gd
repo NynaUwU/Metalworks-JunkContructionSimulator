@@ -163,6 +163,8 @@ func interact_hint() -> String:
 			return "%s: %s" % [key, part.device.hint()]
 		if part.interact_kind == "assento" and not is_seated():
 			return "E: sentar"
+		if part.interact_kind == "engate" and part.mech:
+			return "%s: %s o engate" % [key, "desligar" if part.mech.manual else "ligar"]
 		return ""
 	return "E: %s" % t.get_meta("interact_label", "usar")
 
@@ -267,6 +269,11 @@ func _use_device_press() -> bool:
 	if t is Part and (t as Part).device:
 		_using = (t as Part).device
 		_using.press()
+		return true
+	if t is Part and (t as Part).interact_kind == "engate" and (t as Part).mech:
+		var j: MechJoint = (t as Part).mech
+		j.manual = not j.manual
+		toast("Engate rápido %s" % ("ligado: trava no que encostar" if j.manual else "desligado"))
 		return true
 	return false
 

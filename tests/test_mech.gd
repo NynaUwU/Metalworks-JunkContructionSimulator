@@ -2,7 +2,7 @@ extends Node3D
 ## Testes da mecânica (motores, servos, pistões, dobradiças, controles, assento).
 ##   godot --headless --path . res://tests/test_mech.tscn
 
-const EXPECTED_CHECKS := 73
+const EXPECTED_CHECKS := 101
 
 var _fails := 0
 var _checks := 0
@@ -106,10 +106,10 @@ func _run() -> void:
 	check(near(pj.extension(), 0.0, 0.04), "soltando o botão, recolhe (%.3f m)" % pj.extension())
 
 	print("== Pistão levanta peso")
-	var load := Build.spawn_box(Vector3(1, 0.2, 1), "aco", Transform3D(Basis(), Vector3(12, 0.82, 0)))
+	var weight := Build.spawn_box(Vector3(1, 0.2, 1), "aco", Transform3D(Basis(), Vector3(12, 0.82, 0)))
 	await _frames(20)
-	Build.make_weld(load, p[1], Vector3(12, 0.715, 0))
-	check(load.assembly() == p[1].assembly(), "carga soldada na haste")
+	Build.make_weld(weight, p[1], Vector3(12, 0.715, 0))
+	check(weight.assembly() == p[1].assembly(), "carga soldada na haste")
 	await _frames(5)
 	check(pj.joint != null and pj.part_b.assembly() != pj.part_a.assembly(), "junta recriada depois da solda")
 	button.device.press()
@@ -171,6 +171,7 @@ func _run() -> void:
 	await _player_test()
 	await _v05_test()
 	await _crouch_test()
+	await _v06_test()
 
 
 func _key(code: Key, pressed: bool) -> InputEventKey:
@@ -544,3 +545,167 @@ func _crouch_test() -> void:
 	await _frames(20)
 	check(not player.crouching, "em pé de novo depois de levantar")
 	player.queue_free()
+
+
+## Marco 3: trava, torção, mola, guincho, propulsor, eletroímã e engate rápido.
+func _v06_test() -> void:
+	var o := Vector3(60, 0, 60)
+
+	print("== Dobradiça com trava")
+	var t := Components.spawn("trava", Transform3D(Basis(), o + Vector3(0, 1.5, 0)))
+	_anchor(t[0])
+	var tj: MechJoint = t[0].mech
+	var tbtn := Components.spawn("botao", Transform3D(Basis(), o + Vector3(0, 0.04, 3)))[0]
+	Build.toggle_link(tbtn.device, tj)
+	tbtn.device.press()
+	await _frames(40)
+	check(absf(tj.angle()) < deg_to_rad(5.0), "com sinal fica travada no ângulo atual (%.1f°)" % rad_to_deg(tj.angle()))
+	tbtn.device.release()
+	await _frames(40)
+	check(absf(tj.angle()) > deg_to_rad(30.0), "sem sinal gira livre e a folha cai (%.0f°)" % rad_to_deg(tj.angle()))
+	tj.lock_idle = true
+	await _frames(5)
+	var held := tj.angle()
+	await _frames(30)
+	check(absf(tj.angle() - held) < deg_to_rad(3.0), "opção 'travada sem sinal' segura onde estava")
+
+	print("== Dobradiça de torção")
+	var tw := Components.spawn("torcao", Transform3D(Basis(), o + Vector3(4, 1.5, 0)))
+	_anchor(tw[0])
+	var twj: MechJoint = tw[0].mech
+	await _frames(5)
+	var bent := 0.0
+	for i in 20:
+		tw[1].assembly().angular_velocity = tw[0].global_basis.x * 6.0
+		await get_tree().physics_frame
+		bent = maxf(bent, absf(twj.angle()))
+	check(bent > deg_to_rad(10.0), "dá para torcer (%.0f°)" % rad_to_deg(bent))
+	await _frames(90)
+	check(absf(twj.angle()) < deg_to_rad(8.0), "solta, volta sozinha ao ângulo inicial (%.1f°)" % rad_to_deg(twj.angle()))
+
+	print("== Mola")
+	var sp := Components.spawn("mola", Transform3D(Basis(), o + Vector3(8, 0.06, 0)))
+	_anchor(sp[0])
+	var spj: MechJoint = sp[0].mech
+	await _frames(60)
+	var free_ext := spj.extension()
+	check(free_ext < 0.0 and free_ext > -0.04, "sem carga quase não comprime (%.3f m)" % free_ext)
+	var weight := Build.spawn_box(Vector3(0.4, 0.4, 0.4), "aco", Transform3D(Basis(), sp[1].global_position + Vector3(0, 0.25, 0)))
+	await _frames(150)
+	var loaded := spj.extension()
+	check(loaded < -0.07 and loaded > -0.19, "com 50 kg em cima comprime sem bater no fim (%.3f m)" % loaded)
+	check(spj.coil.scale.y < 0.8, "a espiral encolhe junto")
+	Build.delete_part(weight)
+	await _frames(90)
+	check(spj.extension() > -0.04, "tirando o peso, volta (%.3f m)" % spj.extension())
+
+	print("== Guincho")
+	var w := Components.spawn("guincho", Transform3D(Basis(), o + Vector3(12, 4, 0)))
+	_anchor(w[0])
+	var wj: MechJoint = w[0].mech
+	await _frames(90)
+	var d0 := wj.rope_start().distance_to(wj.rope_end())
+	check(d0 < wj.rope_len + 0.05 and w[1].global_position.y < w[0].global_position.y, "o gancho fica pendurado no cabo (%.2f m)" % d0)
+	var wbtn := Components.spawn("botao", Transform3D(Basis(), o + Vector3(12, 0.04, 3)))[0]
+	Build.toggle_link(wbtn.device, wj)
+	wj.invert = true
+	var y0 := w[1].global_position.y
+	var low := y0
+	wbtn.device.press()
+	for i in 120:
+		if i == 90:
+			wbtn.device.release()
+		await get_tree().physics_frame
+		low = minf(low, w[1].global_position.y)
+	check(wj.rope_len > 1.3 and low < y0 - 1.0, "sinal −: solta cabo e o gancho desce (cabo %.2f m, desceu %.2f m)" % [wj.rope_len, y0 - low])
+	wj.invert = false
+	var load_w := Build.spawn_box(Vector3(0.3, 0.3, 0.3), "aco", Transform3D(Basis(), w[1].global_position + Vector3(0, -0.2, 0)))
+	Build.make_weld(w[1], load_w, w[1].global_position + Vector3(0, -0.05, 0))
+	await _frames(30)
+	var y1 := w[1].global_position.y
+	wbtn.device.press()
+	await _frames(120)
+	check(wj.rope_len <= MechJoint.ROPE_MIN + 0.01 and w[1].global_position.y > y1 + 0.8, "sinal +: recolhe e levanta 21 kg (subiu %.2f m)" % (w[1].global_position.y - y1))
+	wbtn.device.release()
+	wj.max_rope = 2.0
+	wj.invert = true
+	wbtn.device.press()
+	await _frames(180)
+	wbtn.device.release()
+	check(wj.rope_len <= 2.0 + 1e-3, "o cabo para no comprimento máximo (%.2f m)" % wj.rope_len)
+
+	print("== Propulsor")
+	var th := Components.spawn("propulsor", Transform3D(Basis(), o + Vector3(16, 0.32, 0)))[0]
+	var thj: MechJoint = th.mech
+	var thbtn := Components.spawn("botao", Transform3D(Basis(), o + Vector3(16, 0.04, 3)))[0]
+	Build.toggle_link(thbtn.device, thj)
+	await _frames(20)
+	var ty := th.global_position.y
+	thbtn.device.press()
+	await _frames(40)
+	check(th.global_position.y > ty + 0.5, "com sinal empurra para cima e levanta (%.2f m)" % (th.global_position.y - ty))
+	check(thj.fx.emitting, "a chama aparece enquanto empurra")
+	thbtn.device.release()
+	await _frames(2)
+	check(not thj.fx.emitting, "sem sinal a chama apaga")
+
+	print("== Eletroímã")
+	var mg := Components.spawn("ima", Transform3D(Basis(), o + Vector3(20, 0.72, 0)))[0]
+	_anchor(mg)
+	var mgj: MechJoint = mg.mech
+	var steel := Build.spawn_box(Vector3(0.2, 0.2, 0.2), "aco", Transform3D(Basis(), o + Vector3(20, 0.1, 0)))
+	var mg2 := Components.spawn("ima", Transform3D(Basis(), o + Vector3(23, 0.72, 0)))[0]
+	_anchor(mg2)
+	var alu := Build.spawn_box(Vector3(0.2, 0.2, 0.2), "aluminio", Transform3D(Basis(), o + Vector3(23, 0.1, 0)))
+	var mgbtn := Components.spawn("alavanca", Transform3D(Basis(), o + Vector3(21.5, 0.04, 3)))[0]
+	Build.toggle_link(mgbtn.device, mgj)
+	Build.toggle_link(mgbtn.device, mg2.mech)
+	await _frames(20)
+	check(not mgj.is_locked() and steel.global_position.y < 0.2, "desligado não puxa nada")
+	mgbtn.device.press()
+	await _frames(60)
+	check(mgj.is_locked() and mgj.lock_target == steel, "ligado puxa o aço e gruda")
+	check(steel.global_position.y > 0.4, "o bloco fica pendurado na face (%.2f m)" % steel.global_position.y)
+	check(not mg2.mech.is_locked() and alu.global_position.y < 0.2, "alumínio não é atraído")
+	mgbtn.device.press()   # alavanca: desliga
+	await _frames(40)
+	check(not mgj.is_locked() and steel.global_position.y < 0.2, "desligando, o bloco cai")
+
+	print("== Engate rápido")
+	var cp := Components.spawn("engate", Transform3D(Basis(), o + Vector3(28, 0.04, 0)))[0]
+	_anchor(cp)
+	var cpj: MechJoint = cp.mech
+	var blk := Build.spawn_box(Vector3(0.3, 0.2, 0.3), "aluminio", Transform3D(Basis(), o + Vector3(28, 0.19, 0)))
+	await _frames(20)
+	check(not cpj.is_locked(), "começa desligado")
+	var player := Player.new()
+	add_child(player)
+	await _frames(2)
+	_aim(player, o + Vector3(28, 0, 1.6), cp.global_position + Vector3(0, 0.0, 0.13))
+	await _frames(3)
+	check(player.interact_hint().contains("ligar o engate"), "mira no engate mostra 'E: ligar o engate'")
+	player.use_interact()
+	await _frames(5)
+	check(cpj.manual and cpj.is_locked() and cpj.lock_target == blk, "E liga o engate e ele trava no que está encostado")
+	var by := blk.global_position.y
+	for i in 10:
+		blk.assembly().linear_velocity = Vector3(0, 4, 0)
+		await get_tree().physics_frame
+	await _frames(5)
+	check(absf(blk.global_position.y - by) < 0.05, "travado, o bloco não sai")
+	cpj.manual = false
+	await _frames(2)
+	for i in 10:
+		blk.assembly().linear_velocity = Vector3(0, 4, 0)
+		await get_tree().physics_frame
+	check(not cpj.is_locked() and blk.global_position.y > by + 0.3, "desligado, solta")
+	player.queue_free()
+
+	print("== Loja e ajustes")
+	var all_ok := true
+	for k in ["trava", "torcao", "mola", "guincho", "propulsor", "ima", "engate"]:
+		var it := Catalog.get_item(k)
+		if it.is_empty() or Components.price(k) <= 0 or Components.build_visual(k).get_child_count() == 0:
+			all_ok = false
+	check(all_ok, "os 7 componentes novos estão na loja, com preço e ícone")
+	check(spj.is_configurable() and not spj.is_actuator() and twj.is_configurable(), "mola e torção: sem teclas, mas com ajustes")

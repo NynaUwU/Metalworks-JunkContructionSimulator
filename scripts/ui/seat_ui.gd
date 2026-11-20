@@ -107,7 +107,7 @@ func open(p_player: Player, joints: Array[MechJoint]) -> void:
 	_banner.text = "MODO EDIÇÃO · clique num componente destacado para editar · botão direito + arrastar: girar a câmera · Tab: sair"
 	_joints = []
 	for j in joints:
-		if j.is_actuator() and j.is_valid():
+		if j.is_configurable() and j.is_valid():
 			_joints.append(j)
 	_hover = null
 	_selected = null
@@ -117,7 +117,7 @@ func open(p_player: Player, joints: Array[MechJoint]) -> void:
 	Build.seat_keys_enabled = false
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	if _joints.is_empty():
-		player.toast("Nada para configurar: solde motores, servos ou pistões na mesma máquina do assento")
+		player.toast("Nada para configurar: solde componentes (motores, pistões, guinchos…) na mesma máquina do assento")
 	_refresh_highlights()
 
 
@@ -315,7 +315,9 @@ func _section(i: int, j: MechJoint) -> Control:
 		title += "   (+%d controle%s por fio)" % [j.sources.size(), "" if j.sources.size() == 1 else "s"]
 	v.add_child(_label(title, 17, Color(1.0, 0.85, 0.4)))
 
-	for which in ["pos", "neg"]:
+	if not j.is_actuator():
+		v.add_child(_label("Sem teclas: só ajustes.", 13, Color(1, 1, 1, 0.6)))
+	for which in (["pos", "neg"] if j.is_actuator() else []):
 		var keys := HBoxContainer.new()
 		keys.add_theme_constant_override("separation", 8)
 		var name_l := _label("Tecla +" if which == "pos" else "Tecla −", 14, Color.WHITE)
@@ -326,6 +328,7 @@ func _section(i: int, j: MechJoint) -> Control:
 		v.add_child(keys)
 
 	var opts := HBoxContainer.new()
+	opts.visible = j.is_actuator()
 	opts.add_theme_constant_override("separation", 16)
 	var tog := CheckBox.new()
 	tog.text = "Alternar (liga/desliga)"
@@ -367,6 +370,34 @@ func _section(i: int, j: MechJoint) -> Control:
 			v.add_child(_slider("Força", 1000.0, 40000.0, 500.0, j.strength, "%d N", func(x: float) -> void:
 				j.strength = x
 				j.apply_strength()))
+		"trava":
+			var lock_cb := CheckBox.new()
+			lock_cb.text = "Travada sem sinal (o sinal destrava)"
+			lock_cb.button_pressed = j.lock_idle
+			lock_cb.toggled.connect(func(on: bool) -> void: j.lock_idle = on)
+			v.add_child(lock_cb)
+			v.add_child(_slider("Força da trava", 500.0, 20000.0, 500.0, j.strength, "%d N·m", func(x: float) -> void:
+				j.strength = x
+				j.apply_strength()))
+		"torcao":
+			v.add_child(_slider("Rigidez", 10.0, 1000.0, 10.0, j.strength, "%d N·m/rad", func(x: float) -> void: j.strength = x))
+			v.add_child(_slider("Retorno máx.", 1.0, 20.0, 0.5, j.speed, "%.1f rad/s", func(x: float) -> void: j.speed = x))
+		"mola":
+			v.add_child(_slider("Rigidez", 500.0, 30000.0, 500.0, j.strength, "%d N/m", func(x: float) -> void: j.strength = x))
+		"guincho":
+			v.add_child(_label("Tecla + recolhe o cabo, − solta. Sem sinal, segura.", 13, Color(1, 1, 1, 0.6)))
+			v.add_child(_slider("Velocidade", 0.2, 4.0, 0.1, j.speed, "%.1f m/s", func(x: float) -> void: j.speed = x))
+			v.add_child(_slider("Força", 500.0, 30000.0, 500.0, j.strength, "%d N", func(x: float) -> void: j.strength = x))
+			v.add_child(_slider("Cabo máx.", 2.0, 40.0, 1.0, j.max_rope, "%d m", func(x: float) -> void:
+				j.max_rope = x
+				j.rope_len = minf(j.rope_len, x)))
+		"propulsor":
+			v.add_child(_slider("Força", 50.0, 3000.0, 50.0, j.strength, "%d N", func(x: float) -> void: j.strength = x))
+		"ima":
+			v.add_child(_label("Liga com sinal + (use Alternar para ficar ligado).", 13, Color(1, 1, 1, 0.6)))
+			v.add_child(_slider("Força", 100.0, 5000.0, 100.0, j.strength, "%d N", func(x: float) -> void: j.strength = x))
+		"engate":
+			v.add_child(_label("Trava com sinal + ou apertando E nele.", 13, Color(1, 1, 1, 0.6)))
 	return panel
 
 

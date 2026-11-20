@@ -16,6 +16,13 @@ const INFO := {
 	"dobradica": {"nome": "Dobradiça", "preco": 10, "desc": "Duas folhas que giram livres até quase dobrar uma sobre a outra."},
 	"pino": {"nome": "Dobradiça de pino", "preco": 8, "desc": "Dois blocos num pino: giram livres, volta inteira (eixo livre)."},
 	"esferica": {"nome": "Junta esférica", "preco": 12, "desc": "Inclina para qualquer lado e gira em volta do próprio eixo."},
+	"trava": {"nome": "Dobradiça com trava", "preco": 18, "desc": "Gira livre; com sinal trava no ângulo em que está (ou o contrário, nos ajustes)."},
+	"torcao": {"nome": "Dobradiça de torção", "preco": 15, "desc": "Gira, mas sempre volta sozinha à posição inicial, como uma mola."},
+	"mola": {"nome": "Mola", "preco": 20, "desc": "Suspensão: comprime com o peso e volta. Rigidez ajustável."},
+	"guincho": {"nome": "Guincho", "preco": 50, "desc": "Cabo entre o corpo e o gancho. Sinal + recolhe o cabo, − solta, sem sinal segura."},
+	"propulsor": {"nome": "Propulsor", "preco": 60, "desc": "Empurra na direção da ponta lisa (a chama sai pelo bocal). Sinal negativo empurra ao contrário."},
+	"ima": {"nome": "Eletroímã", "preco": 45, "desc": "Ligado, puxa e gruda aço e ferro na face de metal. Alumínio não é atraído."},
+	"engate": {"nome": "Engate rápido", "preco": 25, "desc": "Trava no que encostar na face listrada. Liga com E ou com sinal."},
 	"roda": {"nome": "Roda", "preco": 0, "desc": "Pneu de borracha. Solde no disco de um motor."},
 	"assento": {"nome": "Assento", "preco": 15, "desc": "Sente (E) para controlar a máquina. Tab: modo edição."},
 	"botao": {"nome": "Botão", "preco": 4, "desc": "Liga enquanto está apertado. Ligue com a Fiação."},
@@ -61,6 +68,18 @@ static func bounds(kind: String, size := Vector3.ZERO) -> AABB:
 			return AABB(Vector3(-0.15, -0.06, -0.1), Vector3(0.3, 0.12, 0.2))
 		"esferica":
 			return AABB(Vector3(-0.11, -0.04, -0.11), Vector3(0.22, 0.31, 0.22))
+		"trava", "torcao":
+			return AABB(Vector3(-0.2, -0.03, -0.28), Vector3(0.4, 0.06, 0.56))
+		"mola":
+			return AABB(Vector3(-0.14, -0.02, -0.14), Vector3(0.28, 0.34, 0.28))
+		"guincho":
+			return AABB(Vector3(-0.17, -0.14, -0.2), Vector3(0.67, 0.42, 0.4))
+		"propulsor":
+			return AABB(Vector3(-0.12, -0.3, -0.12), Vector3(0.24, 0.48, 0.24))
+		"ima":
+			return AABB(Vector3(-0.22, -0.07, -0.22), Vector3(0.44, 0.17, 0.44))
+		"engate":
+			return AABB(Vector3(-0.13, -0.04, -0.13), Vector3(0.26, 0.1, 0.26))
 		"roda":
 			var r := size.x if size.x > 0.0 else 0.35
 			var w := size.y if size.y > 0.0 else 0.2
@@ -91,6 +110,16 @@ static func spawn(kind: String, xform: Transform3D, size := Vector3.ZERO) -> Arr
 			return _spawn_linear("servo_linear", xform)
 		"dobradica":
 			return _spawn_hinge(xform)
+		"trava":
+			return _spawn_hinge(xform, "trava")
+		"torcao":
+			return _spawn_hinge(xform, "torcao")
+		"mola":
+			return _spawn_spring(xform)
+		"guincho":
+			return _spawn_winch(xform)
+		"propulsor", "ima", "engate":
+			return [_spawn_single(kind, xform)]
 		"pino":
 			return _spawn_pin(xform)
 		"esferica":
@@ -256,15 +285,192 @@ static func _spawn_linear(kind: String, xform: Transform3D) -> Array[Part]:
 	return [base, rod]
 
 
-static func _spawn_hinge(xform: Transform3D) -> Array[Part]:
-	# Folhas afastadas 3 cm do eixo: giram sem se tocar até quase dobrar.
-	var leaf_a := _box(Vector3(0.4, 0.04, 0.25), "aco", xform * Transform3D(Basis(), Vector3(0, 0, -0.155)), "Dobradiça", "dobradica")
-	var leaf_b := _box(Vector3(0.4, 0.04, 0.25), "aco", xform * Transform3D(Basis(), Vector3(0, 0, 0.155)), "Dobradiça", "dobradica")
-	_deco_cyl(leaf_a, 0.025, 0.42, Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3(0, 0, 0.155)), Color(0.4, 0.42, 0.45), 0.8)
-	var j := _joint("dobradica", leaf_a, leaf_b, Vector3(0, 0, 0.155), Vector3.RIGHT)
+const HINGE_KNUCKLE := {"dobradica": Color(0.4, 0.42, 0.45), "trava": Color(0.85, 0.15, 0.1), "torcao": Color(0.2, 0.45, 0.9)}
+
+
+## Dobradiça (e variações com trava / torção): folhas afastadas 3 cm do eixo.
+static func _spawn_hinge(xform: Transform3D, type := "dobradica") -> Array[Part]:
+	var label: String = MechJoint.NAMES[type]
+	var leaf_a := _box(Vector3(0.4, 0.04, 0.25), "aco", xform * Transform3D(Basis(), Vector3(0, 0, -0.155)), label, type)
+	var leaf_b := _box(Vector3(0.4, 0.04, 0.25), "aco", xform * Transform3D(Basis(), Vector3(0, 0, 0.155)), label, type)
+	_deco_cyl(leaf_a, 0.025, 0.42, Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3(0, 0, 0.155)), HINGE_KNUCKLE[type], 0.8)
+	var j := _joint(type, leaf_a, leaf_b, Vector3(0, 0, 0.155), Vector3.RIGHT)
+	match type:
+		"trava":
+			j.strength = 3000.0
+			j.indicator = _light(leaf_a, Vector3(0.16, 0.03, 0.0))
+		"torcao":
+			j.strength = 60.0   # rigidez (N·m por radiano)
+			j.speed = 6.0
+			_deco_box(leaf_a, Vector3(0.1, 0.02, 0.06), Vector3(0, 0.03, 0.09), Color(0.2, 0.45, 0.9))
 	j.capture_rest()
 	Build.add_joint(j)
 	return [leaf_a, leaf_b]
+
+
+## Mola (suspensão): duas placas e a espiral entre elas; curso de -0,2 / +0,12 m.
+static func _spawn_spring(xform: Transform3D) -> Array[Part]:
+	var a := _box(Vector3(0.28, 0.04, 0.28), "aco", xform, "Mola", "mola")
+	var b := _box(Vector3(0.28, 0.04, 0.28), "aco", xform * Transform3D(Basis(), Vector3(0, 0.3, 0)), "Mola", "mola")
+	var coil := Node3D.new()
+	coil.position = Vector3(0, 0.02, 0)
+	a.add_child(coil)
+	for i in 6:
+		var ring := MeshInstance3D.new()
+		var tm := TorusMesh.new()
+		tm.inner_radius = 0.07
+		tm.outer_radius = 0.09
+		ring.mesh = tm
+		ring.material_override = StationBuilder.mat(Color(0.9, 0.75, 0.15), 0.4, 0.8)
+		ring.position = Vector3(0, 0.022 + i * 0.043, 0)
+		ring.rotation.x = deg_to_rad(8.0 if i % 2 == 0 else -8.0)
+		coil.add_child(ring)
+	var j := _joint("mola", a, b, Vector3.ZERO, Vector3.UP)
+	j.strength = 5000.0     # rigidez (N/m)
+	j.coil = coil
+	j.coil_gap = 0.26
+	j.capture_rest()
+	Build.add_joint(j)
+	return [a, b]
+
+
+## Guincho: corpo com tambor; o cabo sai por baixo e vai até o gancho.
+static func _spawn_winch(xform: Transform3D) -> Array[Part]:
+	var body := _box(Vector3(0.34, 0.28, 0.4), "carcaca", xform, "Guincho", "guincho")
+	_deco_cyl(body, 0.1, 0.3, Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3(0, 0.16, 0)), Color(0.3, 0.32, 0.35), 0.8)
+	_deco_cyl(body, 0.03, 0.02, Transform3D(Basis(), Vector3(0, -0.145, 0)), Color(0.15, 0.15, 0.16), 0.5)
+	var hook := _box(Vector3(0.12, 0.1, 0.12), "aco", xform * Transform3D(Basis(), Vector3(0.4, -0.09, 0)), "Guincho (gancho)", "guincho")
+	var ring := MeshInstance3D.new()
+	var tm := TorusMesh.new()
+	tm.inner_radius = 0.025
+	tm.outer_radius = 0.045
+	ring.mesh = tm
+	ring.material_override = StationBuilder.mat(Color(0.75, 0.77, 0.8), 0.35, 0.9)
+	ring.rotation.x = PI * 0.5
+	ring.position = Vector3(0, 0.08, 0)
+	hook.add_child(ring)
+	var j := _joint("guincho", body, hook, Vector3(0, -0.14, 0), Vector3.DOWN)
+	j.hook_anchor = Vector3(0, 0.1, 0)
+	j.rope_len = j.rope_start().distance_to(j.rope_end()) + 0.05
+	j.speed = 1.0
+	j.strength = 5000.0
+	j.max_rope = 20.0
+	j.bind_pos = []
+	j.bind_neg = []
+	j.capture_rest()
+	Build.add_joint(j)
+	return [body, hook]
+
+
+## Componentes de uma peça só: propulsor, eletroímã e engate rápido.
+static func _spawn_single(kind: String, xform: Transform3D) -> Part:
+	var p: Part
+	var j := MechJoint.new()
+	j.type = kind
+	match kind:
+		"propulsor":
+			p = _cyl(0.12, 0.36, "aco", xform, "Propulsor", kind)
+			_deco_cyl(p, 0.125, 0.04, Transform3D(Basis(), Vector3(0, 0.1, 0)), Color(0.95, 0.5, 0.1), 0.3)
+			var nozzle := MeshInstance3D.new()
+			var cm := CylinderMesh.new()
+			cm.top_radius = 0.07
+			cm.bottom_radius = 0.11
+			cm.height = 0.12
+			nozzle.mesh = cm
+			nozzle.material_override = StationBuilder.mat(Color(0.2, 0.2, 0.22), 0.4, 0.8)
+			nozzle.position = Vector3(0, -0.24, 0)
+			p.add_child(nozzle)
+			j.fx = _flame(p, Vector3(0, -0.31, 0))
+			j.axis = Vector3.UP          # empurra para a ponta lisa
+			j.pivot = Vector3.ZERO
+			j.strength = 300.0
+		"ima":
+			p = _cyl(0.22, 0.1, "plastico", xform, "Eletroímã", kind)
+			var face := MeshInstance3D.new()
+			var fm := CylinderMesh.new()
+			fm.top_radius = 0.2
+			fm.bottom_radius = 0.2
+			fm.height = 0.012
+			face.mesh = fm
+			face.position = Vector3(0, -0.056, 0)
+			p.add_child(face)
+			j.indicator = face             # a face acende quando liga
+			_deco_cyl(p, 0.04, 0.06, Transform3D(Basis(), Vector3(0, 0.08, 0)), Color(0.6, 0.62, 0.66), 0.9)
+			j.axis = Vector3.DOWN          # a face de metal fica embaixo
+			j.pivot = Vector3(0, -0.05, 0)
+			j.strength = 800.0
+		"engate":
+			p = _box(Vector3(0.26, 0.08, 0.26), "plastico", xform, "Engate rápido", kind)
+			for i in 3:
+				_deco_box(p, Vector3(0.26, 0.004, 0.04), Vector3(0, 0.041, -0.08 + i * 0.08), Color(0.95, 0.75, 0.1))
+			j.indicator = _light(p, Vector3(0.1, 0.045, 0.1))
+			j.axis = Vector3.UP            # face listrada em cima
+			j.pivot = Vector3(0, 0.04, 0)
+			p.interact_kind = "engate"
+	p.cuttable = false
+	j.part_a = p
+	j.part_b = p
+	j.capture_rest()
+	Build.add_joint(j)
+	j.update(0.0)   # acerta a luz/efeito inicial
+	return p
+
+
+static var _flame_mat: StandardMaterial3D
+
+
+## Chama do propulsor (sai para -Y): bolhas de luz que nascem branco-amareladas
+## no bocal e viram laranja/vermelho até sumir.
+static func _flame(parent: Node3D, pos: Vector3) -> CPUParticles3D:
+	if _flame_mat == null:
+		var soft := Gradient.new()
+		soft.set_color(0, Color(1, 1, 1, 1))
+		soft.set_color(1, Color(1, 1, 1, 0))
+		var tex := GradientTexture2D.new()
+		tex.gradient = soft
+		tex.fill = GradientTexture2D.FILL_RADIAL
+		tex.fill_from = Vector2(0.5, 0.5)
+		tex.fill_to = Vector2(1.0, 0.5)
+		tex.width = 64
+		tex.height = 64
+		_flame_mat = StandardMaterial3D.new()
+		_flame_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_flame_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		_flame_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_flame_mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+		_flame_mat.albedo_texture = tex
+		_flame_mat.vertex_color_use_as_albedo = true
+		_flame_mat.disable_fog = true
+	var f := CPUParticles3D.new()
+	f.emitting = false
+	f.amount = 90
+	f.lifetime = 0.22
+	f.direction = Vector3.DOWN
+	f.spread = 6.0
+	f.initial_velocity_min = 4.5
+	f.initial_velocity_max = 6.5
+	f.gravity = Vector3.ZERO
+	f.scale_amount_min = 1.4
+	f.scale_amount_max = 2.2
+	var shape := Curve.new()
+	shape.add_point(Vector2(0, 0.7))
+	shape.add_point(Vector2(0.3, 1.0))
+	shape.add_point(Vector2(1, 0.3))
+	f.scale_amount_curve = shape
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(1.0, 0.95, 0.75, 1.0))
+	ramp.set_color(1, Color(0.6, 0.08, 0.02, 0.0))
+	ramp.add_point(0.35, Color(1.0, 0.55, 0.12, 0.9))
+	f.color_ramp = ramp
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.13, 0.13)
+	f.mesh = quad
+	f.material_override = _flame_mat
+	f.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	f.position = pos
+	f.local_coords = false
+	parent.add_child(f)
+	return f
 
 
 static func _spawn_pin(xform: Transform3D) -> Array[Part]:
@@ -399,6 +605,30 @@ static func build_visual(kind: String, size := Vector3.ZERO) -> Node3D:
 			_deco_box(root, Vector3(0.4, 0.04, 0.25), Vector3(0, 0, -0.155), steel)
 			_deco_box(root, Vector3(0.4, 0.04, 0.25), Vector3(0, 0, 0.155), steel)
 			_deco_cyl(root, 0.025, 0.42, Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3.ZERO), Color(0.4, 0.42, 0.45))
+		"trava", "torcao":
+			_deco_box(root, Vector3(0.4, 0.04, 0.25), Vector3(0, 0, -0.155), steel)
+			_deco_box(root, Vector3(0.4, 0.04, 0.25), Vector3(0, 0, 0.155), steel)
+			_deco_cyl(root, 0.025, 0.42, Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3.ZERO), HINGE_KNUCKLE[kind])
+		"mola":
+			_deco_box(root, Vector3(0.28, 0.04, 0.28), Vector3.ZERO, steel)
+			_deco_box(root, Vector3(0.28, 0.04, 0.28), Vector3(0, 0.3, 0), steel)
+			_deco_cyl(root, 0.08, 0.26, Transform3D(Basis(), Vector3(0, 0.15, 0)), Color(0.9, 0.75, 0.15), 0.8)
+		"guincho":
+			_deco_box(root, Vector3(0.34, 0.28, 0.4), Vector3.ZERO, Color(0.85, 0.6, 0.12))
+			_deco_cyl(root, 0.1, 0.3, Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3(0, 0.16, 0)), Color(0.3, 0.32, 0.35))
+			_deco_box(root, Vector3(0.12, 0.1, 0.12), Vector3(0.4, -0.09, 0), steel)
+		"propulsor":
+			_deco_cyl(root, 0.12, 0.36, Transform3D.IDENTITY, steel, 0.8)
+			_deco_cyl(root, 0.125, 0.04, Transform3D(Basis(), Vector3(0, 0.1, 0)), Color(0.95, 0.5, 0.1))
+			_deco_cyl(root, 0.1, 0.12, Transform3D(Basis(), Vector3(0, -0.24, 0)), Color(0.2, 0.2, 0.22))
+		"ima":
+			_deco_cyl(root, 0.22, 0.1, Transform3D.IDENTITY, Color(0.16, 0.17, 0.19), 0.2)
+			_deco_cyl(root, 0.2, 0.012, Transform3D(Basis(), Vector3(0, -0.056, 0)), steel, 0.9)
+			_deco_cyl(root, 0.04, 0.06, Transform3D(Basis(), Vector3(0, 0.08, 0)), steel, 0.9)
+		"engate":
+			_deco_box(root, Vector3(0.26, 0.08, 0.26), Vector3.ZERO, Color(0.16, 0.17, 0.19))
+			for i in 3:
+				_deco_box(root, Vector3(0.26, 0.004, 0.04), Vector3(0, 0.041, -0.08 + i * 0.08), Color(0.95, 0.75, 0.1))
 		"pino":
 			_deco_box(root, Vector3(0.12, 0.12, 0.2), Vector3(-0.065, 0, 0), steel)
 			_deco_box(root, Vector3(0.12, 0.12, 0.2), Vector3(0.065, 0, 0), Color(0.5, 0.32, 0.2))

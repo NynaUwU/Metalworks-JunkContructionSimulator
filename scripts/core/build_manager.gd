@@ -88,8 +88,14 @@ func _new_assembly(xform: Transform3D) -> Assembly:
 
 ## Descobre qual peça foi atingida por um raycast/consulta de forma.
 func part_from_collision(collider: Object, shape_index: int) -> Part:
-	if collider is Assembly and shape_index >= 0:
+	if is_instance_valid(collider) and collider is Assembly and shape_index >= 0:
 		var asm := collider as Assembly
+		# A mira pode ser de um quadro anterior: a peça pode ter saído da montagem.
+		var total := 0
+		for o in asm.get_shape_owners():
+			total += asm.shape_owner_get_shape_count(o)
+		if shape_index >= total:
+			return null
 		var owner_id := asm.shape_find_owner(shape_index)
 		var owner := asm.shape_owner_get_owner(owner_id)
 		return owner as Part

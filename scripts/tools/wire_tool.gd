@@ -78,7 +78,7 @@ func handle_input(event: InputEvent) -> bool:
 		elif aimed and aimed.device and aimed.device.kind == "potenciometro":
 			aimed.device.toggle_range()
 			player.toast("Alavanca variável: %s" % ("só positivo (0 a 1)" if aimed.device.positive_only else "de -1 a 1"))
-		elif aimed and aimed.mech and aimed.mech.is_actuator():
+		elif aimed and aimed.mech and aimed.mech.is_configurable():
 			player.config_requested.emit(aimed.mech)
 		return true
 	if not event.is_action_pressed("primary"):
@@ -169,13 +169,15 @@ func hint_text() -> String:
 		if part and part.kind == "isolador":
 			return "Clique: passar o fio por este isolador"
 		return "Clique na estrutura para criar um isolador no caminho (%d) ou no componente para terminar   ·   Botão direito: cancelar" % _via.size()
-	if part and part.device:
-		return "Clique: começar um fio a partir deste controle"
 	if part and part.device and part.device.kind == "potenciometro":
 		return "Clique: começar um fio   ·   Botão direito: faixa %s" % ("0 a 1 → -1 a 1" if part.device.positive_only else "-1 a 1 → só positivo")
+	if part and part.device:
+		return "Clique: começar um fio a partir deste controle"
 	if part and part.mech and part.mech.is_actuator():
 		var n := part.mech.sources.size()
 		return "%s com %d controle%s · Botão direito: ajustes do componente" % [part.mech.display_name(), n, "" if n == 1 else "s"]
+	if part and part.mech and part.mech.is_configurable():
+		return "%s · Botão direito: ajustes do componente" % part.mech.display_name()
 	if part and part.kind == "isolador":
 		return "Botão direito: remover este isolador   ·   Clique num controle para começar um fio"
 	return "Clique num controle para começar um fio   ·   Clique numa superfície: isolador"

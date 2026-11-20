@@ -26,7 +26,7 @@ Nome, mapa, visual e código são próprios.
 | Correr | toque duplo numa tecla de andar (ou Shift) |
 | Agachar (mais devagar, alcança mais baixo) | Ctrl |
 | Trocar ferramenta | 1 Gravitador · 2 Solda · 3 Esmerilhadeira · 4 Fiação |
-| Usar (loja, assento, botão, alavanca) | E |
+| Usar (loja, assento, botão, alavanca, engate rápido) | E |
 | Modo edição do assento (sentado) | Tab |
 | Ajuda / menu / FPS / tela cheia | H / Esc / F3 / F11 |
 
@@ -62,6 +62,13 @@ Nome, mapa, visual e código são próprios.
   - **dobradiça** (gira livre até quase dobrar);
   - **dobradiça de pino** (eixo livre, volta inteira);
   - **junta esférica** (inclina para qualquer lado);
+  - **dobradiça com trava** (gira livre; com sinal trava no ângulo em que está, ou o contrário);
+  - **dobradiça de torção** (gira, mas sempre volta sozinha, como uma mola);
+  - **mola** (suspensão: comprime com o peso e volta; rigidez ajustável);
+  - **guincho** (cabo entre o corpo e o gancho: sinal + recolhe, − solta, sem sinal segura);
+  - **propulsor** (empurra para o lado da ponta lisa; a chama sai pelo bocal);
+  - **eletroímã** (ligado, puxa e gruda aço e ferro na face de metal; alumínio não);
+  - **engate rápido** (trava no que encostar na face listrada; liga com **E** ou com sinal);
   - **roda** e **assento**.
 
   Ficam no depósito do galpão, espalhados pelo mapa e à venda na loja.
@@ -79,7 +86,7 @@ Nome, mapa, visual e código são próprios.
   **isolador**, opcional) e por fim no componente. **Botão direito**:
   - num isolador: remove;
   - numa alavanca variável: alterna entre -1 a 1 e só positivo;
-  - num motor, servo ou pistão: abre os ajustes dele.
+  - num componente: abre os ajustes dele (mola e torção não usam teclas, mas têm ajustes).
 - Perto de onde você nasce tem um **carrinho de exemplo**: sente e use W/S/A/D.
 
 **Reciclador e loja**
@@ -105,8 +112,9 @@ scripts/
   world/world.gd          mapa: terreno, pátio, estruturas e pilhas de sucata
   world/recycler.gd       reciclador (peças viram pontos)
   world/demo_builds.gd    carrinho de exemplo
-  world/wire_renderer.gd  desenho dos fios
-  mech/mech_joint.gd      juntas: motor, servo, pistão, servo linear, dobradiças, esférica
+  world/wire_renderer.gd  desenho dos fios e dos cabos dos guinchos
+  mech/mech_joint.gd      juntas: motor, servo, pistão, servo linear, dobradiças, esférica,
+                          mola, guincho, propulsor, eletroímã, engate rápido
   mech/components.gd      cria componentes e controles
   mech/control_device.gd  botão, alavanca e alavanca variável
   tools/wire_tool.gd      ferramenta de fiação

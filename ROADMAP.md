@@ -40,9 +40,13 @@
 - Motor rígido/solto sem sinal; pistão volta/fica parado sem sinal
 - Alavanca variável com E + mouse, faixa só positiva; ajustes pela Fiação (botão direito)
 
-## Marco 3 — Mais componentes
-- Guincho com cabo, mola/dobradiça de torção, propulsor/jato, eletroímã, engate rápido
-- Dobradiça com trava
+## ✅ v0.6 — Marco 3: Mais componentes
+- Guincho com cabo (recolhe/solta, comprimento máximo ajustável)
+- Mola (suspensão) e dobradiça de torção, com rigidez ajustável
+- Dobradiça com trava (trava com sinal, ou travada sem sinal)
+- Propulsor com chama
+- Eletroímã (só aço e ferro) e engate rápido (E ou sinal)
+- Depósito do galpão com os componentes novos; tudo na loja
 
 ## Marco 4 — Elétrica
 - Bateria, fios (ferramenta de fiação), botão, alavanca, relé, luzes

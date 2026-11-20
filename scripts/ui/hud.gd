@@ -8,7 +8,7 @@ const HELP_TEXT := """[b]CONTROLES[/b]
 W A S D — andar
 Toque duplo (ou Shift) — correr
 Espaço — pular · Ctrl — agachar
-E — usar (loja, assento, botão, alavanca)
+E — usar (loja, assento, botão, alavanca, engate)
 
 [b]Ferramentas[/b]
 1 — Gravitador (pegar peças)
@@ -47,6 +47,10 @@ Fiação: clique no controle, na estrutura por onde
   o fio passa (cria isoladores) e no componente
 Fiação, botão direito: remove isolador, ajusta
   componente ou faixa da alavanca variável
+Guincho: tecla + recolhe o cabo, − solta
+Eletroímã: ligado puxa e gruda aço/ferro
+Engate rápido: E nele (ou sinal) trava no
+  que encostar na face listrada
 
 [b]Reciclador e loja[/b]
 Jogue peças no RECICLADOR = pontos

@@ -124,6 +124,52 @@ func _v05() -> void:
 	await _shot("v2_gravitador")
 
 
+func _v06() -> void:
+	# Marco 3: componentes novos lado a lado
+	var o := Vector3(6, 0.02, 2)
+	var kinds := ["trava", "torcao", "mola", "guincho", "propulsor", "ima", "engate"]
+	for i in kinds.size():
+		var b := Components.bounds(kinds[i])
+		Components.spawn(kinds[i], Transform3D(Basis(), o + Vector3(i * 0.95, -b.position.y + 0.02, 0)))
+	await _frames(20)
+	player.teleport(o + Vector3(2.9, 0.03, 2.4))
+	_look_from_eye(o + Vector3(2.9, 0.2, 0))
+	await _frames(10)
+	await _shot("m1_componentes")
+	# Em ação: guincho segurando um bloco, ímã com aço grudado, propulsor ligado, engate travado
+	var a := o + Vector3(0, 0, -5)
+	var beam := Build.spawn_box(Vector3(4.5, 0.2, 0.3), "aco", Transform3D(Basis(), a + Vector3(1.8, 2.6, 0)))
+	beam.assembly().set_anchored(true)
+	var lever: Part = Components.spawn("alavanca", Transform3D(Basis(), a + Vector3(1.8, 0.06, 1.6)))[0]
+	var w := Components.spawn("guincho", Transform3D(Basis(), a + Vector3(0, 2.36, 0)))
+	Build.make_weld(w[0], beam, a + Vector3(0, 2.5, 0))
+	var crate := Build.spawn_box(Vector3(0.4, 0.4, 0.4), "ferro", Transform3D(Basis(), w[1].global_position + Vector3(0, -0.25, 0)))
+	Build.make_weld(w[1], crate, w[1].global_position + Vector3(0, -0.05, 0))
+	w[0].mech.rope_len = 1.2
+	var mg: Part = Components.spawn("ima", Transform3D(Basis(), a + Vector3(1.5, 2.45, 0)))[0]
+	Build.make_weld(mg, beam, a + Vector3(1.5, 2.5, 0))
+	var th: Part = Components.spawn("propulsor", Transform3D(Basis(), a + Vector3(2.8, 1.5, 0)))[0]
+	th.assembly().set_anchored(true)
+	var cp: Part = Components.spawn("engate", Transform3D(Basis(), a + Vector3(4.0, 0.06, 0)))[0]
+	Build.spawn_box(Vector3(0.3, 0.3, 0.3), "aluminio", Transform3D(Basis(), a + Vector3(4.0, 0.27, 0)))
+	for j: MechJoint in [mg.mech, th.mech, cp.mech]:
+		Build.toggle_link(lever.device, j)
+	lever.device.press()
+	Build.spawn_box(Vector3(0.3, 0.3, 0.3), "aco", Transform3D(Basis(), a + Vector3(1.5, 1.95, 0)))
+	await _frames(90)
+	player.teleport(a + Vector3(2.0, 0.03, 4.2))
+	_look_from_eye(a + Vector3(2.0, 1.3, 0))
+	await _frames(10)
+	await _shot("m2_em_acao")
+
+
+func _depot() -> void:
+	player.teleport(Vector3(-30, 0.05, 33.5))
+	_look_from_eye(Vector3(-30, 0.2, 25))
+	await _frames(60)
+	await _shot("m3_deposito")
+
+
 func _bisect_sit() -> void:
 	player.sit(world.demo_seat)
 	for i in 30:

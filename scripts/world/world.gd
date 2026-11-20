@@ -408,11 +408,14 @@ func _spawn_component_depot() -> void:
 		["roda", "roda", "roda", "roda", "roda", "roda"],
 		["pistao", "pistao", "dobradica", "dobradica", "assento", "assento"],
 		["servo_linear", "servo_linear", "pino", "pino", "esferica", "esferica"],
+		["mola", "mola", "mola", "mola", "torcao", "trava"],
+		["guincho", "guincho", "propulsor", "propulsor", "ima", "ima"],
+		["engate", "engate", "engate", "engate", "torcao", "trava"],
 		["botao", "botao", "alavanca", "alavanca", "potenciometro", "potenciometro"],
 	]
 	for r in rows.size():
 		for c in rows[r].size():
-			_spawn_component(rows[r][c], o + Vector3(-4.5 + c * 1.8, 0, -3.0 + r * 2.0))
+			_spawn_component(rows[r][c], o + Vector3(-4.5 + c * 1.8, 0, -4.55 + r * 1.3))
 
 
 func _spawn_pile(center: Vector3) -> void:

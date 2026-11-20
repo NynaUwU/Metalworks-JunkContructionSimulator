@@ -16,7 +16,14 @@ const INFO := {
 	"botao": {"nome": "Botão", "preco": 4, "desc": "Liga enquanto está apertado. Ligue com a Fiação."},
 	"alavanca": {"nome": "Alavanca", "preco": 5, "desc": "Liga e desliga. Ligue com a Fiação."},
 	"potenciometro": {"nome": "Alavanca variável", "preco": 8, "desc": "Valor de -1 a 1 na roda do mouse. Ligue com a Fiação."},
+	"isolador": {"nome": "Isolador", "preco": 0, "desc": "Guia os fios. Criado com a ferramenta de Fiação."},
 }
+
+const INSULATOR_ANCHOR := Vector3(0, 0.055, 0)   ## onde o fio encosta no isolador (no "pescoço")
+
+
+static func wire_anchor(insulator: Part) -> Vector3:
+	return insulator.global_transform * INSULATOR_ANCHOR
 
 
 static func price(kind: String, size := Vector3.ZERO) -> int:
@@ -50,6 +57,8 @@ static func bounds(kind: String, size := Vector3.ZERO) -> AABB:
 			return AABB(Vector3(-0.1, -0.04, -0.15), Vector3(0.2, 0.38, 0.3))
 		"potenciometro":
 			return AABB(Vector3(-0.1, -0.04, -0.2), Vector3(0.2, 0.2, 0.4))
+		"isolador":
+			return AABB(Vector3(-0.07, -0.08, -0.07), Vector3(0.14, 0.18, 0.14))
 	return AABB(Vector3(-0.5, -0.5, -0.5), Vector3.ONE)
 
 
@@ -70,6 +79,8 @@ static func spawn(kind: String, xform: Transform3D, size := Vector3.ZERO) -> Arr
 			return _spawn_seat(xform)
 		"botao", "alavanca", "potenciometro":
 			return [_spawn_device(kind, xform)]
+		"isolador":
+			return [_spawn_insulator(xform)]
 	return []
 
 
@@ -261,6 +272,24 @@ static func _spawn_device(kind: String, xform: Transform3D) -> Part:
 	return part
 
 
+## Isolador (como os de cerca elétrica): base, "pescoço" onde o fio passa e a tampa.
+static func _spawn_insulator(xform: Transform3D) -> Part:
+	var p := _cyl(0.07, 0.16, "plastico", xform, "Isolador", "isolador")
+	p.mesh_instance.visible = false   # a aparência vem das peças abaixo
+	_insulator_visual(p)
+	p.assembly().recompute()
+	return p
+
+
+static func _insulator_visual(parent: Node3D) -> void:
+	var black := Color(0.06, 0.06, 0.065)
+	_deco_cyl(parent, 0.07, 0.08, Transform3D(Basis(), Vector3(0, -0.04, 0)), black, 0.0)
+	_deco_cyl(parent, 0.04, 0.06, Transform3D(Basis(), Vector3(0, 0.03, 0)), black, 0.0)
+	_deco_cyl(parent, 0.072, 0.02, Transform3D(Basis(), Vector3(0, 0.07, 0)), black, 0.0)
+	_deco_cyl(parent, 0.012, 0.004, Transform3D(Basis(), Vector3(0, 0.081, 0)), Color(0.7, 0.72, 0.75), 0.9)
+	_deco_cyl(parent, 0.006, 0.08, Transform3D(Basis(), Vector3(0, -0.12, 0)), Color(0.6, 0.62, 0.66), 0.9)
+
+
 # --- Aparência para a loja (sem física) ---------------------------------------
 
 static func build_visual(kind: String, size := Vector3.ZERO) -> Node3D:
@@ -305,4 +334,6 @@ static func build_visual(kind: String, size := Vector3.ZERO) -> Node3D:
 		"potenciometro":
 			_deco_box(root, Vector3(0.2, 0.08, 0.4), Vector3.ZERO, Color(0.16, 0.17, 0.19))
 			_deco_box(root, Vector3(0.1, 0.06, 0.05), Vector3(0, 0.07, -0.07), Color(0.95, 0.65, 0.1))
+		"isolador":
+			_insulator_visual(root)
 	return root

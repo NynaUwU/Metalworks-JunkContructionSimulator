@@ -145,6 +145,25 @@ func weld_at(part: Part, point: Vector3) -> Weld:
 	return _create_weld(part, target["part"], point)
 
 
+const INSULATOR_MIN_SPACING := 0.15
+
+
+## Coloca um isolador (guia de fio) soldado na superfície em `point`, de pé na direção
+## `normal`. `on` é a peça da superfície (null = chão/estrutura do mapa).
+func place_insulator(on: Part, point: Vector3, normal: Vector3) -> Part:
+	for asm in world_root.get_children():
+		if asm is Assembly:
+			for p: Part in (asm as Assembly).get_parts():
+				if p.kind == "isolador" and Components.wire_anchor(p).distance_to(point) < INSULATOR_MIN_SPACING:
+					return null
+	var y := normal.normalized()
+	var x := y.cross(Vector3.FORWARD if absf(y.dot(Vector3.FORWARD)) < 0.9 else Vector3.RIGHT).normalized()
+	var basis := Basis(x, y, x.cross(y))
+	var ins: Part = Components.spawn("isolador", Transform3D(basis, point + y * 0.081))[0]
+	_create_weld(ins, on, point)
+	return ins
+
+
 ## Solda direta entre duas peças (sem procurar vizinhos): usada para montar componentes.
 func make_weld(part: Part, other: Part, point: Vector3) -> Weld:
 	return _create_weld(part, other, point)
@@ -407,14 +426,19 @@ func _remove_device(d: ControlDevice) -> void:
 	devices.erase(d)
 	for j in joints:
 		j.sources.erase(d)
+		j.routes.erase(d)
 
 
 ## Liga (ou desliga, se já estava ligado) um controle a um componente. Retorna true se ligou.
-func toggle_link(d: ControlDevice, j: MechJoint) -> bool:
+## `via`: isoladores por onde o fio passa (na ordem).
+func toggle_link(d: ControlDevice, j: MechJoint, via: Array = []) -> bool:
 	if j.sources.has(d):
 		j.sources.erase(d)
+		j.routes.erase(d)
 		return false
 	j.sources.append(d)
+	if not via.is_empty():
+		j.routes[d] = via.duplicate()
 	return true
 
 

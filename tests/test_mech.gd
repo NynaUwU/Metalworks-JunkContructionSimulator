@@ -265,6 +265,49 @@ func _player_test() -> void:
 	wire.handle_input(_press("primary", true))
 	check(motor[0].mech.sources.has(lever.device), "fiação: clicar na alavanca e depois no motor liga o fio")
 
+	# Isolador feito com a máquina de solda (botão direito) numa chapa
+	var plate := Build.spawn_box(Vector3(1, 0.1, 1), "aco", Transform3D(Basis(), o + Vector3(0.8, 0.05, -1.5)))
+	var servo := Components.spawn("servo", Transform3D(Basis(), o + Vector3(1.6, 0.17, -3.0)))
+	await _frames(10)
+	# Fiação: começa na alavanca e clica na chapa → cria um isolador no caminho
+	_aim(player, o + Vector3(0, 0, 2.2), lever.global_position)
+	await _frames(3)
+	wire.handle_input(_press("primary", true))
+	_aim(player, o + Vector3(0.8, 0, 0.6), o + Vector3(0.8, 0.1, -1.5))
+	await _frames(3)
+	wire.handle_input(_press("primary", true))
+	var ins: Part = null
+	for c in get_children():
+		if c is Assembly:
+			for p: Part in (c as Assembly).get_parts():
+				if p.kind == "isolador":
+					ins = p
+	check(ins != null and ins.assembly() == plate.assembly(), "fiação: clicar na chapa cria um isolador soldado nela")
+	wire.handle_input(_press("primary", true))
+	var count := 0
+	for c in get_children():
+		if c is Assembly:
+			for p: Part in (c as Assembly).get_parts():
+				if p.kind == "isolador":
+					count += 1
+	check(count == 1, "no mesmo lugar não cria outro isolador")
+	_aim(player, o + Vector3(1.6, 0, -0.8), servo[0].global_position)
+	await _frames(3)
+	wire.handle_input(_press("primary", true))
+	var sj: MechJoint = servo[0].mech
+	check(sj.sources.has(lever.device) and sj.routes.get(lever.device, []).has(ins), "fio passa pelo isolador")
+	check(sj.wire_points(lever.device).size() == 3, "desenho do fio: controle → isolador → servo")
+	# Esmerilhadeira: segurar no isolador arranca ele; o fio continua, só sem passar por ali
+	player.select_tool(2)
+	var grinder: GrinderTool = player.tools[2]
+	_aim(player, o + Vector3(0.8, 0, 0.6), ins.global_position + Vector3(0, 0.07, 0))
+	await _frames(3)
+	grinder.begin_use()
+	check(grinder.mode == GrinderTool.Mode.REMOVING, "esmerilhadeira mirando o isolador: modo arrancar")
+	await _frames(50)
+	check(not is_instance_valid(ins) or not ins.is_inside_tree(), "segurando, o isolador é arrancado")
+	check(sj.wire_points(lever.device).size() == 2 and sj.sources.has(lever.device), "sem o isolador o fio continua ligado (só some do caminho)")
+
 	_aim(player, o + Vector3(0, 0, 1.6), lever.global_position)
 	await _frames(3)
 	player.use_interact()

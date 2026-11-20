@@ -39,6 +39,17 @@ var bind_neg: Array = []
 
 ## Controles ligados por fio
 var sources: Array = []           ## ControlDevice
+var routes := {}                  ## ControlDevice -> Array de isoladores (Part) por onde o fio passa
+
+
+## Pontos do fio de um controle até este componente (passando pelos isoladores).
+func wire_points(d: ControlDevice) -> PackedVector3Array:
+	var pts := PackedVector3Array([d.part.global_position])
+	for ins in routes.get(d, []):
+		if is_instance_valid(ins) and (ins as Part).is_inside_tree():
+			pts.append(Components.wire_anchor(ins))
+	pts.append(part_a.global_position)
+	return pts
 
 var key_value := 0.0              ## valor vindo das teclas (calculado pelo Build)
 var _latched := 0.0

@@ -39,6 +39,61 @@ func _weld() -> void:
 	assert(base != null and wall != null)
 
 
+func _edit() -> void:
+	# Modo edição: componentes destacados através de tudo; um selecionado.
+	player.sit(world.demo_seat)
+	await _frames(5)
+	player.yaw = deg_to_rad(150)
+	player.pitch = deg_to_rad(-25)
+	var ui: SeatUI = world.hud.seat_ui
+	ui.open(player, Build.network(world.demo_seat))
+	await _frames(5)
+	await _shot("e1_destaque_atras")
+	player.yaw = deg_to_rad(-25)
+	player.pitch = deg_to_rad(-30)
+	await _frames(3)
+	var front: MechJoint = null
+	var best := INF
+	for j in ui._joints:
+		var sp := player.camera.unproject_position(j.part_a.global_position)
+		var d := sp.distance_to(Vector2(800, 450))
+		if d < best:
+			best = d
+			front = j
+	ui._hover = null
+	ui._select(front)
+	await _frames(5)
+	await _shot("e2_componente_selecionado")
+	ui.close()
+	player.stand_up()
+
+
+func _insulators() -> void:
+	var o := Vector3(4, 0, 9)
+	var lever: Part = Components.spawn("alavanca", Transform3D(Basis(), o + Vector3(-2.5, 0.06, 0)))[0]
+	var post := Build.spawn_box(Vector3(0.2, 1.6, 0.2), "aco", Transform3D(Basis(), o + Vector3(-0.8, 0.8, -0.6)))
+	var post2 := Build.spawn_box(Vector3(0.2, 1.6, 0.2), "aco", Transform3D(Basis(), o + Vector3(0.9, 0.8, -0.6)))
+	var i1: Part = Components.spawn("isolador", Transform3D(Basis(), o + Vector3(-0.8, 1.68, -0.6)))[0]
+	var i2: Part = Components.spawn("isolador", Transform3D(Basis(), o + Vector3(0.9, 1.68, -0.6)))[0]
+	var motor := Components.spawn("motor", Transform3D(Basis(), o + Vector3(2.4, 0.17, 0)))
+	var wheel: Part = Components.spawn("roda", Transform3D(Basis(), o + Vector3(2.4, 0.43, 0)), Vector3(0.35, 0.2, 0))[0]
+	await _frames(15)
+	Build.make_weld(post, i1, o + Vector3(-0.8, 1.6, -0.6))
+	Build.make_weld(post2, i2, o + Vector3(0.9, 1.6, -0.6))
+	Build.make_weld(wheel, motor[1], o + Vector3(2.4, 0.33, 0))
+	for p in [post, post2, motor[0]]:
+		(p as Part).assembly().set_anchored(true)
+	Build.toggle_link(lever.device, motor[0].mech, [i1, i2])
+	lever.device.press()
+	for i in 30:
+		await get_tree().physics_frame
+	player.teleport(o + Vector3(0, 0.05, 4.2))
+	_look_from_eye(o + Vector3(0, 0.9, -0.3))
+	player.select_tool(3)
+	await _frames(10)
+	await _shot("i1_isoladores")
+
+
 func _bisect_sit() -> void:
 	player.sit(world.demo_seat)
 	for i in 30:

@@ -9,7 +9,7 @@ extends GameTool
 ## - Mirando numa bolinha de solda, segurar o clique remove a solda.
 ## - A posição do corte encaixa numa grade de 5 cm (segure Ctrl para corte livre).
 
-enum Mode { IDLE, CUTTING, UNWELDING }
+enum Mode { IDLE, CUTTING, UNWELDING, REMOVING }
 
 const GRID := 0.05
 const WELD_PICK_RADIUS := 0.1      ## mirar a até 10 cm de uma bolinha = remover solda
@@ -43,6 +43,7 @@ var _target_weld: Weld = null
 var _lock_part: Part = null
 var _lock_plane := Plane()
 var _lock_weld: Weld = null
+var _target_insulator: Part = null
 var _lost_aim := 0.0
 var _spark_point := Vector3.ZERO
 var _spark_normal := Vector3.UP
@@ -165,7 +166,11 @@ func begin_use() -> void:
 		return
 	elapsed = 0.0
 	_lost_aim = 0.0
-	if _target_weld:
+	if _target_insulator:
+		mode = Mode.REMOVING
+		_lock_part = _target_insulator
+		duration = WELD_REMOVE_TIME
+	elif _target_weld:
 		mode = Mode.UNWELDING
 		_lock_weld = _target_weld
 		duration = WELD_REMOVE_TIME
@@ -207,9 +212,14 @@ func physics_update(delta: float) -> void:
 func _update_targets() -> void:
 	_target_part = null
 	_target_weld = null
+	_target_insulator = null
 	if player.aim.is_empty():
 		return
 	var point: Vector3 = player.aim["position"]
+	var aimed := player.aim_part()
+	if aimed and aimed.kind == "isolador":
+		_target_insulator = aimed
+		return
 
 	# Mirando numa bolinha de solda: o clique remove a solda.
 	_target_weld = Build.nearest_weld(point, WELD_PICK_RADIUS)
@@ -236,7 +246,12 @@ func _update_targets() -> void:
 func _update_action(delta: float) -> void:
 	# A mira precisa continuar no alvo (com uma pequena tolerância).
 	var on_target := false
-	if mode == Mode.CUTTING:
+	if mode == Mode.REMOVING:
+		if not is_instance_valid(_lock_part) or not _lock_part.is_inside_tree():
+			cancel()
+			return
+		on_target = player.aim_part() == _lock_part
+	elif mode == Mode.CUTTING:
 		if not is_instance_valid(_lock_part) or not _lock_part.is_inside_tree():
 			cancel()
 			return
@@ -267,6 +282,11 @@ func _finish() -> void:
 		var pieces := Build.cut_part(_lock_part, _lock_plane)
 		if not pieces.is_empty():
 			spawn_sparks(_spark_point, _spark_normal, 70)
+	elif mode == Mode.REMOVING:
+		var pos := _lock_part.global_position
+		Build.delete_part(_lock_part)
+		spawn_sparks(pos, Vector3.UP, 25)
+		player.toast("Isolador removido")
 	elif mode == Mode.UNWELDING:
 		var pos := _lock_weld.world_pos()
 		Build.remove_weld(_lock_weld)
@@ -329,6 +349,10 @@ func hint_text() -> String:
 		return "Cortando… segure até completar (soltar cancela)"
 	if mode == Mode.UNWELDING:
 		return "Removendo a solda… segure até completar (soltar cancela)"
+	if mode == Mode.REMOVING:
+		return "Arrancando o isolador… segure até completar"
+	if _target_insulator:
+		return "Segure o clique para arrancar este isolador"
 	if _target_weld:
 		return "Segure o clique para remover esta solda"
 	if _target_part and not _target_valid:

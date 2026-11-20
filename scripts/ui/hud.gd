@@ -34,13 +34,17 @@ Segure o clique — corta a face mirada
 R — girar o corte (0° / 45° / 90° / 135°)
 Ctrl — corte livre (sem grade de 5 cm)
 Segure o clique numa bolinha — remove a solda
+Segure o clique num isolador — arranca
 
 [b]Máquinas[/b]
 F no assento — sentar · F de novo — levantar
-Tab sentado — modo edição: teclas de cada componente
+Tab sentado — modo edição: clique num componente
+  destacado para escolher as teclas dele
 F (ou clique sentado) — usar botão / alavanca
 Roda do mouse — ajustar alavanca variável
-Fiação: clique no controle e depois no componente
+Fiação: clique no controle, na estrutura por onde
+  o fio passa (cria isoladores) e no componente
+Fiação, botão direito num isolador — remove
 
 [b]Reciclador e loja[/b]
 Jogue peças no RECICLADOR = pontos
@@ -218,7 +222,7 @@ func _build_ui() -> void:
 	add_child(shop)
 	seat_ui = SeatUI.new()
 	add_child(seat_ui)
-	player.edit_requested.connect(func() -> void: seat_ui.open(Build.network(player.seat)))
+	player.edit_requested.connect(func() -> void: seat_ui.open(player, Build.network(player.seat)))
 	player.seat_changed.connect(func(seated: bool) -> void:
 		if not seated:
 			seat_ui.close())
@@ -352,7 +356,9 @@ func _process(delta: float) -> void:
 	if player == null:
 		return
 	_bar.visible = not player.is_seated()
-	if player.is_seated():
+	if seat_ui.visible:
+		_hint.text = ""
+	elif player.is_seated():
 		_hint.text = "Sentado   ·   Tab: modo edição (teclas)   ·   F: levantar   ·   Clique: usar botões e alavancas"
 	else:
 		_hint.text = player.current().hint_text()
@@ -363,7 +369,9 @@ func _process(delta: float) -> void:
 	_update_weld_mask(delta)
 	var part := player.aim_part()
 	var usable := player.interact_hint()
-	if usable != "":
+	if seat_ui.visible:
+		_aim_info.text = ""
+	elif usable != "":
 		_aim_info.text = usable
 	elif part:
 		var extra := ""

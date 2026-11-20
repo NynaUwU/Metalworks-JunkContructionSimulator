@@ -47,17 +47,20 @@ Nome, mapa, visual e código são próprios.
 - **R**: gira a linha de corte sobre a face: 0°, 45°, 90°, 135°.
 - O corte encaixa numa grade de 5 cm; segure **Ctrl** para cortar livre.
 - Prévia **vermelha** = perto demais da borda; mire mais para dentro da face.
-- Segure o clique numa bolinha de solda para removê-la.
+- Segure o clique numa bolinha de solda para removê-la, ou num isolador para arrancá-lo.
 
 **Máquinas (motores, servos, pistões...)**
 - Componentes: **motor** (gira), **servo** (vai até um ângulo e segura), **pistão** (empurra/puxa 0,5 m),
   **dobradiça** (gira livre), **roda** e **assento**. Ficam no depósito do galpão, espalhados pelo mapa e à venda na loja.
 - Solde a base (carcaça) na estrutura e a peça que se mexe (disco, braço, haste) no que ela deve mover.
 - **Assento:** F para sentar. Ele controla todos os componentes ligados à mesma máquina.
-  **Tab** abre o **modo edição**: escolha até 2 teclas (ou botões do mouse) para cada sentido de cada componente,
-  ative "alternar" (liga/desliga) ou "inverter" e ajuste velocidade, força e ângulo.
+  **Tab** abre o **modo edição**: os componentes configuráveis ficam destacados (através de tudo) e o mouse fica livre.
+  Clique num componente para escolher até 2 teclas (ou botões do mouse) por sentido, "alternar" (liga/desliga),
+  "inverter", velocidade, força e ângulo. Botão direito + arrastar gira a câmera.
 - **Controles sem teclas:** **botão** (liga enquanto aperta), **alavanca** (liga/desliga) e **alavanca variável**
-  (roda do mouse, de -1 a 1). Com a ferramenta **Fiação** (4), clique no controle e depois no componente para ligar um fio.
+  (roda do mouse, de -1 a 1). Com a ferramenta **Fiação** (4), clique no controle, depois nas superfícies por onde
+  o fio deve passar (cada clique cria um **isolador**, opcional) e por fim no componente.
+  Botão direito num isolador remove (a esmerilhadeira também arranca).
 - Perto de onde você nasce tem um **carrinho de exemplo**: sente e use W/S/A/D.
 
 **Reciclador e loja**

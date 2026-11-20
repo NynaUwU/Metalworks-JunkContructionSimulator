@@ -30,7 +30,9 @@ func _process(_delta: float) -> void:
 				_imesh.surface_begin(Mesh.PRIMITIVE_LINES)
 				any = true
 			var color := Color(1.0, 0.55, 0.1) if absf(d.value) > 0.05 else Color(0.08, 0.08, 0.09)
-			_cable(d.part.global_position, j.part_a.global_position, color)
+			var pts := j.wire_points(d)
+			for i in pts.size() - 1:
+				_cable(pts[i], pts[i + 1], color)
 	if any:
 		_imesh.surface_end()
 

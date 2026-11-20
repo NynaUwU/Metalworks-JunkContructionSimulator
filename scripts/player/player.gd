@@ -278,6 +278,17 @@ func _use_device_press() -> bool:
 	return false
 
 
+## Antes de carregar um save: levanta, solta o que segura e cancela as ferramentas.
+func reset_for_load() -> void:
+	if is_seated():
+		stand_up()
+	seat = null
+	_release_device()
+	for t in tools:
+		t.unequip()
+	current().equip()
+
+
 func _release_device() -> void:
 	if _using:
 		_using.release()

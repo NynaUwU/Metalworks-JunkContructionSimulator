@@ -52,6 +52,12 @@ Eletroímã: ligado puxa e gruda aço/ferro
 Engate rápido: E nele (ou sinal) trava no
   que encostar na face listrada
 
+[b]Salvar[/b]
+Esc → Salvar / Carregar (mundos e construções)
+Para salvar uma máquina: mire nela (ou sente
+  no assento) antes de apertar Esc
+Automático a cada 5 min e ao sair
+
 [b]Reciclador e loja[/b]
 Jogue peças no RECICLADOR = pontos
 E no terminal da LOJA — comprar peças
@@ -87,6 +93,9 @@ var _help_tip: Label
 var _points: Label
 var shop: ShopUI
 var seat_ui: SeatUI
+var save_menu: SaveMenu
+var placer: BuildPlacer
+var _aimed_on_pause: Part = null
 var _bar: HBoxContainer
 var _cross: Crosshair
 var _mask: ColorRect
@@ -228,6 +237,17 @@ func _build_ui() -> void:
 	add_child(shop)
 	seat_ui = SeatUI.new()
 	add_child(seat_ui)
+	save_menu = SaveMenu.new()
+	save_menu.world = player.get_parent()
+	add_child(save_menu)
+	save_menu.closed.connect(func() -> void: _pause.visible = true)
+	save_menu.world_loaded.connect(func() -> void:
+		save_menu.visible = false
+		_resume())
+	save_menu.place_requested.connect(_start_placing)
+	placer = BuildPlacer.new()
+	placer.name = "BuildPlacer"
+	player.get_parent().add_child.call_deferred(placer)
 	player.edit_requested.connect(func() -> void: seat_ui.open(player, Build.network(player.seat)))
 	player.config_requested.connect(func(j: MechJoint) -> void: seat_ui.open_single(player, j))
 	player.seat_changed.connect(func(seated: bool) -> void:
@@ -276,7 +296,9 @@ func _build_pause_menu() -> void:
 	box.add_child(sub)
 
 	box.add_child(_button("Continuar", _resume))
-	box.add_child(_button("Recomeçar o mundo", _reset_world))
+	box.add_child(_button("Salvar / Carregar", func() -> void:
+		_pause.visible = false
+		save_menu.open(_aimed_on_pause)))
 
 	box.add_child(_small_label("Gráficos"))
 	var gfx := OptionButton.new()
@@ -308,7 +330,10 @@ func _build_pause_menu() -> void:
 	slider.value_changed.connect(func(v: float) -> void: Settings.set_mouse_sensitivity(v))
 	box.add_child(slider)
 
-	box.add_child(_button("Sair", func() -> void: get_tree().quit()))
+	box.add_child(_button("Sair (salva automaticamente)", func() -> void:
+		if Saves.autosave_enabled:
+			Saves.autosave()
+		get_tree().quit()))
 
 
 func _small_label(text: String) -> Label:
@@ -365,6 +390,8 @@ func _process(delta: float) -> void:
 	_bar.visible = not player.is_seated()
 	if seat_ui.visible:
 		_hint.text = ""
+	elif placer and placer.is_active():
+		_hint.text = placer.hint_text()
 	elif player.is_seated():
 		_hint.text = "Sentado   ·   Tab: modo edição (teclas)   ·   E: levantar   ·   Clique: usar botões e alavancas"
 	else:
@@ -414,6 +441,11 @@ func _update_weld_mask(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if seat_ui.visible:
 		return
+	if save_menu.visible:
+		if event.is_action_pressed("pause"):
+			save_menu.close()
+			get_viewport().set_input_as_handled()
+		return
 	if shop.visible:
 		if event.is_action_pressed("pause") or event.is_action_pressed("interact"):
 			shop.close()
@@ -439,6 +471,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _open_pause() -> void:
+	Saves.capture_frame()   # miniatura do save: a tela antes do menu aparecer
+	_aimed_on_pause = player.seat if player.is_seated() else player.aim_part()
 	_pause.visible = true
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -450,9 +484,13 @@ func _resume() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
-func _reset_world() -> void:
-	get_tree().paused = false
-	get_tree().reload_current_scene()
+## Construção escolhida no menu: fecha tudo e mostra a prévia na mira.
+func _start_placing(data: Dictionary) -> void:
+	save_menu.visible = false
+	_resume()
+	if player.is_seated():
+		player.stand_up()
+	placer.start(player, data)
 
 
 ## Mira simples desenhada em código (com anel de progresso para ações demoradas).

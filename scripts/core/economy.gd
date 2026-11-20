@@ -14,6 +14,11 @@ func reset(start := 0.0) -> void:
 	points_changed.emit(points())
 
 
+## Pontos com as casas decimais (para salvar).
+func precise_points() -> float:
+	return _points
+
+
 func points() -> int:
 	return floori(_points + 1e-6)
 

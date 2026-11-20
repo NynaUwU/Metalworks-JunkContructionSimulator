@@ -19,6 +19,13 @@ var local_centroid := Vector3.ZERO
 var bounds := AABB()
 var welds: Array = []        ## Weld conectadas a esta peça
 
+## Componente de origem (para salvar/carregar). Peça comum: comp_kind vazio.
+var comp_kind := ""
+var comp_index := -1                     ## posição no Array devolvido por Components.spawn
+var comp_group := 0                      ## igual para todas as peças do mesmo componente
+var comp_offset := Transform3D.IDENTITY  ## pose ao nascer, em relação à origem do componente
+var comp_size := Vector3.ZERO            ## medidas pedidas (rodas)
+
 var mesh_instance: MeshInstance3D
 
 

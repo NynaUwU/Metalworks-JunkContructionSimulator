@@ -97,8 +97,26 @@ static func bounds(kind: String, size := Vector3.ZERO) -> AABB:
 	return AABB(Vector3(-0.5, -0.5, -0.5), Vector3.ONE)
 
 
+static var _next_group := 1
+
+
 ## Cria o componente. Retorna as peças criadas (a primeira é a "base").
+## Cada peça guarda de que componente veio e a pose em que nasceu (para salvar/carregar).
 static func spawn(kind: String, xform: Transform3D, size := Vector3.ZERO) -> Array[Part]:
+	var parts := _spawn_kind(kind, xform, size)
+	var inv := xform.affine_inverse()
+	for i in parts.size():
+		var p := parts[i]
+		p.comp_kind = kind
+		p.comp_index = i
+		p.comp_group = _next_group
+		p.comp_offset = inv * p.global_transform
+		p.comp_size = size
+	_next_group += 1
+	return parts
+
+
+static func _spawn_kind(kind: String, xform: Transform3D, size: Vector3) -> Array[Part]:
 	match kind:
 		"motor":
 			return _spawn_motor(xform)
@@ -514,7 +532,7 @@ static func _spawn_seat(xform: Transform3D) -> Array[Part]:
 	back.set_meta("seat_base", base)   # mirar no encosto também senta
 	_deco_box(base, Vector3(0.5, 0.03, 0.5), Vector3(0, 0.07, -0.02), Color(0.45, 0.12, 0.1))
 	_deco_box(base, Vector3(0.12, 0.02, 0.04), Vector3(0, 0.0, -0.31), Color(1.0, 0.75, 0.2), 1.5)
-	Build.make_weld(base, back, xform * Vector3(0, 0.06, 0.25))
+	Build.make_weld(base, back, xform * Vector3(0, 0.06, 0.25), false).internal = true
 	return [base, back]
 
 

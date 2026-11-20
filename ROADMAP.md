@@ -65,24 +65,17 @@
 - **Parte militar do ACF** (blindagem, canhões, torres...) fica para o Marco 6.
 - **O salvamento vem primeiro.**
 
-## v0.7 — Salvamento
-Objetivo: nunca mais refazer tudo.
-- [ ] Formato de save com versão, para os saves antigos continuarem abrindo nas versões novas. Guarda:
-  - peças: forma, material e posição;
-  - montagens: ancorada, congelada, velocidade;
-  - soldas e isoladores;
-  - juntas: ajustes, teclas e fios;
-  - controles, pontos e jogador.
-- [ ] Mundo inteiro: menu Esc → Salvar / Carregar / Novo mundo, em vários espaços com nome, data e miniatura
-- [ ] Salvamento automático a cada 5 min e ao sair, guardando os 3 últimos
-- [ ] Sucata do mapa: o que foi pego ou reciclado fica salvo (o mapa não volta a encher ao carregar)
-- [ ] Construções individuais: mirar numa máquina e salvar tudo o que está ligado a ela (solda, juntas, fios),
-  com nome e miniatura
-- [ ] Carregar construção: escolher na lista, aparece uma "prévia fantasma" na frente para posicionar
-  (girar, afastar) e confirmar
-  - a decidir: grátis ou custando os pontos das peças
-- [ ] Pasta dos saves acessível pelo menu ("Abrir pasta"), para trocar construções com amigos
-- [ ] Testes: salvar → carregar → conferir peças, soldas, juntas funcionando e fios
+## ✅ v0.7 — Salvamento
+- Formato de save com versão: peças (forma, material, posição), montagens (ancorada, congelada, velocidade),
+  soldas, isoladores, componentes com ajustes, teclas e fios, pontos e jogador
+- Mundo inteiro: Esc → Salvar / Carregar, com nome, data e miniatura; mundo novo
+- Salvamento automático a cada 5 min e ao sair (3 últimos)
+- A sucata pega ou reciclada fica salva (o mundo salvo guarda só o que existe)
+- Construções individuais: salvar a máquina mirada (soldas, juntas e fios juntos), com miniatura
+- Colocar construção com prévia fantasma (distância, girar 15°/90°)
+- Preço das construções pronto (preço de loja das peças); por enquanto grátis, para testes
+- Botão "Abrir pasta" para trocar arquivos com amigos
+- 41 testes de salvar/carregar
 
 ## Marco 4 — Lógica, energia, sensores e trem de força
 Inspirado no Wiremod e no ACF do Garry's Mod (sem nada de NPCs nem geradores de efeitos).

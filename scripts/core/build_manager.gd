@@ -170,12 +170,13 @@ func place_insulator(on: Part, point: Vector3, normal: Vector3) -> Part:
 	return ins
 
 
-## Solda direta entre duas peças (sem procurar vizinhos): usada para montar componentes.
-func make_weld(part: Part, other: Part, point: Vector3) -> Weld:
-	return _create_weld(part, other, point)
+## Solda direta entre duas peças (sem procurar vizinhos): usada para montar componentes
+## e ao carregar um save (`hot` = false: a bolinha já nasce fria).
+func make_weld(part: Part, other: Part, point: Vector3, hot := true) -> Weld:
+	return _create_weld(part, other, point, hot)
 
 
-func _create_weld(part: Part, other: Part, point: Vector3) -> Weld:
+func _create_weld(part: Part, other: Part, point: Vector3, hot := true) -> Weld:
 	var w := Weld.new()
 	w.part_a = part
 	w.part_b = other
@@ -184,7 +185,10 @@ func _create_weld(part: Part, other: Part, point: Vector3) -> Weld:
 	w.ball.mesh = _ball_mesh
 	part.add_child(w.ball)
 	w.ball.position = w.local_pos
-	_heat_ball(w.ball)
+	if hot:
+		_heat_ball(w.ball)
+	else:
+		w.ball.material_override = _ball_material
 	welds.append(w)
 	part.welds.append(w)
 	if other:

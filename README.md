@@ -89,6 +89,19 @@ Nome, mapa, visual e código são próprios.
   - num componente: abre os ajustes dele (mola e torção não usam teclas, mas têm ajustes).
 - Perto de onde você nasce tem um **carrinho de exemplo**: sente e use W/S/A/D.
 
+**Salvar e carregar** (Esc → **Salvar / Carregar**)
+- **Mundos:** salve o mundo inteiro com um nome (peças, soldas, componentes com seus ajustes e teclas,
+  fios, pontos e onde você está). Carregue, apague ou comece um **mundo novo**.
+  - Salvamento automático a cada 5 minutos e ao sair. Guarda os 3 últimos.
+- **Construções:**
+  - Para salvar uma máquina: mire nela (ou sente no assento dela) e aperte Esc.
+    Vai tudo o que está ligado a ela: soldas, juntas e fios.
+  - **Colocar** mostra uma prévia azul na mira: clique para colocar, roda do mouse para a distância,
+    **R** gira 15° (com Shift, 90°), botão direito cancela.
+  - Colocar uma construção vai custar os pontos das peças. Por enquanto está **grátis** (modo de teste).
+- Os arquivos ficam na pasta do jogo em `%APPDATA%\Godot\app_userdata\Junk Construction Simulator\saves`
+  (botão **Abrir pasta**). São arquivos `.json` com miniatura: dá para trocar construções com amigos.
+
 **Reciclador e loja**
 - Para se livrar de peças, jogue-as no **RECICLADOR**. Cada peça vira **pontos**, conforme o peso e o metal (alumínio vale mais por kg, ferro velho vale menos).
 - No terminal da **LOJA** (tecla **E**), gaste os pontos em chapas, vigas, blocos, componentes e peças pré-cortadas, escolhendo as medidas (com limite). Os itens aparecem na plataforma **ENTREGA**.
@@ -102,6 +115,9 @@ scripts/
   core/economy.gd         pontos (autoload "Economy")
   core/catalog.gd         itens e preços da loja
   core/settings.gd        opções salvas (autoload "Settings")
+  core/saves.gd           salvar/carregar mundos e construções (autoload "Saves")
+  ui/save_menu.gd         tela de salvar/carregar
+  tools/build_placer.gd   colocar uma construção salva (prévia fantasma)
   parts/convex_geo.gd     geometria: peças são poliedros convexos definidos por planos
   parts/part.gd           peça (forma de colisão + malha)
   parts/assembly.gd       corpo rígido de peças soldadas (segurar / congelar)
@@ -133,6 +149,10 @@ godot --headless --path . res://tests/test_build.tscn
 
 ```bash
 godot --headless --path . res://tests/test_mech.tscn
+```
+
+```bash
+godot --headless --path . res://tests/test_save.tscn
 ```
 
 **Publicar uma versão:** mude `config/version` no `project.godot` e crie

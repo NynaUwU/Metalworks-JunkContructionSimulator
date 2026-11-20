@@ -170,6 +170,54 @@ func _depot() -> void:
 	await _shot("m3_deposito")
 
 
+func _saves() -> void:
+	# Salvar o mundo e a construção (carrinho de exemplo) e mostrar as telas.
+	player.teleport(Vector3(-7, 0.05, 7.5))
+	_look_from_eye(Vector3(-7, 0.5, 3))
+	await _frames(30)
+	var hud: Hud = world.hud
+	hud._open_pause()
+	Saves.save_world("Pátio com carrinho")
+	await _frames(2)
+	hud.save_menu.open(hud._aimed_on_pause)
+	hud._pause.visible = false
+	hud.save_menu._build_name.text = "Carrinho de exemplo"
+	hud.save_menu._save_build()
+	hud.save_menu._show_tab(0)
+	await _frames(5)
+	await _shot("s1_mundos")
+	hud.save_menu._show_tab(1)
+	await _frames(5)
+	await _shot("s2_construcoes")
+	var data := Saves.read(Saves.DIR_BUILDS.path_join("carrinho_de_exemplo.json"))
+	hud.save_menu.visible = false
+	hud._resume()
+	player.teleport(Vector3(4, 0.05, 6))
+	player.yaw = deg_to_rad(-60)
+	player.pitch = deg_to_rad(-12)
+	await _frames(5)
+	hud.placer.start(player, data)
+	await _frames(10)
+	await _shot("s3_previa")
+	hud.placer.place()
+	await _frames(60)
+	await _shot("s4_colocada")
+
+
+func _loadperf() -> void:
+	# Tempo de salvar/carregar o mundo inteiro (desenvolvimento).
+	var n := Saves.world_assemblies().size()
+	var t0 := Time.get_ticks_msec()
+	var path := Saves.save_world("perf_teste")
+	var t1 := Time.get_ticks_msec()
+	Saves.load_world(path)
+	var t2 := Time.get_ticks_msec()
+	await _frames(30)
+	print("PERF montagens=%d salvar=%d ms carregar=%d ms tamanho=%d KB montagens_depois=%d" % [
+		n, t1 - t0, t2 - t1, FileAccess.get_file_as_bytes(path).size() / 1024, Saves.world_assemblies().size()])
+	Saves.delete(path)
+
+
 func _bisect_sit() -> void:
 	player.sit(world.demo_seat)
 	for i in 30:

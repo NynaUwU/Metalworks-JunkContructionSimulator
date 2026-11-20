@@ -46,7 +46,7 @@ func _ready() -> void:
 	_build_pad()
 	_build_props()
 	_build_stations()
-	_spawn_scrap()
+	populate()
 
 	player = Player.new()
 	add_child(player)
@@ -57,6 +57,8 @@ func _ready() -> void:
 	Settings.changed.connect(_apply_settings)
 	_apply_settings()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	Saves.world = self
+	Saves.autosave_enabled = true
 
 	# Modo de desenvolvimento: tour automático com screenshots (-- --tour=pasta).
 	var args := OS.get_cmdline_user_args()
@@ -71,7 +73,39 @@ func _ready() -> void:
 			tour.set("out_dir", arg.trim_prefix("--tour="))
 			if quick != "":
 				tour.set("scene", quick)
+			Saves.autosave_enabled = false   # tour de screenshots não mexe nos saves
 			add_child(tour)
+	if Saves.autosave_enabled and not Saves.list(Saves.DIR_WORLDS).is_empty():
+		hud.show_toast.call_deferred("Para continuar de onde parou: Esc → Salvar / Carregar")
+
+
+## Peças "de fábrica" de um mundo novo: sucata, depósito de componentes e carrinho.
+func populate() -> void:
+	_rng.seed = 20141
+	_spawn_scrap()
+	_spawn_component_depot()
+	demo_seat = DemoBuilds.build_car(Vector3(-7, 0, 3))
+
+
+## Começa do zero: apaga todas as peças, zera os pontos e espalha a sucata de novo.
+func new_world() -> void:
+	Saves.clear_world()
+	Economy.reset()
+	populate()
+	player.teleport(player.spawn_point)
+	player.yaw = 0.0
+	player.pitch = 0.0
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST and Saves.autosave_enabled:
+		Saves.capture_frame()
+		Saves.autosave()
+
+
+func _exit_tree() -> void:
+	if Saves.world == self:
+		Saves.world = null
 
 
 # ---------------------------------------------------------------------------
@@ -93,8 +127,7 @@ func _build_stations() -> void:
 	shop.name = "Shop"
 	add_child(shop)
 	shop.position = Vector3(10, 0, -25.5)
-	_spawn_component_depot()
-	demo_seat = DemoBuilds.build_car(Vector3(-7, 0, 3))
+	StationBuilder.label_sign(self, "COMPONENTES", Vector3(-30, 5.22, 19.8))
 	var wires := WireRenderer.new()
 	wires.name = "Wires"
 	add_child(wires)
@@ -402,7 +435,6 @@ func _spawn_component(kind: String, ground_pos: Vector3, size := Vector3.ZERO) -
 ## Depósito de componentes debaixo do galpão.
 func _spawn_component_depot() -> void:
 	var o := Vector3(-30, 0.02, 25)
-	StationBuilder.label_sign(self, "COMPONENTES", o + Vector3(0, 5.2, -5.2))
 	var rows := [
 		["motor", "motor", "motor", "motor", "servo", "servo"],
 		["roda", "roda", "roda", "roda", "roda", "roda"],

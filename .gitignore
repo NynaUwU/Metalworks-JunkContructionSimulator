@@ -1,0 +1,8 @@
+# Godot
+.godot/
+*.import.bak
+# Builds
+build/
+*.exe
+*.pck
+*.zip

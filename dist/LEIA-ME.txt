@@ -2,6 +2,8 @@ JUNK CONSTRUCTION SIMULATOR
 
 Como jogar: abra o JunkConstructionSimulator.exe. Aperte H no jogo para ver os controles.
 
+Atualizar: abra o "Atualizar.bat" (baixa e instala a versao mais recente).
+
 Se a imagem ficar estranha (partes pretas, quadrados, piscando):
   1. Abra o menu (Esc) e mude "Gráficos" para Médio ou Baixo.
   2. Se continuar, feche e abra pelo "Abrir com Vulkan.bat".

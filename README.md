@@ -10,6 +10,8 @@ Nome, mapa, visual e código são próprios.
 ## Como jogar
 
 - **Só jogar:** abra `JunkConstructionSimulator.exe` (não precisa instalar nada).
+- **Atualizar:** rode o `Atualizar.bat` (vem dentro da pasta do jogo e também fica avulso em cada Release).
+  Ele baixa a versão mais recente e extrai na pasta `JunkConstructionSimulator`.
 - **Imagem estranha (partes pretas, quadrados)?** No menu (Esc), mude **Gráficos** para
   Médio ou Baixo. Se não resolver, use `Abrir com Vulkan.bat` ou
   `Abrir em modo compatibilidade.bat`, que vêm junto com o `.exe`.

@@ -83,4 +83,4 @@ jobs:
           notes="release-notes/${tag}.md"
           args=(--title "Junk Construction Simulator ${tag}" --target "$GITHUB_SHA")
           if [ -f "$notes" ]; then args+=(--notes-file "$notes"); else args+=(--generate-notes); fi
-          gh release create "$tag" "JunkConstructionSimulator-${tag}-windows.zip" "${args[@]}"
+          gh release create "$tag" "JunkConstructionSimulator-${tag}-windows.zip" "dist/Atualizar.bat" "${args[@]}"

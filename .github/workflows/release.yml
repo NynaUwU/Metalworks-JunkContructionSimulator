@@ -1,10 +1,17 @@
-# Gera o .exe do Windows e publica um Release sempre que uma tag de versão (v*) é enviada.
-# As notas do release vêm de release-notes/<tag>.md (se existir).
+# Gera o .exe do Windows e publica um Release no GitHub.
+#
+# Quando roda:
+#   - ao enviar para o main um arquivo novo em release-notes/ (ex.: release-notes/v0.2.0.md);
+#   - ou manualmente, na aba Actions → Release → "Run workflow".
+# A versão vem de config/version no project.godot (ex.: 0.2.0 → tag v0.2.0).
+# Se o release dessa versão já existir, nada é publicado de novo.
 name: Release
 
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
+    paths: ["release-notes/**"]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -14,10 +21,24 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GODOT_VERSION: "4.7.2"
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
 
+      - name: Ler versão do jogo
+        id: ver
+        run: |
+          v=$(sed -n 's/^config\/version="\(.*\)"/\1/p' project.godot)
+          echo "tag=v$v" >> "$GITHUB_OUTPUT"
+          if gh release view "v$v" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "O release v$v já existe — nada a fazer."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Baixar Godot e templates de exportação
+        if: steps.ver.outputs.exists == 'false'
         run: |
           base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
           wget -q "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
@@ -31,32 +52,33 @@ jobs:
           rm -rf "$RUNNER_TEMP/tpl" ./*.zip ./*.tpz
 
       - name: Importar projeto
+        if: steps.ver.outputs.exists == 'false'
         run: timeout 300 "$RUNNER_TEMP/godot" --headless --path . --import || true
 
       - name: Testes
+        if: steps.ver.outputs.exists == 'false'
         run: timeout 300 "$RUNNER_TEMP/godot" --headless --path . res://tests/test_build.tscn
 
       - name: Exportar para Windows
+        if: steps.ver.outputs.exists == 'false'
         run: |
           mkdir -p build
           timeout 600 "$RUNNER_TEMP/godot" --headless --path . --export-release "Windows Desktop" build/Sucata.exe
           test -s build/Sucata.exe
 
       - name: Empacotar
+        if: steps.ver.outputs.exists == 'false'
         run: |
+          tag="${{ steps.ver.outputs.tag }}"
           mkdir -p pkg/Sucata
           cp build/Sucata.exe dist/* pkg/Sucata/
-          (cd pkg && zip -q -r -9 "../Sucata-${GITHUB_REF_NAME}-windows.zip" Sucata)
+          (cd pkg && zip -q -r -9 "../Sucata-${tag}-windows.zip" Sucata)
 
       - name: Publicar release
-        env:
-          GH_TOKEN: ${{ github.token }}
+        if: steps.ver.outputs.exists == 'false'
         run: |
-          notes="release-notes/${GITHUB_REF_NAME}.md"
-          if [ -f "$notes" ]; then
-            gh release create "$GITHUB_REF_NAME" "Sucata-${GITHUB_REF_NAME}-windows.zip" \
-              --title "Sucata ${GITHUB_REF_NAME}" --notes-file "$notes"
-          else
-            gh release create "$GITHUB_REF_NAME" "Sucata-${GITHUB_REF_NAME}-windows.zip" \
-              --title "Sucata ${GITHUB_REF_NAME}" --generate-notes
-          fi
+          tag="${{ steps.ver.outputs.tag }}"
+          notes="release-notes/${tag}.md"
+          args=(--title "Sucata ${tag}" --target "$GITHUB_SHA")
+          if [ -f "$notes" ]; then args+=(--notes-file "$notes"); else args+=(--generate-notes); fi
+          gh release create "$tag" "Sucata-${tag}-windows.zip" "${args[@]}"

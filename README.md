@@ -23,6 +23,7 @@ Nome, mapa, visual e código são próprios.
 | Andar / pular | W A S D / Espaço |
 | Correr | toque duplo numa tecla de andar (ou Shift) |
 | Trocar ferramenta | 1 Mão · 2 Solda · 3 Esmerilhadeira |
+| Usar (terminal da loja) | F |
 | Ajuda / menu / FPS / tela cheia | H / Esc / F3 / F11 |
 
 **Mão (estilo Physics Gun)**
@@ -31,7 +32,7 @@ Nome, mapa, visual e código são próprios.
 - **E**: devolve a gravidade à peça (pegar outra peça também devolve).
 - **Shift + W/S/A/D/Q/E**: gira em passos de 15° (repete se segurar).
 - **T**: alinha a peça à grade do mundo (90°).
-- Roda do mouse: aproxima ou afasta. **Delete**: apaga a peça mirada.
+- Roda do mouse: aproxima ou afasta.
 
 **Solda**
 - Clique na emenda entre duas peças encostadas: cria um **ponto de solda** (bolinha).
@@ -39,11 +40,15 @@ Nome, mapa, visual e código são próprios.
 - Soldar uma peça no chão ou numa estrutura do mapa **ancora** a montagem (ela fica parada).
 
 **Esmerilhadeira**
-- Clique: corta no plano laranja.
-- **R**: muda o ângulo do corte (reto nos eixos X/Y/Z ou **45°**).
+- Clique: corta **a face que está na mira**. A linha de corte fica sobre essa face (prévia laranja).
+- **R**: gira a linha de corte sobre a face: 0°, 45°, 90°, 135°.
 - O corte encaixa numa grade de 5 cm; segure **Ctrl** para cortar livre.
-- Prévia **vermelha** = corte inválido naquele ponto (mire numa face lateral ao plano).
+- Prévia **vermelha** = perto demais da borda; mire mais para dentro da face.
 - Botão direito: remove a solda mais próxima da mira.
+
+**Reciclador e loja**
+- Para se livrar de peças, jogue-as no **RECICLADOR**. Cada peça vira **pontos**, conforme o peso e o metal (alumínio vale mais por kg, ferro velho vale menos).
+- No terminal da **LOJA** (tecla **F**), gaste os pontos em chapas, vigas, blocos e peças pré-cortadas. Os itens aparecem na plataforma **ENTREGA**.
 
 ## Estrutura do código
 
@@ -51,6 +56,9 @@ Nome, mapa, visual e código são próprios.
 scripts/
   core/build_manager.gd   regras: soldar, cortar, juntar/separar montagens (autoload "Build")
   core/game_input.gd      mapa de teclas (autoload "GameInput")
+  core/economy.gd         pontos (autoload "Economy")
+  core/catalog.gd         itens e preços da loja
+  core/settings.gd        opções salvas (autoload "Settings")
   parts/convex_geo.gd     geometria: peças são poliedros convexos definidos por planos
   parts/part.gd           peça (forma de colisão + malha)
   parts/assembly.gd       corpo rígido de peças soldadas + controle de "flutuar"
@@ -59,6 +67,9 @@ scripts/
   tools/*.gd              Mão, Solda, Esmerilhadeira
   ui/hud.gd               interface
   world/world.gd          mapa: terreno, pátio, estruturas e pilhas de sucata
+  world/recycler.gd       reciclador (peças viram pontos)
+  world/shop_station.gd   terminal da loja + plataforma de entrega
+  ui/shop_ui.gd           tela da loja
 tests/                    testes automáticos e tour de screenshots (não vão no .exe)
 ```
 
@@ -68,7 +79,10 @@ tests/                    testes automáticos e tour de screenshots (não vão n
 godot --headless --path . res://tests/test_build.tscn
 ```
 
-**Gerar o .exe:**
+**Publicar uma versão:** mude `config/version` no `project.godot` e crie
+`release-notes/vX.Y.Z.md`. Ao enviar para o `main`, o GitHub Actions gera o `.exe` e publica o Release.
+
+**Gerar o .exe localmente:**
 
 ```bash
 godot --headless --path . --export-release "Windows Desktop" build/Sucata.exe

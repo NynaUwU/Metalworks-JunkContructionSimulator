@@ -21,17 +21,20 @@ E — devolve a gravidade à peça
 Shift + W/S/A/D/Q/E — girar 15°
 T — alinhar à grade do mundo
 Roda do mouse — distância
-Delete — apagar peça mirada
 
 [b]Solda[/b]
 Clique na emenda entre duas peças
 (ou entre a peça e o chão = ancorar)
 
 [b]Esmerilhadeira[/b]
-Clique — cortar no plano laranja
-R — mudar ângulo (reto / 45°)
+Clique — corta a face mirada (prévia laranja)
+R — girar o corte (0° / 45° / 90° / 135°)
 Ctrl — corte livre (sem grade de 5 cm)
 Botão direito — remover solda
+
+[b]Reciclador e loja[/b]
+Jogue peças no RECICLADOR = pontos
+F no terminal da LOJA — comprar peças
 
 H — mostrar/ocultar ajuda
 F11 — tela cheia · F3 — FPS
@@ -48,6 +51,8 @@ var _help: PanelContainer
 var _pause: Control
 var _fps: Label
 var _help_tip: Label
+var _points: Label
+var shop: ShopUI
 var _style_on: StyleBoxFlat
 var _style_off: StyleBoxFlat
 
@@ -159,6 +164,18 @@ func _build_ui() -> void:
 	_fps.visible = false
 	root.add_child(_fps)
 
+	_points = _label(22, Color(0.55, 1.0, 0.6))
+	_points.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_points.position = Vector2(-220, 36)
+	_points.size = Vector2(200, 30)
+	_points.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	root.add_child(_points)
+	Economy.points_changed.connect(_on_points_changed)
+	_on_points_changed(Economy.points())
+
+	shop = ShopUI.new()
+	add_child(shop)
+
 	_build_pause_menu()
 
 
@@ -267,6 +284,18 @@ func show_toast(text: String) -> void:
 	_toast_time = 2.2
 
 
+func _on_points_changed(total: int) -> void:
+	_points.text = "%d pontos" % total
+	var tw := _points.create_tween()
+	_points.scale = Vector2(1.15, 1.15)
+	_points.pivot_offset = _points.size * Vector2(1.0, 0.5)
+	tw.tween_property(_points, "scale", Vector2.ONE, 0.25)
+
+
+func open_shop(station: ShopStation) -> void:
+	shop.open(station)
+
+
 func _on_tool_changed(index: int) -> void:
 	for i in _hotbar_slots.size():
 		_hotbar_slots[i].add_theme_stylebox_override("panel", _style_on if i == index else _style_off)
@@ -277,7 +306,10 @@ func _process(delta: float) -> void:
 		return
 	_hint.text = player.current().hint_text()
 	var part := player.aim_part()
-	if part:
+	var usable := player.interact_target()
+	if usable:
+		_aim_info.text = "F: %s" % usable.get_meta("interact_label", "usar")
+	elif part:
 		var extra := ""
 		if part.assembly().get_parts().size() > 1:
 			extra = "   [%d peças]" % part.assembly().get_parts().size()
@@ -294,6 +326,11 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if shop.visible:
+		if event.is_action_pressed("pause") or event.is_action_pressed("interact"):
+			shop.close()
+			get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed("help"):
 		_help.visible = not _help.visible
 		_help_tip.visible = not _help.visible

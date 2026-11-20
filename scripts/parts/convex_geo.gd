@@ -8,29 +8,37 @@ extends RefCounted
 
 const EPS := 0.0006
 
-## Direções de corte, no espaço local da peça. R alterna entre elas.
-const CUT_DIRECTIONS: Array[Vector3] = [
-	Vector3(1, 0, 0),
-	Vector3(0, 1, 0),
-	Vector3(0, 0, 1),
-	Vector3(0.70710678, 0.70710678, 0),
-	Vector3(0.70710678, -0.70710678, 0),
-	Vector3(0.70710678, 0, 0.70710678),
-	Vector3(0.70710678, 0, -0.70710678),
-	Vector3(0, 0.70710678, 0.70710678),
-	Vector3(0, 0.70710678, -0.70710678),
-]
-const CUT_NAMES: Array[String] = [
-	"Reto — eixo X",
-	"Reto — eixo Y",
-	"Reto — eixo Z",
-	"45° — X/Y",
-	"45° — X/-Y",
-	"45° — X/Z",
-	"45° — X/-Z",
-	"45° — Y/Z",
-	"45° — Y/-Z",
-]
+## Ângulos da linha de corte sobre a face mirada (R alterna entre eles).
+const CUT_ANGLES: Array[float] = [0.0, 45.0, 90.0, 135.0]
+
+
+## Normal (local) do plano de corte para a face mirada.
+## O plano é sempre perpendicular à face: a linha de corte fica desenhada sobre ela,
+## girada `angle_deg` graus. Com 0° a linha acompanha as arestas da peça.
+static func face_cut_normal(face_n: Vector3, angle_deg: float) -> Vector3:
+	var ref := Vector3.RIGHT
+	var least := 2.0
+	for a: Vector3 in [Vector3.RIGHT, Vector3.UP, Vector3.BACK]:
+		var d := absf(face_n.dot(a))
+		if d < least - 1e-4:
+			least = d
+			ref = a
+	var t1 := face_n.cross(ref).normalized()
+	var t2 := face_n.cross(t1).normalized()
+	var ang := deg_to_rad(angle_deg)
+	return (t1 * cos(ang) + t2 * sin(ang)).normalized()
+
+
+## Normal da face da peça mais alinhada com a direção `n` (coordenadas locais).
+static func closest_face_normal(planes: Array[Plane], n: Vector3) -> Vector3:
+	var best := n
+	var best_dot := -2.0
+	for pl in planes:
+		var d := pl.normal.dot(n)
+		if d > best_dot:
+			best_dot = d
+			best = pl.normal
+	return best
 
 
 static func box_planes(size: Vector3) -> Array[Plane]:

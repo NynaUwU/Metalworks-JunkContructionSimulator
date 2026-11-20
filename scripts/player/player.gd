@@ -15,6 +15,9 @@ const PUSH_FORCE := 45.0
 
 signal tool_changed(index: int)
 signal toast_requested(text: String)
+signal interact_requested(target: Node)
+
+const INTERACT_DISTANCE := 3.5
 
 var yaw := 0.0
 var pitch := 0.0
@@ -110,6 +113,17 @@ func aim_part() -> Part:
 	return Build.part_from_collision(aim["collider"], aim["shape"])
 
 
+## Objeto "usável" na mira (terminal da loja, futuramente assentos...).
+func interact_target() -> Node:
+	if aim.is_empty():
+		return null
+	var c: Object = aim["collider"]
+	if c is Node and (c as Node).has_meta("interact") \
+			and eye_position().distance_to(aim["position"]) <= INTERACT_DISTANCE:
+		return c
+	return null
+
+
 func _update_aim() -> void:
 	var from := eye_position()
 	var to := from + aim_direction() * REACH
@@ -134,6 +148,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 	if current().handle_input(event):
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("interact"):
+		var target := interact_target()
+		if target:
+			interact_requested.emit(target)
 		get_viewport().set_input_as_handled()
 		return
 	# E solta a peça flutuando com qualquer ferramenta na mão.

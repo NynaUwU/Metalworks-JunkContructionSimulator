@@ -6,7 +6,7 @@ extends GameTool
 ## - Soltar o clique: a peça FICA flutuando no lugar.
 ## - Ela só volta a ter gravidade ao apertar E ou ao pegar outra peça.
 ## - Shift + W/S/A/D/Q/E: gira a peça em passos de 15°.  T: alinha à grade.
-## - Roda do mouse: aproxima/afasta.  Delete: apaga a peça mirada.
+## - Roda do mouse: aproxima/afasta.
 
 const ROT_STEP := deg_to_rad(15.0)
 const ROT_REPEAT_DELAY := 0.28
@@ -103,12 +103,6 @@ func handle_input(event: InputEvent) -> bool:
 		return true
 	if event.is_action_pressed("align") and hold_part:
 		hold_basis = ConvexGeo.snap_basis(hold_basis)
-		return true
-	if event.is_action_pressed("delete_part") and not holding:
-		var part := player.aim_part()
-		if part:
-			Build.delete_part(part)
-			player.toast("Peça removida")
 		return true
 	return false
 
@@ -261,4 +255,4 @@ func hint_text() -> String:
 		return "Shift + W/S/A/D/Q/E: girar   ·   T: alinhar à grade   ·   Roda: distância"
 	if hold_part:
 		return "Peça flutuando   ·   E: soltar (volta a gravidade)   ·   Clique: pegar outra"
-	return "Clique: pegar peça   ·   Delete: apagar peça mirada"
+	return "Clique: pegar peça   ·   Para se livrar de peças, jogue no RECICLADOR"

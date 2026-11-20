@@ -43,7 +43,7 @@ func _ready() -> void:
 	hand.holding = false
 	player.select_tool(2)
 	var grinder: GrinderTool = player.tools[2]
-	grinder.cut_index = 5
+	grinder.angle_index = 1
 	_look_from_eye(plate.global_transform * Vector3(0.3, 0, 0.2))
 	await _frames(10)
 	await _shot("04_preview_corte_45")
@@ -76,7 +76,7 @@ func _ready() -> void:
 
 	# 7) Esmerilhadeira mirando um bloco com corte reto
 	player.select_tool(2)
-	grinder.cut_index = 1
+	grinder.angle_index = 0
 	var block := _nearest_part(Vector3(-18, 0, 6), Vector3(0.5, 0.5, 0.5))
 	if block:
 		player.global_position = block.global_position + Vector3(1.6, -block.global_position.y + 0.05, 1.6)
@@ -89,6 +89,33 @@ func _ready() -> void:
 	_look_from_eye(Vector3(0, 8, 140))
 	await _frames(20)
 	await _shot("08_morros")
+
+	# 10) Centro de reciclagem: peça caindo no reciclador
+	player.global_position = Vector3(13.5, 0.05, -21.0)
+	_look_from_eye(Vector3(15.5, 0.8, -28.0))
+	player.select_tool(0)
+	await _frames(10)
+	Build.spawn_box(Vector3(1, 0.1, 1), "aluminio", Transform3D(Basis(Vector3.UP, 0.4), Vector3(17, 2.2, -27)))
+	Build.spawn_box(Vector3(0.2, 0.2, 2), "aco", Transform3D(Basis(Vector3.UP, 1.2), Vector3(16.6, 2.8, -27.2)))
+	for i in 40:
+		await get_tree().physics_frame
+		if Economy.points() > 0:
+			break
+	await _frames(8)
+	await _shot("10_reciclador")
+
+	# 11) Loja aberta
+	Economy.reset(240)
+	world.hud.open_shop(world.shop)
+	await _frames(5)
+	await _shot("11_loja")
+	world.shop.buy("cunha")
+	world.shop.buy("chapa_tri")
+	world.hud.shop.close()
+	player.global_position = Vector3(12.5, 0.05, -26.0)
+	_look_from_eye(Vector3(10, 0.4, -29.7))
+	await _frames(60)
+	await _shot("12_entrega")
 
 	# 9) Menu de pausa com as opções de gráficos
 	process_mode = Node.PROCESS_MODE_ALWAYS

@@ -21,6 +21,8 @@ const SCRAP := [
 
 var player: Player
 var hud: Hud
+var recycler: Recycler
+var shop: ShopStation
 var environment: Environment
 var sun: DirectionalLight3D
 var _noise := FastNoiseLite.new()
@@ -29,6 +31,7 @@ var _rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
 	Build.reset(self)
+	Economy.reset()
 	_rng.seed = 20141
 	_noise.seed = 1337
 	_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
@@ -39,6 +42,7 @@ func _ready() -> void:
 	_build_terrain()
 	_build_pad()
 	_build_props()
+	_build_stations()
 	_spawn_scrap()
 
 	player = Player.new()
@@ -46,6 +50,7 @@ func _ready() -> void:
 	hud = Hud.new()
 	add_child(hud)
 	hud.setup(player)
+	player.interact_requested.connect(_on_interact)
 	Settings.changed.connect(_apply_settings)
 	_apply_settings()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -61,6 +66,23 @@ func _ready() -> void:
 # ---------------------------------------------------------------------------
 # Ambiente
 # ---------------------------------------------------------------------------
+
+func _on_interact(target: Node) -> void:
+	if target.get_meta("interact") == "shop":
+		hud.open_shop(shop)
+
+
+## Centro de reciclagem: reciclador + loja + plataforma de entrega.
+func _build_stations() -> void:
+	recycler = Recycler.new()
+	recycler.name = "Recycler"
+	add_child(recycler)
+	recycler.position = Vector3(17, 0, -27)
+	shop = ShopStation.new()
+	shop.name = "Shop"
+	add_child(shop)
+	shop.position = Vector3(10, 0, -25.5)
+
 
 func _apply_settings() -> void:
 	Settings.apply_graphics(environment, sun, get_viewport())

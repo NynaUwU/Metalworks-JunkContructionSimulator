@@ -2,14 +2,15 @@ class_name GrinderTool
 extends GameTool
 ## Esmerilhadeira: corta peças e remove soldas.
 ##
-## - O plano de corte segue os eixos da peça; R alterna entre reto (X/Y/Z) e 45°.
+## - O corte é feito na face que está na mira: a linha de corte fica sobre ela
+##   (plano perpendicular à face) e R gira essa linha: 0°, 45°, 90°, 135°.
 ## - A posição do corte encaixa numa grade de 5 cm (segure Ctrl para corte livre).
 ## - Botão direito: remove a solda mais próxima da mira.
 
 const GRID := 0.05
 const WELD_PICK_RADIUS := 0.3
 
-var cut_index := 0
+var angle_index := 0
 var _preview: MeshInstance3D
 var _imesh: ImmediateMesh
 var _fill_mat: StandardMaterial3D
@@ -110,10 +111,12 @@ func physics_update(_delta: float) -> void:
 	var part := player.aim_part()
 	if part == null or not part.cuttable:
 		return
-	var local := part.global_transform.affine_inverse() * point
+	var inv := part.global_transform.affine_inverse()
+	var local := inv * point
+	var face_n := ConvexGeo.closest_face_normal(part.planes, (inv.basis * (player.aim["normal"] as Vector3)).normalized())
 	if not Input.is_action_pressed("free_cut"):
 		local = local.snapped(Vector3.ONE * GRID)
-	var n := ConvexGeo.CUT_DIRECTIONS[cut_index]
+	var n := ConvexGeo.face_cut_normal(face_n, ConvexGeo.CUT_ANGLES[angle_index])
 	_target_plane = Plane(n, n.dot(local))
 	_target_part = part
 	_target_valid = _cut_is_valid(part, _target_plane)
@@ -153,12 +156,12 @@ func _draw_preview(part: Part, plane: Plane) -> void:
 
 func handle_input(event: InputEvent) -> bool:
 	if event.is_action_pressed("rotate_cut"):
-		cut_index = (cut_index + 1) % ConvexGeo.CUT_DIRECTIONS.size()
-		player.toast("Corte: " + ConvexGeo.CUT_NAMES[cut_index])
+		angle_index = (angle_index + 1) % ConvexGeo.CUT_ANGLES.size()
+		player.toast("Ângulo do corte: %d°" % roundi(ConvexGeo.CUT_ANGLES[angle_index]))
 		return true
 	if event.is_action_pressed("primary"):
 		if _target_part and not _target_valid:
-			player.toast("Mire na lateral da peça — o corte precisa passar por dentro dela")
+			player.toast("Muito perto da borda — mire mais para dentro da face")
 		elif _target_part:
 			var point: Vector3 = player.aim["position"]
 			var pieces := Build.cut_part(_target_part, _target_plane)
@@ -177,6 +180,6 @@ func handle_input(event: InputEvent) -> bool:
 
 func hint_text() -> String:
 	if _target_part and not _target_valid:
-		return "Corte inválido aqui (vermelho) — mire numa face lateral ao plano   ·   R: mudar ângulo"
-	var t := "Corte: %s   ·   R: mudar ângulo   ·   Ctrl: livre   ·   Botão direito: remover solda" % ConvexGeo.CUT_NAMES[cut_index]
-	return t
+		return "Muito perto da borda (vermelho) — mire mais para dentro da face   ·   R: girar o corte"
+	return "Corta a face mirada · ângulo %d°   ·   R: girar   ·   Ctrl: livre   ·   Botão direito: remover solda" \
+		% roundi(ConvexGeo.CUT_ANGLES[angle_index])

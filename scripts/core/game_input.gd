@@ -15,10 +15,10 @@ const KEYS := {
 	"rotate_cut": [KEY_R],        # R: muda o ângulo do corte
 	"align": [KEY_T],             # T: alinha a peça segurada à grade do mundo
 	"free_cut": [KEY_CTRL],       # Ctrl: corte livre (sem grade)
-	"delete_part": [KEY_DELETE, KEY_BACKSPACE],
 	"tool_1": [KEY_1],
 	"tool_2": [KEY_2],
 	"tool_3": [KEY_3],
+	"interact": [KEY_F],           # F: usar (loja, assentos...)
 	"help": [KEY_H],
 	"pause": [KEY_ESCAPE],
 	"toggle_fps": [KEY_F3],

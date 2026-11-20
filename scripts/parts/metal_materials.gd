@@ -6,6 +6,7 @@ const DATA := {
 	"aco": {
 		"nome": "Aço",
 		"densidade": 785.0,
+		"valor": 0.10,          # pontos por kg no reciclador
 		"cor": Color(0.55, 0.57, 0.61),
 		"metal": 0.85,
 		"rugosidade": 0.42,
@@ -14,6 +15,7 @@ const DATA := {
 	"aluminio": {
 		"nome": "Alumínio",
 		"densidade": 270.0,
+		"valor": 0.30,
 		"cor": Color(0.80, 0.82, 0.85),
 		"metal": 0.8,
 		"rugosidade": 0.3,
@@ -22,6 +24,7 @@ const DATA := {
 	"ferro": {
 		"nome": "Ferro velho",
 		"densidade": 720.0,
+		"valor": 0.06,
 		"cor": Color(0.50, 0.30, 0.18),
 		"metal": 0.35,
 		"rugosidade": 0.85,
@@ -35,6 +38,10 @@ static var _edge_material: StandardMaterial3D
 
 static func density(id: String) -> float:
 	return DATA[id]["densidade"]
+
+
+static func value_per_kg(id: String) -> float:
+	return DATA[id]["valor"]
 
 
 static func display_name(id: String) -> String:

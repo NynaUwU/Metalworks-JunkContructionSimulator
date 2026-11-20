@@ -9,12 +9,20 @@
 - Esmerilhadeira: corte reto e a 45° (R), grade de 5 cm, prévia; remove soldas
 - Peças soldadas viram um corpo rígido; cortar ou remover solda separa automaticamente
 
+## ✅ v0.2 — Reciclador e loja
+- Reciclador: peças jogadas no funil viram pontos (por peso e metal)
+- Loja (F no terminal): chapas, vigas, blocos, chapa triangular e cunha; entrega numa plataforma
+- Esmerilhadeira corta a face mirada; R gira a linha de corte (0°/45°/90°/135°)
+- Tecla Delete removida (só o reciclador some com peças)
+- Opções de gráficos (Baixo/Médio/Alto), FOV e sensibilidade; Direct3D 12 no Windows
+- Release automático pelo GitHub Actions
+
 ## Marco 2 — Mecânica
 - Motor (giro contínuo), servo (ângulo), pistão (linear), dobradiça livre
 - Rodas e pneus de vários tamanhos
 - Assento de controle: sentar (F) e ligar teclas aos componentes conectados por solda
 - Ferramenta "Chave": configurar velocidade, força, ângulo e teclas dos componentes
-- Componentes também espalhados pelo mapa
+- Componentes também espalhados pelo mapa e à venda na loja
 
 ## Marco 3 — Mais componentes
 - Guincho com cabo, mola/dobradiça de torção, propulsor/jato, eletroímã, engate rápido

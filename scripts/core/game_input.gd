@@ -22,6 +22,7 @@ const KEYS := {
 	"help": [KEY_H],
 	"pause": [KEY_ESCAPE],
 	"toggle_fps": [KEY_F3],
+	"fullscreen": [KEY_F11],
 }
 
 const MOUSE := {

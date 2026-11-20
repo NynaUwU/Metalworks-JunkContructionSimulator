@@ -20,7 +20,7 @@ Nome, mapa, visual e código são próprios.
 | Andar / pular | W A S D / Espaço |
 | Correr | toque duplo numa tecla de andar (ou Shift) |
 | Trocar ferramenta | 1 Mão · 2 Solda · 3 Esmerilhadeira |
-| Ajuda / menu / FPS | H / Esc / F3 |
+| Ajuda / menu / FPS / tela cheia | H / Esc / F3 / F11 |
 
 **Mão (estilo Physics Gun)**
 - Clique segurado: pega a peça, que **flutua** e segue a mira.

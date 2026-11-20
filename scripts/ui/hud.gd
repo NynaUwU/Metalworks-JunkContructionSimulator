@@ -34,6 +34,7 @@ Ctrl — corte livre (sem grade de 5 cm)
 Botão direito — remover solda
 
 H — mostrar/ocultar ajuda
+F11 — tela cheia · F3 — FPS
 Esc — menu"""
 
 var player: Player
@@ -273,6 +274,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		_help_tip.visible = not _help.visible
 	elif event.is_action_pressed("toggle_fps"):
 		_fps.visible = not _fps.visible
+	elif event.is_action_pressed("fullscreen"):
+		var full := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_MAXIMIZED if full else DisplayServer.WINDOW_MODE_FULLSCREEN)
 	elif event.is_action_pressed("pause"):
 		if _pause.visible:
 			_resume()

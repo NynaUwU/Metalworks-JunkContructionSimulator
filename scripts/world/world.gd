@@ -25,6 +25,8 @@ var recycler: Recycler
 var shop: ShopStation
 var environment: Environment
 var sun: DirectionalLight3D
+var _weld_dark := 0.0
+var _base_env := {}
 var _noise := FastNoiseLite.new()
 var _rng := RandomNumberGenerator.new()
 
@@ -56,10 +58,18 @@ func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 	# Modo de desenvolvimento: tour automático com screenshots (-- --tour=pasta).
-	for arg in OS.get_cmdline_user_args():
+	var args := OS.get_cmdline_user_args()
+	var quick := ""
+	for arg in args:
+		if arg.begins_with("--quick="):
+			quick = arg.trim_prefix("--quick=")
+	for arg in args:
 		if arg.begins_with("--tour="):
-			var tour: Node = load("res://tests/screenshot_tour.gd").new()
+			var script_path := "res://tests/shot_quick.gd" if quick != "" else "res://tests/screenshot_tour.gd"
+			var tour: Node = load(script_path).new()
 			tour.set("out_dir", arg.trim_prefix("--tour="))
+			if quick != "":
+				tour.set("scene", quick)
 			add_child(tour)
 
 
@@ -82,6 +92,33 @@ func _build_stations() -> void:
 	shop.name = "Shop"
 	add_child(shop)
 	shop.position = Vector3(10, 0, -25.5)
+
+
+## Ao soldar, o mundo afunda num fog preto forte (como no original):
+## só o que está perto do arco continua visível.
+func _process(delta: float) -> void:
+	if player == null or environment == null:
+		return
+	var target := 0.0
+	var tool := player.current()
+	if tool is WeldTool and (tool as WeldTool).is_arc_active():
+		target = 1.0
+	var prev := _weld_dark
+	_weld_dark = move_toward(_weld_dark, target, delta * (12.0 if target > 0.0 else 3.0))
+	if is_equal_approx(prev, _weld_dark):
+		return
+	if _base_env.is_empty():
+		_base_env = {
+			"fog_color": environment.fog_light_color, "fog_density": environment.fog_density,
+			"fog_sky": environment.fog_sky_affect, "ambient": environment.ambient_light_energy,
+			"sun": sun.light_energy,
+		}
+	var t := _weld_dark
+	environment.fog_light_color = (_base_env["fog_color"] as Color).lerp(Color.BLACK, t)
+	environment.fog_density = lerpf(_base_env["fog_density"], 0.32, t)
+	environment.fog_sky_affect = lerpf(_base_env["fog_sky"], 1.0, t)
+	environment.ambient_light_energy = lerpf(_base_env["ambient"], 0.08, t)
+	sun.light_energy = lerpf(_base_env["sun"], 0.02, t)
 
 
 func _apply_settings() -> void:

@@ -1,6 +1,6 @@
-JUNK CONTRUCTION SIMULATOR
+JUNK CONSTRUCTION SIMULATOR
 
-Como jogar: abra o JunkContructionSimulator.exe. Aperte H no jogo para ver os controles.
+Como jogar: abra o JunkConstructionSimulator.exe. Aperte H no jogo para ver os controles.
 
 Se a imagem ficar estranha (partes pretas, quadrados, piscando):
   1. Abra o menu (Esc) e mude "Gráficos" para Médio ou Baixo.
@@ -8,4 +8,4 @@ Se a imagem ficar estranha (partes pretas, quadrados, piscando):
   3. Ainda com problema? Use "Abrir em modo compatibilidade.bat".
   Atualizar o driver da placa de vídeo também costuma ajudar.
 
-As opções ficam salvas em %APPDATA%\Godot\app_userdata\Junk Contruction Simulator\settings.cfg
+As opções ficam salvas em %APPDATA%\Godot\app_userdata\Junk Construction Simulator\settings.cfg

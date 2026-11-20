@@ -25,6 +25,7 @@ var _taken_mat: StandardMaterial3D
 var _state := ""              ## "ok", "taken", "none" ou "" (sem peça)
 var _light: OmniLight3D
 var _sparks: CPUParticles3D
+var _core: MeshInstance3D
 
 
 func _init(p_player: Player) -> void:
@@ -49,26 +50,49 @@ func _ready() -> void:
 	add_child(_marker)
 
 	_light = OmniLight3D.new()
-	_light.light_color = Color(0.75, 0.88, 1.0)
-	_light.omni_range = 3.0
+	_light.light_color = Color(1.0, 0.92, 0.75)
+	_light.omni_range = 4.5
 	_light.light_energy = 0.0
 	_light.shadow_enabled = false
 	_light.top_level = true
 	add_child(_light)
 
+	# Faíscas estrela brancas espalhando em volta do ponto (como no original)
 	_sparks = CPUParticles3D.new()
 	_sparks.emitting = false
-	_sparks.amount = 70
-	_sparks.lifetime = 0.45
+	_sparks.amount = 40
+	_sparks.lifetime = 0.7
 	_sparks.direction = Vector3.UP
-	_sparks.spread = 75.0
-	_sparks.initial_velocity_min = 1.5
-	_sparks.initial_velocity_max = 4.5
-	_sparks.gravity = Vector3(0, -9.8, 0)
-	var spark := BoxMesh.new()
-	spark.size = Vector3(0.01, 0.01, 0.04)
+	_sparks.spread = 180.0
+	_sparks.initial_velocity_min = 0.6
+	_sparks.initial_velocity_max = 2.2
+	_sparks.gravity = Vector3(0, -2.5, 0)
+	_sparks.damping_min = 1.0
+	_sparks.damping_max = 2.0
+	_sparks.scale_amount_min = 0.5
+	_sparks.scale_amount_max = 1.3
+	var shrink := Curve.new()
+	shrink.add_point(Vector2(0, 1))
+	shrink.add_point(Vector2(1, 0))
+	_sparks.scale_amount_curve = shrink
+	var spark := QuadMesh.new()
+	spark.size = Vector2(0.09, 0.09)
 	_sparks.mesh = spark
-	_sparks.material_override = glow_material(Color(1.0, 0.75, 0.35), 5.0)
+	_sparks.material_override = star_material(Color(1.0, 0.97, 0.9))
+
+	# Núcleo amarelo do arco
+	_core = MeshInstance3D.new()
+	var core_mesh := SphereMesh.new()
+	core_mesh.radius = 0.028
+	core_mesh.height = 0.056
+	_core.mesh = core_mesh
+	var core_mat := glow_material(Color(1.0, 0.95, 0.25), 6.0)
+	core_mat.disable_fog = true
+	_core.material_override = core_mat
+	_core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_core.top_level = true
+	_core.visible = false
+	add_child(_core)
 	_sparks.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_sparks.top_level = true
 	_sparks.local_coords = false
@@ -169,11 +193,14 @@ func physics_update(delta: float) -> void:
 func _process(_delta: float) -> void:
 	_sparks.emitting = _arc and visible
 	_light.visible = _arc and visible
+	_core.visible = _arc and visible
 	if _arc and visible:
-		_sparks.global_position = _arc_point + _arc_normal * 0.01
+		_sparks.global_position = _arc_point + _arc_normal * 0.02
 		_sparks.direction = _arc_normal
-		_light.global_position = _arc_point + _arc_normal * 0.15
-		_light.light_energy = randf_range(3.0, 6.0)
+		_core.global_position = _arc_point + _arc_normal * 0.01
+		_core.scale = Vector3.ONE * randf_range(0.8, 1.25)
+		_light.global_position = _arc_point + _arc_normal * 0.25
+		_light.light_energy = randf_range(5.0, 8.0)
 		viewmodel.position = VIEW_POS + Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * 0.002
 	elif viewmodel:
 		viewmodel.position = VIEW_POS

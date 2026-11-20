@@ -42,20 +42,16 @@ H — mostrar/ocultar ajuda
 F11 — tela cheia · F3 — FPS
 Esc — menu"""
 
-## Máscara de solda: tela escura (quase preta nas bordas) e o ponto soldado iluminado.
+## Ao soldar: só escurece as bordas da tela (o escuro principal vem do fog preto do mundo).
 const WELD_MASK_SHADER := """
 shader_type canvas_item;
 uniform vec2 center = vec2(0.5, 0.5);
 uniform float aspect = 1.7778;
 uniform float strength = 0.0;
 void fragment() {
-	float r = length((UV - center) * vec2(aspect, 1.0));
 	float edge = length((UV - vec2(0.5)) * vec2(aspect, 1.0));
-	float a = mix(0.2, 0.88, smoothstep(0.05, 0.4, r));
-	a = mix(a, 0.985, smoothstep(0.45, 1.05, edge));
-	float core = 1.0 - smoothstep(0.0, 0.035, r);
-	vec3 col = mix(vec3(0.0, 0.035, 0.015), vec3(0.85, 0.95, 1.0), core);
-	COLOR = vec4(col, mix(a, 0.75, core) * strength);
+	float a = smoothstep(0.35, 1.0, edge) * 0.9;
+	COLOR = vec4(0.0, 0.0, 0.0, a * strength);
 }
 """
 
@@ -243,7 +239,7 @@ func _build_pause_menu() -> void:
 	panel.add_child(box)
 
 	var title := _label(30, Color(1.0, 0.62, 0.2))
-	title.text = "JUNK CONTRUCTION\nSIMULATOR"
+	title.text = "JUNK CONSTRUCTION\nSIMULATOR"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
 	var sub := _label(14, Color(1, 1, 1, 0.6))

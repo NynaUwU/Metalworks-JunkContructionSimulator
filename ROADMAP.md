@@ -21,7 +21,7 @@
 - Solda segurando o botão (vários pontos), alcance do tamanho da bolinha, máscara de solda
 - Esmerilhadeira: segurar para cortar, corte travado, tempo pelo tamanho, faíscas, remover solda com o mesmo botão
 - Loja com ícones, prévia 3D e medidas ajustáveis
-- Nome: Junk Contruction Simulator
+- Nome: Junk Construction Simulator
 
 ## Marco 2 — Mecânica
 - Motor (giro contínuo), servo (ângulo), pistão (linear), dobradiça livre

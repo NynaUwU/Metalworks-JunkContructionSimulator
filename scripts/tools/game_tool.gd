@@ -106,6 +106,42 @@ static func glow_material(color: Color, energy := 2.0) -> StandardMaterial3D:
 	return m
 
 
+static var _star: ImageTexture
+
+## Textura de faísca em forma de estrela (gerada em código, sem arquivo).
+static func star_texture() -> ImageTexture:
+	if _star:
+		return _star
+	var n := 64
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	for y in n:
+		for x in n:
+			var dx := (x - n * 0.5 + 0.5) / (n * 0.5)
+			var dy := (y - n * 0.5 + 0.5) / (n * 0.5)
+			var core := exp(-(dx * dx + dy * dy) * 18.0)
+			var arms := exp(-absf(dx) * 22.0) * exp(-absf(dy) * 3.0) + exp(-absf(dy) * 22.0) * exp(-absf(dx) * 3.0)
+			var diag := exp(-absf(dx - dy) * 16.0) * exp(-absf(dx + dy) * 5.0) + exp(-absf(dx + dy) * 16.0) * exp(-absf(dx - dy) * 5.0)
+			var a := clampf(core + arms * 0.75 + diag * 0.3, 0.0, 1.0)
+			img.set_pixel(x, y, Color(1, 1, 1, a))
+	_star = ImageTexture.create_from_image(img)
+	return _star
+
+
+## Material de faísca: brilho aditivo, sempre virado para a câmera e sem fog.
+static func star_material(color: Color) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m.albedo_texture = star_texture()
+	m.albedo_color = color
+	m.vertex_color_use_as_albedo = true
+	m.disable_fog = true
+	m.no_depth_test = false
+	return m
+
+
 ## Faíscas (efeito de solda/corte).
 func spawn_sparks(at: Vector3, normal: Vector3, amount := 40, color := Color(1.0, 0.62, 0.2)) -> void:
 	var p := CPUParticles3D.new()

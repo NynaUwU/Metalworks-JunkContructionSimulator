@@ -1,4 +1,4 @@
-# Junk Contruction Simulator
+# Junk Construction Simulator
 
 Jogo de construção física inspirado na ideia de *Metalworks Sandbox Demo* (Roblox, 2014):
 pegue sucata espalhada pelo mapa, **corte**, **solde** e monte estruturas e máquinas.
@@ -9,7 +9,7 @@ Nome, mapa, visual e código são próprios.
 
 ## Como jogar
 
-- **Só jogar:** abra `JunkContructionSimulator.exe` (não precisa instalar nada).
+- **Só jogar:** abra `JunkConstructionSimulator.exe` (não precisa instalar nada).
 - **Imagem estranha (partes pretas, quadrados)?** No menu (Esc), mude **Gráficos** para
   Médio ou Baixo. Se não resolver, use `Abrir com Vulkan.bat` ou
   `Abrir em modo compatibilidade.bat`, que vêm junto com o `.exe`.
@@ -88,5 +88,5 @@ godot --headless --path . res://tests/test_build.tscn
 **Gerar o .exe localmente:**
 
 ```bash
-godot --headless --path . --export-release "Windows Desktop" build/JunkContructionSimulator.exe
+godot --headless --path . --export-release "Windows Desktop" build/JunkConstructionSimulator.exe
 ```

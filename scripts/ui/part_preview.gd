@@ -49,8 +49,26 @@ func _ready() -> void:
 	_pivot.add_child(_mesh)
 
 
+var _node: Node3D
+
+
+## Mostra um modelo pronto (componentes), escalado para caber na imagem.
+func show_node(node: Node3D, aabb: AABB) -> void:
+	_mesh.mesh = null
+	if _node and is_instance_valid(_node):
+		_node.queue_free()
+	_node = node
+	_pivot.add_child(node)
+	var s := 1.9 / maxf(aabb.get_longest_axis_size(), 0.01)
+	node.scale = Vector3.ONE * s
+	node.position = -aabb.get_center() * s
+
+
 ## Mostra uma geometria (de ConvexGeo.solve) escalada para caber na imagem.
 func show_geometry(geo: Dictionary, material_id: String) -> void:
+	if _node and is_instance_valid(_node):
+		_node.queue_free()
+		_node = null
 	if geo.is_empty():
 		_mesh.mesh = null
 		return

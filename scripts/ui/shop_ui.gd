@@ -100,6 +100,8 @@ func _ready() -> void:
 	_name_label = _label("", 22, Color.WHITE)
 	dbox.add_child(_name_label)
 	_info_label = _label("", 14, Color(1, 1, 1, 0.75))
+	_info_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_info_label.custom_minimum_size = Vector2(300, 0)
 	dbox.add_child(_info_label)
 	_params_box = VBoxContainer.new()
 	_params_box.add_theme_constant_override("separation", 4)
@@ -134,10 +136,11 @@ func _make_card(item: Dictionary) -> Button:
 	b.add_theme_font_size_override("font_size", 13)
 	b.add_theme_constant_override("icon_max_width", 84)
 	if Catalog.is_locked(item):
-		b.text = "%s\nem breve (Marco 2)" % item["nome"]
+		b.text = "%s\nem breve" % item["nome"]
 		b.disabled = true
 	else:
-		var tag := "ajustável" if not Catalog.params(item).is_empty() else MetalMaterials.display_name(item["mat"])
+		var tag := "ajustável" if not Catalog.params(item).is_empty() else (
+			"componente" if Catalog.is_component(item) else MetalMaterials.display_name(item["mat"]))
 		b.text = "%s\n%s" % [item["nome"], tag]
 		b.pressed.connect(_select.bind(item))
 	_cards[item["id"]] = b
@@ -155,7 +158,7 @@ func _generate_icons() -> void:
 	for item: Dictionary in Catalog.ITEMS:
 		if Catalog.is_locked(item):
 			continue
-		shot.show_geometry(Catalog.geometry(item), item["mat"])
+		_show_in(shot, item, Catalog.default_size(item))
 		shot.render_target_update_mode = SubViewport.UPDATE_ONCE
 		await RenderingServer.frame_post_draw
 		await RenderingServer.frame_post_draw
@@ -200,10 +203,23 @@ func _select(item: Dictionary) -> void:
 func _update_detail() -> void:
 	if _selected.is_empty():
 		return
-	_preview.show_geometry(Catalog.geometry(_selected, _size), _selected["mat"])
-	_info_label.text = "%s · %s\n%d kg" % [
-		MetalMaterials.display_name(_selected["mat"]), Catalog.size_text(_size), roundi(Catalog.mass(_selected, _size))]
+	_show_in(_preview, _selected, _size)
+	if Catalog.is_component(_selected):
+		var info: String = Components.INFO[_selected["component"]]["desc"]
+		if _selected["component"] == "roda":
+			info = "Raio %s · largura %s\n%s" % [Catalog.meters(_size.x), Catalog.meters(_size.y), info]
+		_info_label.text = info
+	else:
+		_info_label.text = "%s · %s\n%d kg" % [
+			MetalMaterials.display_name(_selected["mat"]), Catalog.size_text(_size), roundi(Catalog.mass(_selected, _size))]
 	refresh()
+
+
+func _show_in(pv: PartPreview, item: Dictionary, size: Vector3) -> void:
+	if Catalog.is_component(item):
+		pv.show_node(Components.build_visual(item["component"], size), Catalog.spawn_bounds(item, size))
+	else:
+		pv.show_geometry(Catalog.geometry(item, size), item["mat"])
 
 
 func open(p_station: ShopStation) -> void:

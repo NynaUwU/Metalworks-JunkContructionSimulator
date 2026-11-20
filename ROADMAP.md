@@ -23,15 +23,17 @@
 - Loja com ícones, prévia 3D e medidas ajustáveis
 - Nome: Junk Construction Simulator
 
-## Marco 2 — Mecânica
-- Motor (giro contínuo), servo (ângulo), pistão (linear), dobradiça livre
-- Rodas e pneus de vários tamanhos
-- Assento de controle: sentar (F) e ligar teclas aos componentes conectados por solda
-- Ferramenta "Chave": configurar velocidade, força, ângulo e teclas dos componentes
-- Componentes também espalhados pelo mapa e à venda na loja
+## ✅ v0.4 — Marco 2: Mecânica
+- Motor, servo, pistão, dobradiça livre e rodas (raio e largura ajustáveis na loja)
+- Assento: sentar com F; controla tudo que está ligado à mesma máquina
+- Modo edição do assento (Tab): até 2 teclas/botões do mouse por sentido, alternar, inverter, velocidade, força, ângulo
+- Botão, alavanca e alavanca variável ligados por fio (ferramenta Fiação)
+- Depósito de componentes no galpão, componentes nas pilhas distantes e na loja
+- Carrinho de exemplo perto do início
 
 ## Marco 3 — Mais componentes
 - Guincho com cabo, mola/dobradiça de torção, propulsor/jato, eletroímã, engate rápido
+- Dobradiça com trava, servo contínuo
 
 ## Marco 4 — Elétrica
 - Bateria, fios (ferramenta de fiação), botão, alavanca, relé, luzes

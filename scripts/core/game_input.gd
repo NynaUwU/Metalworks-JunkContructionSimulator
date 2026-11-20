@@ -18,6 +18,8 @@ const KEYS := {
 	"tool_1": [KEY_1],
 	"tool_2": [KEY_2],
 	"tool_3": [KEY_3],
+	"tool_4": [KEY_4],
+	"seat_edit": [KEY_TAB],       # Tab: modo edição do assento
 	"interact": [KEY_F],           # F: usar (loja, assentos...)
 	"help": [KEY_H],
 	"pause": [KEY_ESCAPE],

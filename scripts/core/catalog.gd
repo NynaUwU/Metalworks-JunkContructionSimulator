@@ -38,9 +38,17 @@ const ITEMS := [
 		"params": [{"nome": "Comprimento", "axes": [0], "min": 0.5, "max": 3.0, "step": 0.25}]},
 	{"id": "cunha", "nome": "Cunha (rampa)", "cat": "Blocos", "mat": "aco", "box": Vector3(1, 1, 1), "cut": DIAG_YZ,
 		"params": [{"nome": "Tamanho", "axes": [0, 1, 2], "min": 0.5, "max": 2.0, "step": 0.25}]},
-	{"id": "motor", "nome": "Motor", "cat": "Componentes", "locked": true},
-	{"id": "roda", "nome": "Roda", "cat": "Componentes", "locked": true},
-	{"id": "assento", "nome": "Assento", "cat": "Componentes", "locked": true},
+	{"id": "motor", "nome": "Motor", "cat": "Componentes", "component": "motor"},
+	{"id": "servo", "nome": "Servo", "cat": "Componentes", "component": "servo"},
+	{"id": "pistao", "nome": "Pistão", "cat": "Componentes", "component": "pistao"},
+	{"id": "dobradica", "nome": "Dobradiça", "cat": "Componentes", "component": "dobradica"},
+	{"id": "roda", "nome": "Roda", "cat": "Componentes", "component": "roda", "box": Vector3(0.35, 0.2, 0),
+		"params": [{"nome": "Raio", "axes": [0], "min": 0.2, "max": 0.8, "step": 0.05},
+			{"nome": "Largura", "axes": [1], "min": 0.1, "max": 0.4, "step": 0.05}]},
+	{"id": "assento", "nome": "Assento", "cat": "Componentes", "component": "assento"},
+	{"id": "botao", "nome": "Botão", "cat": "Controles", "component": "botao"},
+	{"id": "alavanca", "nome": "Alavanca", "cat": "Controles", "component": "alavanca"},
+	{"id": "potenciometro", "nome": "Alavanca variável", "cat": "Controles", "component": "potenciometro"},
 ]
 
 static var _geo_cache := {}
@@ -63,6 +71,10 @@ static func categories() -> Array[String]:
 
 static func is_locked(item: Dictionary) -> bool:
 	return item.get("locked", false)
+
+
+static func is_component(item: Dictionary) -> bool:
+	return item.has("component")
 
 
 static func params(item: Dictionary) -> Array:
@@ -97,6 +109,13 @@ static func clamp_size(item: Dictionary, size: Vector3) -> Vector3:
 	return out
 
 
+## Caixa (coordenadas locais) que o item ocupa ao aparecer.
+static func spawn_bounds(item: Dictionary, size := Vector3.ZERO) -> AABB:
+	if is_component(item):
+		return Components.bounds(item["component"], clamp_size(item, size))
+	return geometry(item, size)["aabb"]
+
+
 static func planes(item: Dictionary, size := Vector3.ZERO) -> Array[Plane]:
 	var p := ConvexGeo.box_planes(clamp_size(item, size))
 	if item.has("cut"):
@@ -113,7 +132,7 @@ static func geometry(item: Dictionary, size := Vector3.ZERO) -> Dictionary:
 
 
 static func mass(item: Dictionary, size := Vector3.ZERO) -> float:
-	if is_locked(item):
+	if is_locked(item) or is_component(item):
 		return 0.0
 	return geometry(item, size)["volume"] * MetalMaterials.density(item["mat"])
 
@@ -121,6 +140,8 @@ static func mass(item: Dictionary, size := Vector3.ZERO) -> float:
 static func price(item: Dictionary, size := Vector3.ZERO) -> int:
 	if is_locked(item):
 		return 0
+	if is_component(item):
+		return Components.price(item["component"], clamp_size(item, size))
 	return maxi(1, ceili(Economy.recycle_value(item["mat"], mass(item, size)) * PRICE_FACTOR))
 
 

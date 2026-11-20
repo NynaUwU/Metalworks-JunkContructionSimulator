@@ -2,7 +2,7 @@ extends Node3D
 ## Testes automáticos da lógica de construção (rodar sem tela):
 ##   godot --headless --path . res://tests/test_build.tscn
 
-const EXPECTED_CHECKS := 92
+const EXPECTED_CHECKS := 93
 
 var _fails := 0
 var _checks := 0
@@ -190,7 +190,7 @@ func _run_economy() -> void:
 
 	var exploit := true
 	for item: Dictionary in Catalog.ITEMS:
-		if Catalog.is_locked(item):
+		if Catalog.is_locked(item) or Catalog.is_component(item):
 			continue
 		var g := Catalog.geometry(item)
 		if g.is_empty() or Catalog.mass(item) <= 0.0:
@@ -256,14 +256,18 @@ func _run_economy() -> void:
 	check(bought.global_position.distance_to(shop.global_transform * ShopStation.PAD_OFFSET) < 2.0, "item aparece na plataforma de entrega")
 	var second := shop.buy("chapa", big)
 	check(second != null and second.global_position.y > bought.global_position.y + 0.3, "segunda compra aparece acima da primeira")
-	check(shop.buy("motor") == null, "itens do Marco 2 ainda bloqueados")
+	Economy.reset(100)
+	var motor := shop.buy("motor")
+	check(motor != null and motor.mech != null and Economy.points() == 100 - Components.price("motor"), "compra de motor (componente com junta)")
+	var wheel := shop.buy("roda", Vector3(0.6, 0.3, 0))
+	check(wheel != null and near((wheel.shape as CylinderShape3D).radius, 0.6), "roda comprada com raio 0,6 m")
 	Economy.reset(500)
 	var long_beam := shop.buy("viga", Vector3(0, 0, 5.0))
 	check(long_beam != null and near(long_beam.bounds.size.z, 5.0), "compra de viga com 5 m")
 
 
 func _aim(player: Player, feet: Vector3, target: Vector3) -> void:
-	player.global_position = feet
+	player.teleport(feet)
 	player.velocity = Vector3.ZERO
 	var eye := feet + Vector3(0, Player.EYE_HEIGHT, 0)
 	var d := (target - eye).normalized()

@@ -6,8 +6,12 @@ extends CollisionShape3D
 ## entre si ficam na MESMA Assembly e por isso se movem como um único corpo rígido.
 
 var material_id := "aco"
-var kind := "metal"          ## no futuro: "motor", "roda", "assento", ...
+var kind := "metal"          ## "metal", "motor", "servo", "pistao", "dobradica", "roda", "assento", "botao"...
+var label := ""              ## nome mostrado no HUD (componentes); vazio = nome do material
 var cuttable := true
+var mech: MechJoint = null   ## junta mecânica da qual esta peça faz parte (componentes)
+var device: ControlDevice = null   ## botão / alavanca / potenciômetro
+var interact_kind := ""      ## "assento", "botao"... (tecla F)
 var planes: Array[Plane] = []
 var volume := 0.0
 var mass := 1.0
@@ -49,15 +53,54 @@ func apply_geometry(geo: Dictionary, p_material: String) -> void:
 	mesh_instance.mesh = mesh
 
 
+## Peça cilíndrica (rodas, discos). Eixo do cilindro = Y local. Não pode ser cortada.
+func setup_cylinder(radius: float, height: float, p_material: String) -> void:
+	material_id = p_material
+	cuttable = false
+	planes = []
+	volume = PI * radius * radius * height
+	local_centroid = Vector3.ZERO
+	bounds = AABB(Vector3(-radius, -height * 0.5, -radius), Vector3(radius * 2.0, height, radius * 2.0))
+	mass = maxf(volume * MetalMaterials.density(material_id), 0.05)
+	var s := CylinderShape3D.new()
+	s.radius = radius
+	s.height = height
+	shape = s
+	if mesh_instance == null:
+		mesh_instance = MeshInstance3D.new()
+		mesh_instance.name = "Mesh"
+		add_child(mesh_instance)
+	var cm := CylinderMesh.new()
+	cm.top_radius = radius
+	cm.bottom_radius = radius
+	cm.height = height
+	cm.radial_segments = 28
+	cm.rings = 1
+	mesh_instance.mesh = cm
+	mesh_instance.material_override = MetalMaterials.get_material(material_id)
+
+
+## Malha extra só visual, presa à peça (detalhes de componentes).
+func add_visual(mesh: Mesh, xform: Transform3D, material: Material) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.transform = xform
+	mi.material_override = material
+	add_child(mi)
+	return mi
+
+
 func assembly() -> Assembly:
 	return get_parent() as Assembly
 
 
 func display_name() -> String:
-	return MetalMaterials.display_name(material_id)
+	return label if label != "" else MetalMaterials.display_name(material_id)
 
 
 ## Texto curto para o HUD, ex.: "Aço · 2.00 × 0.10 × 2.00 m · 314 kg".
 func describe() -> String:
+	if label != "":
+		return "%s · %d kg" % [label, roundi(mass)]
 	var s := bounds.size
 	return "%s · %.2f × %.2f × %.2f m · %d kg" % [display_name(), s.x, s.y, s.z, roundi(mass)]

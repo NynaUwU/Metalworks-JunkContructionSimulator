@@ -22,6 +22,7 @@ const SCRAP := [
 var player: Player
 var hud: Hud
 var recycler: Recycler
+var demo_seat: Part
 var shop: ShopStation
 var environment: Environment
 var sun: DirectionalLight3D
@@ -92,6 +93,11 @@ func _build_stations() -> void:
 	shop.name = "Shop"
 	add_child(shop)
 	shop.position = Vector3(10, 0, -25.5)
+	_spawn_component_depot()
+	demo_seat = DemoBuilds.build_car(Vector3(-7, 0, 3))
+	var wires := WireRenderer.new()
+	wires.name = "Wires"
+	add_child(wires)
 
 
 ## Ao soldar, o mundo afunda num fog preto forte (como no original):
@@ -369,15 +375,43 @@ func _build_props() -> void:
 func _spawn_scrap() -> void:
 	var piles: Array[Vector3] = [
 		Vector3(0, 0, -16), Vector3(-18, 0, 6), Vector3(18, 0, 6),
-		Vector3(30, 0, 25), Vector3(-30, 0, 25), Vector3(0, 0, 25),
+		Vector3(30, 0, 25), Vector3(0, 0, 25),
 	]
 	# Pilhas mais distantes, nos morros.
 	for i in 8:
 		var ang := TAU * i / 8.0 + 0.3
 		var r := 95.0 + _rng.randf_range(-10.0, 30.0)
 		piles.append(Vector3(cos(ang) * r, 0, sin(ang) * r))
-	for p in piles:
-		_spawn_pile(p)
+	for i in piles.size():
+		_spawn_pile(piles[i])
+		# Algumas pilhas distantes também têm componentes.
+		if i >= 5 and i % 2 == 1:
+			var c := piles[i] + Vector3(5.5, 0, 0)
+			c.y = terrain_height(c.x, c.z)
+			_spawn_component("motor", c + Vector3(0, 0, -0.8))
+			_spawn_component("roda", c + Vector3(0, 0, 0.6))
+			_spawn_component("roda", c + Vector3(1.0, 0, 0.6))
+
+
+## Coloca um componente apoiado no chão em `ground_pos`.
+func _spawn_component(kind: String, ground_pos: Vector3, size := Vector3.ZERO) -> void:
+	var b := Components.bounds(kind, size)
+	Components.spawn(kind, Transform3D(Basis(), ground_pos + Vector3(0, -b.position.y + 0.04, 0)), size)
+
+
+## Depósito de componentes debaixo do galpão.
+func _spawn_component_depot() -> void:
+	var o := Vector3(-30, 0.02, 25)
+	StationBuilder.label_sign(self, "COMPONENTES", o + Vector3(0, 5.2, -5.2))
+	var rows := [
+		["motor", "motor", "motor", "motor", "servo", "servo"],
+		["roda", "roda", "roda", "roda", "roda", "roda"],
+		["pistao", "pistao", "dobradica", "dobradica", "assento", "assento"],
+		["botao", "botao", "alavanca", "alavanca", "potenciometro", "potenciometro"],
+	]
+	for r in rows.size():
+		for c in rows[r].size():
+			_spawn_component(rows[r][c], o + Vector3(-4.5 + c * 1.8, 0, -3.0 + r * 2.0))
 
 
 func _spawn_pile(center: Vector3) -> void:

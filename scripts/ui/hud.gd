@@ -13,6 +13,7 @@ Espaço — pular
 1 — Mão (pegar peças)
 2 — Solda
 3 — Esmerilhadeira (cortar / remover solda)
+4 — Fiação (ligar controles a componentes)
 
 [b]Mão[/b]
 Clique segurado — pegar; a peça flutua
@@ -33,6 +34,13 @@ Segure o clique — corta a face mirada
 R — girar o corte (0° / 45° / 90° / 135°)
 Ctrl — corte livre (sem grade de 5 cm)
 Segure o clique numa bolinha — remove a solda
+
+[b]Máquinas[/b]
+F no assento — sentar · F de novo — levantar
+Tab sentado — modo edição: teclas de cada componente
+F (ou clique sentado) — usar botão / alavanca
+Roda do mouse — ajustar alavanca variável
+Fiação: clique no controle e depois no componente
 
 [b]Reciclador e loja[/b]
 Jogue peças no RECICLADOR = pontos
@@ -68,6 +76,8 @@ var _fps: Label
 var _help_tip: Label
 var _points: Label
 var shop: ShopUI
+var seat_ui: SeatUI
+var _bar: HBoxContainer
 var _cross: Crosshair
 var _mask: ColorRect
 var _mask_mat: ShaderMaterial
@@ -141,6 +151,7 @@ func _build_ui() -> void:
 	bottom.add_child(_hint)
 
 	var bar := HBoxContainer.new()
+	_bar = bar
 	bar.alignment = BoxContainer.ALIGNMENT_CENTER
 	bar.add_theme_constant_override("separation", 8)
 	bottom.add_child(bar)
@@ -205,6 +216,12 @@ func _build_ui() -> void:
 
 	shop = ShopUI.new()
 	add_child(shop)
+	seat_ui = SeatUI.new()
+	add_child(seat_ui)
+	player.edit_requested.connect(func() -> void: seat_ui.open(Build.network(player.seat)))
+	player.seat_changed.connect(func(seated: bool) -> void:
+		if not seated:
+			seat_ui.close())
 
 	_build_pause_menu()
 
@@ -334,16 +351,20 @@ func _on_tool_changed(index: int) -> void:
 func _process(delta: float) -> void:
 	if player == null:
 		return
-	_hint.text = player.current().hint_text()
+	_bar.visible = not player.is_seated()
+	if player.is_seated():
+		_hint.text = "Sentado   ·   Tab: modo edição (teclas)   ·   F: levantar   ·   Clique: usar botões e alavancas"
+	else:
+		_hint.text = player.current().hint_text()
 	var prog := player.current().progress()
 	if prog != _cross.progress:
 		_cross.progress = prog
 		_cross.queue_redraw()
 	_update_weld_mask(delta)
 	var part := player.aim_part()
-	var usable := player.interact_target()
-	if usable:
-		_aim_info.text = "F: %s" % usable.get_meta("interact_label", "usar")
+	var usable := player.interact_hint()
+	if usable != "":
+		_aim_info.text = usable
 	elif part:
 		var extra := ""
 		if part.assembly().get_parts().size() > 1:
@@ -376,6 +397,8 @@ func _update_weld_mask(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if seat_ui.visible:
+		return
 	if shop.visible:
 		if event.is_action_pressed("pause") or event.is_action_pressed("interact"):
 			shop.close()

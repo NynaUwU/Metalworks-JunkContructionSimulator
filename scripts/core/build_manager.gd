@@ -20,6 +20,11 @@ const MIN_PIECE_THICKNESS := 0.02
 
 var world_root: Node3D
 var welds: Array[Weld] = []
+var joints: Array[MechJoint] = []
+var devices: Array[ControlDevice] = []
+## Assento em que o jogador está sentado (as teclas controlam a rede dele).
+var active_seat: Part = null
+var seat_keys_enabled := true
 
 var _ball_mesh: SphereMesh
 var _ball_material: StandardMaterial3D
@@ -41,6 +46,10 @@ func _ready() -> void:
 func reset(root: Node3D) -> void:
 	world_root = root
 	welds.clear()
+	joints.clear()
+	devices.clear()
+	active_seat = null
+	seat_keys_enabled = true
 
 
 # ---------------------------------------------------------------------------
@@ -56,6 +65,14 @@ func spawn_planes(planes: Array[Plane], material_id: String, xform: Transform3D)
 	if not part.setup_from_planes(planes, material_id):
 		part.free()
 		return null
+	var asm := _new_assembly(xform)
+	asm.add_child(part)
+	asm.recompute()
+	return part
+
+
+## Coloca uma peça já montada (ex.: cilindro) numa montagem nova.
+func spawn_part(part: Part, xform: Transform3D) -> Part:
 	var asm := _new_assembly(xform)
 	asm.add_child(part)
 	asm.recompute()
@@ -125,7 +142,15 @@ func weld_at(part: Part, point: Vector3) -> Weld:
 	var target := find_weld_target(part, point)
 	if not target["ok"]:
 		return null
-	var other: Part = target["part"]
+	return _create_weld(part, target["part"], point)
+
+
+## Solda direta entre duas peças (sem procurar vizinhos): usada para montar componentes.
+func make_weld(part: Part, other: Part, point: Vector3) -> Weld:
+	return _create_weld(part, other, point)
+
+
+func _create_weld(part: Part, other: Part, point: Vector3) -> Weld:
 	var w := Weld.new()
 	w.part_a = part
 	w.part_b = other
@@ -240,6 +265,12 @@ func cut_part(part: Part, cut_local: Plane) -> Array:
 # ---------------------------------------------------------------------------
 
 func delete_part(part: Part) -> void:
+	if part.mech:
+		_remove_joint(part.mech)
+	if part.device:
+		_remove_device(part.device)
+	if part == active_seat:
+		active_seat = null
 	for w: Weld in part.welds.duplicate():
 		welds.erase(w)
 		w.part_a.welds.erase(w)
@@ -279,6 +310,7 @@ func _merge(a: Assembly, b: Assembly) -> Assembly:
 	if not anchored:
 		a.linear_velocity = v
 		a.angular_velocity = w
+	_refresh_joints()
 	return a
 
 
@@ -288,6 +320,7 @@ func refresh_assembly(asm: Assembly) -> void:
 	var parts := asm.get_parts()
 	if parts.is_empty():
 		asm.queue_free()
+		_refresh_joints()
 		return
 
 	var groups := _connected_groups(parts)
@@ -313,6 +346,7 @@ func refresh_assembly(asm: Assembly) -> void:
 	if asm.hold_part and asm.hold_part.get_parent() != asm:
 		asm.clear_hold()
 	asm.set_anchored(_group_anchored(groups[0]))
+	_refresh_joints()
 
 
 func _connected_groups(parts: Array[Part]) -> Array:
@@ -343,3 +377,90 @@ func _group_anchored(group: Array) -> bool:
 			if w.is_ground():
 				return true
 	return false
+
+
+# ---------------------------------------------------------------------------
+# Mecânica: juntas, controles e fios
+# ---------------------------------------------------------------------------
+
+func add_joint(j: MechJoint) -> void:
+	joints.append(j)
+	j.part_a.mech = j
+	j.part_b.mech = j
+	j.rebuild(world_root)
+
+
+func add_device(d: ControlDevice) -> void:
+	devices.append(d)
+	d.part.device = d
+
+
+func _remove_joint(j: MechJoint) -> void:
+	j.destroy()
+	joints.erase(j)
+	for p in [j.part_a, j.part_b]:
+		if is_instance_valid(p) and (p as Part).mech == j:
+			(p as Part).mech = null
+
+
+func _remove_device(d: ControlDevice) -> void:
+	devices.erase(d)
+	for j in joints:
+		j.sources.erase(d)
+
+
+## Liga (ou desliga, se já estava ligado) um controle a um componente. Retorna true se ligou.
+func toggle_link(d: ControlDevice, j: MechJoint) -> bool:
+	if j.sources.has(d):
+		j.sources.erase(d)
+		return false
+	j.sources.append(d)
+	return true
+
+
+## Recria as juntas cujas peças mudaram de montagem (solda, corte, separação).
+func _refresh_joints() -> void:
+	for j in joints.duplicate():
+		if not j.is_valid():
+			_remove_joint(j)
+		elif j.needs_rebuild():
+			j.rebuild(world_root)
+
+
+## Componentes ligados ao assento: todas as montagens alcançáveis a partir dele
+## passando por juntas (solda junta peças numa montagem; juntas ligam montagens).
+func network(seat: Part) -> Array[MechJoint]:
+	var out: Array[MechJoint] = []
+	if seat == null or not is_instance_valid(seat) or seat.assembly() == null:
+		return out
+	var visited := {seat.assembly(): true}
+	var queue: Array = [seat.assembly()]
+	while not queue.is_empty():
+		var asm: Assembly = queue.pop_back()
+		for j in joints:
+			if not j.is_valid():
+				continue
+			var a := j.part_a.assembly()
+			var b := j.part_b.assembly()
+			if a != asm and b != asm:
+				continue
+			if not out.has(j):
+				out.append(j)
+			for o: Assembly in [a, b]:
+				if not visited.has(o):
+					visited[o] = true
+					queue.append(o)
+	return out
+
+
+func _physics_process(delta: float) -> void:
+	if joints.is_empty():
+		return
+	if active_seat != null and not is_instance_valid(active_seat):
+		active_seat = null
+	var net := network(active_seat) if active_seat else ([] as Array[MechJoint])
+	for j in joints:
+		if not j.is_valid():
+			continue
+		j.read_keys(seat_keys_enabled and net.has(j))
+		j.update(delta)

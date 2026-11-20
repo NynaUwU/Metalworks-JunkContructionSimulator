@@ -20,13 +20,13 @@ func _ready() -> void:
 	await _shot("01_patio")
 
 	# 2) Vista aérea
-	player.global_position = Vector3(40, 26, 40)
+	player.teleport(Vector3(40, 26, 40))
 	_look_from_eye(Vector3(0, 0, 0))
 	await _frames(20)
 	await _shot("02_aerea")
 
 	# 3) Segurando uma chapa (ela flutua)
-	player.global_position = Vector3(0, 0.05, 2)
+	player.teleport(Vector3(0, 0.05, 2))
 	var plate := Build.spawn_box(Vector3(2, 0.1, 2), "aco", Transform3D(Basis(Vector3.UP, 0.3), Vector3(0.3, 0.06, -1.0)))
 	await _frames(10)
 	_look_from_eye(plate.global_position)
@@ -72,7 +72,7 @@ func _ready() -> void:
 	Build.weld_at(beam, Vector3(8.75, 1.06, -5.7))
 	Build.weld_at(beam, Vector3(8.75, 1.06, -6.3))
 	await _frames(30)
-	player.global_position = Vector3(9.4, 0.05, -3.6)
+	player.teleport(Vector3(9.4, 0.05, -3.6))
 	_look_from_eye(Vector3(8.1, 1.2, -6.1))
 	player.select_tool(1)
 	await _frames(10)
@@ -93,19 +93,19 @@ func _ready() -> void:
 	grinder.angle_index = 0
 	var block := _nearest_part(Vector3(-18, 0, 6), Vector3(0.5, 0.5, 0.5))
 	if block:
-		player.global_position = block.global_position + Vector3(1.6, -block.global_position.y + 0.05, 1.6)
+		player.teleport(block.global_position + Vector3(1.6, -block.global_position.y + 0.05, 1.6))
 		_look_from_eye(block.global_position + Vector3(0, 0.05, 0))
 		await _frames(10)
 		await _shot("07_corte_reto")
 
 	# 8) Os morros e uma pilha distante
-	player.global_position = Vector3(0, 0.05, 60)
+	player.teleport(Vector3(0, 0.05, 60))
 	_look_from_eye(Vector3(0, 8, 140))
 	await _frames(20)
 	await _shot("08_morros")
 
 	# 10) Centro de reciclagem: peça caindo no reciclador
-	player.global_position = Vector3(13.5, 0.05, -21.0)
+	player.teleport(Vector3(13.5, 0.05, -21.0))
 	_look_from_eye(Vector3(15.5, 0.8, -28.0))
 	player.select_tool(0)
 	await _frames(10)
@@ -133,7 +133,7 @@ func _ready() -> void:
 	world.shop.buy("cunha")
 	world.shop.buy("viga", Vector3(0, 0, 5))
 	world.hud.shop.close()
-	player.global_position = Vector3(12.5, 0.05, -26.0)
+	player.teleport(Vector3(12.5, 0.05, -26.0))
 	_look_from_eye(Vector3(10, 0.4, -29.7))
 	await _frames(60)
 	await _shot("12_entrega")
@@ -165,7 +165,7 @@ func _nearest_part(near: Vector3, size: Vector3) -> Part:
 
 
 func _look(feet: Vector3, target: Vector3) -> void:
-	player.global_position = feet
+	player.teleport(feet)
 	_look_from_eye(target)
 
 

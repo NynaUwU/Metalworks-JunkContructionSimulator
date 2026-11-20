@@ -57,7 +57,9 @@ jobs:
 
       - name: Testes
         if: steps.ver.outputs.exists == 'false'
-        run: timeout 300 "$RUNNER_TEMP/godot" --headless --path . res://tests/test_build.tscn
+        run: |
+          timeout 300 "$RUNNER_TEMP/godot" --headless --path . res://tests/test_build.tscn
+          timeout 300 "$RUNNER_TEMP/godot" --headless --path . res://tests/test_mech.tscn
 
       - name: Exportar para Windows
         if: steps.ver.outputs.exists == 'false'

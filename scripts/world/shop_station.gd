@@ -45,7 +45,12 @@ func buy(item_id: String, size := Vector3.ZERO) -> Part:
 		Build.message.emit("Pontos insuficientes (precisa de %d)" % cost)
 		return null
 	var xf := _free_spawn_transform(item, size)
-	var part := Build.spawn_planes(Catalog.planes(item, size), item["mat"], xf)
+	var part: Part
+	if Catalog.is_component(item):
+		var parts := Components.spawn(item["component"], xf, size)
+		part = parts[0] if not parts.is_empty() else null
+	else:
+		part = Build.spawn_planes(Catalog.planes(item, size), item["mat"], xf)
 	if part == null:
 		return null
 	_recent.append([part, Time.get_ticks_msec()])
@@ -65,10 +70,9 @@ func _hits_recent(box: AABB) -> bool:
 
 ## Procura uma altura livre acima da plataforma para o item aparecer.
 func _free_spawn_transform(item: Dictionary, size: Vector3) -> Transform3D:
-	var geo := Catalog.geometry(item, size)
-	var shape := ConvexPolygonShape3D.new()
-	shape.points = geo["verts"]
-	var aabb: AABB = geo["aabb"]
+	var aabb := Catalog.spawn_bounds(item, size)
+	var shape := BoxShape3D.new()
+	shape.size = aabb.size
 	var base := global_transform * PAD_OFFSET
 	var params := PhysicsShapeQueryParameters3D.new()
 	params.shape = shape
@@ -79,7 +83,7 @@ func _free_spawn_transform(item: Dictionary, size: Vector3) -> Transform3D:
 	var y := 0.1 - aabb.position.y
 	for i in 12:
 		var xf := Transform3D(global_transform.basis, base + Vector3(0, y, 0))
-		params.transform = xf
+		params.transform = xf * Transform3D(Basis(), aabb.get_center())
 		if space.intersect_shape(params, 1).is_empty() and not _hits_recent(xf * aabb):
 			return xf
 		y += 0.6

@@ -12,6 +12,7 @@ const HOLD_MAX_SPEED := 30.0
 const HOLD_MAX_SPIN := 18.0
 
 static var _physics_material: PhysicsMaterial
+static var _rubber_material: PhysicsMaterial
 
 var anchored := false             ## soldada ao chão: fica parada (congelada)
 var hold_part: Part = null
@@ -52,6 +53,19 @@ func recompute() -> void:
 		return
 	mass = total
 	center_of_mass = com / total
+	var has_wheel := false
+	for p in get_parts():
+		if p.kind == "roda":
+			has_wheel = true
+			break
+	if has_wheel:
+		if _rubber_material == null:
+			_rubber_material = PhysicsMaterial.new()
+			_rubber_material.friction = 1.4
+			_rubber_material.bounce = 0.0
+		physics_material_override = _rubber_material
+	else:
+		physics_material_override = _physics_material
 
 
 func set_anchored(value: bool) -> void:

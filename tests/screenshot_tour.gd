@@ -90,6 +90,13 @@ func _ready() -> void:
 	await _frames(20)
 	await _shot("08_morros")
 
+	# 9) Menu de pausa com as opções de gráficos
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	world.hud._open_pause()
+	await _frames(5)
+	await _shot("09_menu")
+	get_tree().paused = false
+
 	get_tree().quit()
 
 

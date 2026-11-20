@@ -18,7 +18,6 @@ signal toast_requested(text: String)
 
 var yaw := 0.0
 var pitch := 0.0
-var mouse_sensitivity := 0.0025
 var running := false
 var spawn_point := Vector3(0, 1.5, 6)
 
@@ -125,8 +124,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
-		yaw -= motion.relative.x * mouse_sensitivity
-		pitch = clampf(pitch - motion.relative.y * mouse_sensitivity, deg_to_rad(-89), deg_to_rad(89))
+		var sens := Settings.mouse_sensitivity
+		yaw -= motion.relative.x * sens
+		pitch = clampf(pitch - motion.relative.y * sens, deg_to_rad(-89), deg_to_rad(89))
 		return
 	for i in tools.size():
 		if event.is_action_pressed("tool_%d" % (i + 1)):

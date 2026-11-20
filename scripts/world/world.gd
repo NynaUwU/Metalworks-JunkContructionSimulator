@@ -21,6 +21,8 @@ const SCRAP := [
 
 var player: Player
 var hud: Hud
+var environment: Environment
+var sun: DirectionalLight3D
 var _noise := FastNoiseLite.new()
 var _rng := RandomNumberGenerator.new()
 
@@ -44,6 +46,8 @@ func _ready() -> void:
 	hud = Hud.new()
 	add_child(hud)
 	hud.setup(player)
+	Settings.changed.connect(_apply_settings)
+	_apply_settings()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 	# Modo de desenvolvimento: tour automático com screenshots (-- --tour=pasta).
@@ -57,6 +61,11 @@ func _ready() -> void:
 # ---------------------------------------------------------------------------
 # Ambiente
 # ---------------------------------------------------------------------------
+
+func _apply_settings() -> void:
+	Settings.apply_graphics(environment, sun, get_viewport())
+	player.camera.fov = Settings.fov
+
 
 func _build_environment() -> void:
 	var sky_mat := ProceduralSkyMaterial.new()
@@ -90,8 +99,9 @@ func _build_environment() -> void:
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
+	environment = env
 
-	var sun := DirectionalLight3D.new()
+	sun = DirectionalLight3D.new()
 	sun.name = "Sun"
 	sun.rotation_degrees = Vector3(-52, -35, 0)
 	sun.light_energy = 1.15
@@ -204,7 +214,7 @@ float vnoise(vec2 p) {
 	return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y);
 }
 float grid_line(vec2 p, float width) {
-	vec2 g = abs(fract(p - 0.5) - 0.5) / fwidth(p);
+	vec2 g = abs(fract(p - 0.5) - 0.5) / max(fwidth(p), vec2(1e-4));
 	return 1.0 - clamp(min(g.x, g.y) - width, 0.0, 1.0);
 }
 void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }

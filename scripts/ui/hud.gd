@@ -203,18 +203,43 @@ func _build_pause_menu() -> void:
 	box.add_child(_button("Continuar", _resume))
 	box.add_child(_button("Recomeçar o mundo", _reset_world))
 
-	var sens_label := _label(14, Color(1, 1, 1, 0.8))
-	sens_label.text = "Sensibilidade do mouse"
-	box.add_child(sens_label)
+	box.add_child(_small_label("Gráficos"))
+	var gfx := OptionButton.new()
+	for n in Settings.GRAPHICS_NAMES:
+		gfx.add_item(n)
+	gfx.selected = Settings.graphics
+	gfx.custom_minimum_size = Vector2(0, 36)
+	gfx.item_selected.connect(func(i: int) -> void: Settings.set_graphics(i))
+	box.add_child(gfx)
+
+	var fov_label := _small_label("Campo de visão: %d°" % roundi(Settings.fov))
+	box.add_child(fov_label)
+	var fov_slider := HSlider.new()
+	fov_slider.min_value = 60
+	fov_slider.max_value = 100
+	fov_slider.step = 1
+	fov_slider.value = Settings.fov
+	fov_slider.value_changed.connect(func(v: float) -> void:
+		fov_label.text = "Campo de visão: %d°" % roundi(v)
+		Settings.set_fov(v))
+	box.add_child(fov_slider)
+
+	box.add_child(_small_label("Sensibilidade do mouse"))
 	var slider := HSlider.new()
 	slider.min_value = 0.0005
 	slider.max_value = 0.006
 	slider.step = 0.0001
-	slider.value = player.mouse_sensitivity
-	slider.value_changed.connect(func(v: float) -> void: player.mouse_sensitivity = v)
+	slider.value = Settings.mouse_sensitivity
+	slider.value_changed.connect(func(v: float) -> void: Settings.set_mouse_sensitivity(v))
 	box.add_child(slider)
 
 	box.add_child(_button("Sair", func() -> void: get_tree().quit()))
+
+
+func _small_label(text: String) -> Label:
+	var l := _label(14, Color(1, 1, 1, 0.8))
+	l.text = text
+	return l
 
 
 func _button(text: String, cb: Callable) -> Button:

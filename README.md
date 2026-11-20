@@ -10,6 +10,9 @@ Nome, mapa, visual e código são próprios.
 ## Como jogar
 
 - **Só jogar:** abra `Sucata.exe` (não precisa instalar nada).
+- **Imagem estranha (partes pretas, quadrados)?** No menu (Esc), mude **Gráficos** para
+  Médio ou Baixo. Se não resolver, use `Sucata (Vulkan).bat` ou
+  `Sucata (modo compatibilidade).bat`, que vêm junto com o `.exe`.
 - **Abrir o projeto:** instale o Godot 4.7.2 (versão padrão, não a .NET). Abra o
   `project.godot` e aperte **F5**.
 

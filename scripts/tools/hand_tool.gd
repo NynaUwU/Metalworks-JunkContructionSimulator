@@ -113,7 +113,7 @@ func _grab() -> void:
 		return
 	var asm := part.assembly()
 	if asm.anchored:
-		player.toast("Está soldada no chão — use a esmerilhadeira (botão direito) na solda do chão")
+		player.toast("Está soldada no chão: segure a esmerilhadeira na bolinha da solda do chão")
 		return
 	if hold_part and is_instance_valid(hold_part) and hold_part.assembly() != asm:
 		release()

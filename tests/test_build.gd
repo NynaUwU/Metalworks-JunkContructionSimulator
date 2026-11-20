@@ -2,7 +2,7 @@ extends Node3D
 ## Testes automáticos da lógica de construção (rodar sem tela):
 ##   godot --headless --path . res://tests/test_build.tscn
 
-const EXPECTED_CHECKS := 69
+const EXPECTED_CHECKS := 92
 
 var _fails := 0
 var _checks := 0
@@ -89,13 +89,35 @@ func _run() -> void:
 
 	await _frames(3)
 	var ok := Build.weld_at(a, Vector3(0.5, 0.05, 0))
-	check(ok, "solda na emenda funcionou")
+	check(ok != null, "solda na emenda funcionou")
 	check(a.assembly() == b.assembly(), "soldadas = mesma montagem")
 	check(near(a.assembly().mass, 157.0, 0.2), "massa somada")
 	check(near((a.assembly().world_center_of_mass() - Vector3(0.5, 0.05, 0)).length(), 0.0, 0.01), "centro de massa no meio")
 
 	var far := Build.weld_at(a, Vector3(-0.5, 3.0, 0.3))
-	check(far == false, "solda sem nada por perto é recusada")
+	check(far == null, "solda sem nada por perto é recusada")
+	check(Build.weld_at(a, Vector3(0.5, 0.05, 0.04)) == null, "onde já tem bolinha não nasce outra")
+	check(Build.weld_at(a, Vector3(0.5, 0.05, 0.2)) != null, "ponto livre na mesma emenda vira nova solda")
+
+	# A solda só alcança o que está dentro da bolinha.
+	var low := Build.spawn_box(Vector3(1, 0.1, 1), "aco", Transform3D(Basis(), Vector3(20, 0.05, 5)))
+	var top := Build.spawn_box(Vector3(1, 0.1, 1), "aco", Transform3D(Basis(), Vector3(20, 0.15, 5)))
+	var gap_a := Build.spawn_box(Vector3(1, 0.1, 1), "aco", Transform3D(Basis(), Vector3(24, 0.3, 5)))
+	var gap_b := Build.spawn_box(Vector3(1, 0.1, 1), "aco", Transform3D(Basis(), Vector3(25.08, 0.3, 5)))
+	gap_a.assembly().freeze = true
+	gap_b.assembly().freeze = true
+	await _frames(3)
+	check(Build.weld_at(top, Vector3(20, 0.2, 5)) == null, "não solda através de uma chapa")
+	check(Build.weld_at(gap_a, Vector3(24.5, 0.3, 5)) == null, "vão de 8 cm é grande demais para soldar")
+	var near_a := Build.spawn_box(Vector3(1, 0.1, 1), "aco", Transform3D(Basis(), Vector3(24, 0.3, 8)))
+	var near_b := Build.spawn_box(Vector3(1, 0.1, 1), "aco", Transform3D(Basis(), Vector3(25.03, 0.3, 8)))
+	near_a.assembly().freeze = true
+	near_b.assembly().freeze = true
+	await _frames(3)
+	check(Build.weld_at(near_a, Vector3(24.5, 0.3, 8)) != null, "vão de 3 cm (dentro da bolinha) solda")
+	check(low.assembly() != top.assembly(), "chapa de baixo continua separada")
+	var plate_time := GrinderTool.cut_time(Build.spawn_box(Vector3(2, 0.1, 2), "aco", Transform3D(Basis(), Vector3(0, 5, 30))), Plane(Vector3.RIGHT, 0.0))
+	check(near(plate_time, 1.2, 0.01), "cortar uma chapa 2x2 ao meio leva 1,2 s (deu %.2f)" % plate_time)
 
 	print("== Corte com soldas")
 	var c := Build.spawn_box(Vector3(1, 0.1, 1), "aco", Transform3D(Basis(), Vector3(2.0, 0.05, 0)))
@@ -111,16 +133,19 @@ func _run() -> void:
 	check(pieces[1].assembly() == c.assembly(), "pedaço direito continua soldado em C")
 
 	print("== Remover solda")
-	var w := Build.nearest_weld(Vector3(0.5, 0.05, 0), 0.3)
+	var w := Build.nearest_weld(Vector3(0.5, 0.05, 0), 0.05)
 	check(w != null, "achou a solda pela posição")
 	Build.remove_weld(w)
+	await _frames(1)
+	check(a.assembly() == pieces[0].assembly(), "com uma das duas soldas ainda inteira, continuam juntas")
+	Build.remove_weld(Build.nearest_weld(Vector3(0.5, 0.05, 0.2), 0.05))
 	await _frames(1)
 	check(a.assembly() != pieces[0].assembly(), "sem solda, peças se separam")
 
 	print("== Ancorar no chão")
 	var d := Build.spawn_box(Vector3(0.5, 0.5, 0.5), "ferro", Transform3D(Basis(), Vector3(-5, 0.25, 0)))
 	await _frames(3)
-	check(Build.weld_at(d, Vector3(-5, 0.0, 0.25)), "solda no chão")
+	check(Build.weld_at(d, Vector3(-5, 0.0, 0.25)) != null, "solda no chão")
 	check(d.assembly().anchored and d.assembly().freeze, "montagem ancorada fica congelada")
 	Build.remove_weld(Build.nearest_weld(Vector3(-5, 0.0, 0.25), 0.3))
 	check(not d.assembly().anchored and not d.assembly().freeze, "sem a solda do chão, volta a ter física")
@@ -152,6 +177,7 @@ func _run() -> void:
 	check(gp[0].global_position.y > -0.1 and gp[1].global_position.y > -0.1, "pedaços não atravessam o chão")
 
 	await _run_economy()
+	await _run_tools()
 
 
 func _run_economy() -> void:
@@ -174,6 +200,17 @@ func _run_economy() -> void:
 			exploit = false
 	check(exploit, "todo item custa mais do que o reciclador paga por ele")
 	check(near(Catalog.mass(Catalog.get_item("chapa_tri")), 157.0, 0.5), "chapa triangular tem metade do peso da 2x2")
+	var viga := Catalog.get_item("viga")
+	var len_param: Dictionary = Catalog.params(viga)[0]
+	var v4 := Catalog.with_param(Catalog.default_size(viga), len_param, 4.0)
+	check(near(v4.z, 4.0) and Catalog.price(viga, v4) > Catalog.price(viga), "viga de 4 m custa mais que a de 2 m")
+	check(near(Catalog.with_param(v4, len_param, 50.0).z, 6.0), "comprimento limitado a 6 m")
+	check(near(Catalog.with_param(v4, len_param, 0.1).z, 0.5), "comprimento mínimo de 0,5 m")
+	check(near(Catalog.with_param(v4, len_param, 2.6).z, 2.5), "comprimento anda em passos de 25 cm")
+	check(near(Catalog.clamp_size(viga, Vector3(9, 9, 9)).x, 0.2), "a loja não deixa mudar a seção da viga")
+	var tri := Catalog.get_item("chapa_tri")
+	var tri3 := Catalog.with_param(Catalog.default_size(tri), Catalog.params(tri)[0], 3.0)
+	check(near(tri3.x, 3.0) and near(tri3.z, 3.0), "chapa triangular cresce nos dois lados")
 
 	var rec := Recycler.new()
 	add_child(rec)
@@ -210,15 +247,80 @@ func _run_economy() -> void:
 	shop.position = Vector3(-30, 0, 0)
 	await _frames(2)
 	Economy.reset(5)
-	check(shop.buy("chapa_2x2") == null and Economy.points() == 5, "sem pontos suficientes não compra")
+	var big := Vector3(2, 0.1, 2)
+	check(shop.buy("chapa", big) == null and Economy.points() == 5, "sem pontos suficientes não compra")
 	Economy.reset(200)
-	var price := Catalog.price(Catalog.get_item("chapa_2x2"))
-	var bought := shop.buy("chapa_2x2")
+	var price := Catalog.price(Catalog.get_item("chapa"), big)
+	var bought := shop.buy("chapa", big)
 	check(bought != null and Economy.points() == 200 - price, "compra desconta %d pontos" % price)
 	check(bought.global_position.distance_to(shop.global_transform * ShopStation.PAD_OFFSET) < 2.0, "item aparece na plataforma de entrega")
-	var second := shop.buy("chapa_2x2")
+	var second := shop.buy("chapa", big)
 	check(second != null and second.global_position.y > bought.global_position.y + 0.3, "segunda compra aparece acima da primeira")
 	check(shop.buy("motor") == null, "itens do Marco 2 ainda bloqueados")
+	Economy.reset(500)
+	var long_beam := shop.buy("viga", Vector3(0, 0, 5.0))
+	check(long_beam != null and near(long_beam.bounds.size.z, 5.0), "compra de viga com 5 m")
+
+
+func _aim(player: Player, feet: Vector3, target: Vector3) -> void:
+	player.global_position = feet
+	player.velocity = Vector3.ZERO
+	var eye := feet + Vector3(0, Player.EYE_HEIGHT, 0)
+	var d := (target - eye).normalized()
+	player.yaw = atan2(-d.x, -d.z)
+	player.pitch = asin(clampf(d.y, -1.0, 1.0))
+
+
+func _run_tools() -> void:
+	print("== Ferramentas segurando o botão")
+	var player := Player.new()
+	add_child(player)
+	await _frames(2)
+
+	# Esmerilhadeira: corte demora, trava no lugar e soltar cancela.
+	var plate := Build.spawn_box(Vector3(2, 0.1, 2), "aco", Transform3D(Basis(), Vector3(40, 0.05, 0)))
+	var plate_ref: WeakRef = weakref(plate)
+	player.select_tool(2)
+	var grinder: GrinderTool = player.tools[2]
+	grinder.angle_index = 0
+	_aim(player, Vector3(40, 0, 2.6), Vector3(40, 0.1, 0.3))
+	await _frames(3)
+	grinder.begin_use()
+	check(grinder.mode == GrinderTool.Mode.CUTTING, "clicar começa o corte")
+	await _frames(30)
+	check(plate_ref.get_ref() != null, "meio segundo ainda não cortou")
+	grinder.cancel()
+	await _frames(70)
+	check(plate_ref.get_ref() != null, "soltar o botão cancela o corte")
+	grinder.begin_use()
+	await _frames(90)
+	check(plate_ref.get_ref() == null, "segurando até o fim, a chapa é cortada")
+
+	# Solda: segurar cria pontos; no mesmo lugar não nasce outro.
+	var w1 := Build.spawn_box(Vector3(1, 0.1, 1), "aco", Transform3D(Basis(), Vector3(44, 0.05, -5)))
+	var w2 := Build.spawn_box(Vector3(1, 0.1, 1), "aco", Transform3D(Basis(), Vector3(45, 0.05, -5)))
+	await _frames(5)
+	player.select_tool(1)
+	var welder: WeldTool = player.tools[1]
+	_aim(player, Vector3(44.48, 0, -3.2), Vector3(44.48, 0.1, -5))
+	await _frames(3)
+	var before := Build.welds.size()
+	welder.begin_use()
+	await _frames(30)
+	check(welder.is_arc_active(), "tocha acesa enquanto segura")
+	check(Build.welds.size() == before + 1 and w1.assembly() == w2.assembly(), "segurar na emenda criou 1 ponto de solda")
+	await _frames(30)
+	check(Build.welds.size() == before + 1, "parado no mesmo lugar não cria outra bolinha")
+	welder.handle_input(_release_event())
+	check(not welder.is_arc_active(), "soltar apaga a tocha")
+	player.queue_free()
+
+
+func _release_event() -> InputEventAction:
+	var ev := InputEventAction.new()
+	ev.action = "primary"
+	ev.pressed = false
+	return ev
 
 
 func _frames(n: int) -> void:

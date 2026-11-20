@@ -63,22 +63,22 @@ jobs:
         if: steps.ver.outputs.exists == 'false'
         run: |
           mkdir -p build
-          timeout 600 "$RUNNER_TEMP/godot" --headless --path . --export-release "Windows Desktop" build/Sucata.exe
-          test -s build/Sucata.exe
+          timeout 600 "$RUNNER_TEMP/godot" --headless --path . --export-release "Windows Desktop" build/JunkContructionSimulator.exe
+          test -s build/JunkContructionSimulator.exe
 
       - name: Empacotar
         if: steps.ver.outputs.exists == 'false'
         run: |
           tag="${{ steps.ver.outputs.tag }}"
-          mkdir -p pkg/Sucata
-          cp build/Sucata.exe dist/* pkg/Sucata/
-          (cd pkg && zip -q -r -9 "../Sucata-${tag}-windows.zip" Sucata)
+          mkdir -p pkg/JunkContructionSimulator
+          cp build/JunkContructionSimulator.exe dist/* pkg/JunkContructionSimulator/
+          (cd pkg && zip -q -r -9 "../JunkContructionSimulator-${tag}-windows.zip" JunkContructionSimulator)
 
       - name: Publicar release
         if: steps.ver.outputs.exists == 'false'
         run: |
           tag="${{ steps.ver.outputs.tag }}"
           notes="release-notes/${tag}.md"
-          args=(--title "Sucata ${tag}" --target "$GITHUB_SHA")
+          args=(--title "Junk Contruction Simulator ${tag}" --target "$GITHUB_SHA")
           if [ -f "$notes" ]; then args+=(--notes-file "$notes"); else args+=(--generate-notes); fi
-          gh release create "$tag" "Sucata-${tag}-windows.zip" "${args[@]}"
+          gh release create "$tag" "JunkContructionSimulator-${tag}-windows.zip" "${args[@]}"

@@ -2,6 +2,8 @@ class_name GameTool
 extends Node3D
 ## Base das ferramentas. Cada ferramenta é filha da câmera (para o modelo em 1ª pessoa).
 
+const VIEW_POS := Vector3(0.24, -0.2, -0.42)   ## posição do modelo na tela
+
 var player: Player
 var tool_name := "Ferramenta"
 var key_hint := ""
@@ -15,7 +17,7 @@ func _init(p_player: Player) -> void:
 
 func _ready() -> void:
 	viewmodel = Node3D.new()
-	viewmodel.position = Vector3(0.24, -0.2, -0.42)
+	viewmodel.position = VIEW_POS
 	viewmodel.scale = Vector3.ONE * 0.55
 	viewmodel.rotation_degrees = Vector3(0, 4, 0)
 	add_child(viewmodel)
@@ -54,6 +56,11 @@ func blocks_movement() -> bool:
 
 func hint_text() -> String:
 	return ""
+
+
+## Progresso de uma ação demorada (0..1) para a mira mostrar; -1 = nenhuma.
+func progress() -> float:
+	return -1.0
 
 
 # --- utilidades para montar modelos -------------------------------------------

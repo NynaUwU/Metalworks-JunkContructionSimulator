@@ -23,14 +23,16 @@ T — alinhar à grade do mundo
 Roda do mouse — distância
 
 [b]Solda[/b]
-Clique na emenda entre duas peças
+Segure o clique bem na emenda entre duas peças
 (ou entre a peça e o chão = ancorar)
+Arraste segurando para fazer vários pontos
 
 [b]Esmerilhadeira[/b]
-Clique — corta a face mirada (prévia laranja)
+Segure o clique — corta a face mirada
+(o corte trava no lugar; soltar cancela)
 R — girar o corte (0° / 45° / 90° / 135°)
 Ctrl — corte livre (sem grade de 5 cm)
-Botão direito — remover solda
+Segure o clique numa bolinha — remove a solda
 
 [b]Reciclador e loja[/b]
 Jogue peças no RECICLADOR = pontos
@@ -39,6 +41,23 @@ F no terminal da LOJA — comprar peças
 H — mostrar/ocultar ajuda
 F11 — tela cheia · F3 — FPS
 Esc — menu"""
+
+## Máscara de solda: tela escura (quase preta nas bordas) e o ponto soldado iluminado.
+const WELD_MASK_SHADER := """
+shader_type canvas_item;
+uniform vec2 center = vec2(0.5, 0.5);
+uniform float aspect = 1.7778;
+uniform float strength = 0.0;
+void fragment() {
+	float r = length((UV - center) * vec2(aspect, 1.0));
+	float edge = length((UV - vec2(0.5)) * vec2(aspect, 1.0));
+	float a = mix(0.2, 0.88, smoothstep(0.05, 0.4, r));
+	a = mix(a, 0.985, smoothstep(0.45, 1.05, edge));
+	float core = 1.0 - smoothstep(0.0, 0.035, r);
+	vec3 col = mix(vec3(0.0, 0.035, 0.015), vec3(0.85, 0.95, 1.0), core);
+	COLOR = vec4(col, mix(a, 0.75, core) * strength);
+}
+"""
 
 var player: Player
 
@@ -53,6 +72,10 @@ var _fps: Label
 var _help_tip: Label
 var _points: Label
 var shop: ShopUI
+var _cross: Crosshair
+var _mask: ColorRect
+var _mask_mat: ShaderMaterial
+var _mask_strength := 0.0
 var _style_on: StyleBoxFlat
 var _style_off: StyleBoxFlat
 
@@ -73,11 +96,22 @@ func _build_ui() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
 
+	# Máscara de solda (escurece a tela enquanto a tocha está acesa)
+	_mask_mat = ShaderMaterial.new()
+	_mask_mat.shader = Shader.new()
+	_mask_mat.shader.code = WELD_MASK_SHADER
+	_mask = ColorRect.new()
+	_mask.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_mask.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_mask.material = _mask_mat
+	_mask.visible = false
+	root.add_child(_mask)
+
 	# Mira
-	var cross := Crosshair.new()
-	cross.set_anchors_preset(Control.PRESET_CENTER)
-	cross.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(cross)
+	_cross = Crosshair.new()
+	_cross.set_anchors_preset(Control.PRESET_CENTER)
+	_cross.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(_cross)
 
 	_aim_info = _label(15, Color(1, 1, 1, 0.85))
 	_aim_info.set_anchors_preset(Control.PRESET_CENTER)
@@ -208,12 +242,12 @@ func _build_pause_menu() -> void:
 	box.custom_minimum_size = Vector2(320, 0)
 	panel.add_child(box)
 
-	var title := _label(40, Color(1.0, 0.62, 0.2))
-	title.text = "SUCATA"
+	var title := _label(30, Color(1.0, 0.62, 0.2))
+	title.text = "JUNK CONTRUCTION\nSIMULATOR"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
 	var sub := _label(14, Color(1, 1, 1, 0.6))
-	sub.text = "sandbox de engenharia · v%s" % ProjectSettings.get_setting("application/config/version")
+	sub.text = "sucata, solda e engenharia · v%s" % ProjectSettings.get_setting("application/config/version")
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(sub)
 
@@ -305,6 +339,11 @@ func _process(delta: float) -> void:
 	if player == null:
 		return
 	_hint.text = player.current().hint_text()
+	var prog := player.current().progress()
+	if prog != _cross.progress:
+		_cross.progress = prog
+		_cross.queue_redraw()
+	_update_weld_mask(delta)
 	var part := player.aim_part()
 	var usable := player.interact_target()
 	if usable:
@@ -323,6 +362,21 @@ func _process(delta: float) -> void:
 		_toast.modulate.a = clampf(_toast_time / 0.5, 0.0, 1.0)
 	if _fps.visible:
 		_fps.text = "%d FPS" % Engine.get_frames_per_second()
+
+
+func _update_weld_mask(delta: float) -> void:
+	var target := 0.0
+	var tool := player.current()
+	if tool is WeldTool and (tool as WeldTool).is_arc_active():
+		var p := (tool as WeldTool).arc_point()
+		if not player.camera.is_position_behind(p):
+			var vp := get_viewport().get_visible_rect().size
+			_mask_mat.set_shader_parameter("center", player.camera.unproject_position(p) / vp)
+			_mask_mat.set_shader_parameter("aspect", vp.x / maxf(vp.y, 1.0))
+			target = 1.0
+	_mask_strength = move_toward(_mask_strength, target, delta * (9.0 if target > 0.0 else 4.0))
+	_mask.visible = _mask_strength > 0.001
+	_mask_mat.set_shader_parameter("strength", _mask_strength)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -367,9 +421,14 @@ func _reset_world() -> void:
 	get_tree().reload_current_scene()
 
 
-## Mira simples desenhada em código.
+## Mira simples desenhada em código (com anel de progresso para ações demoradas).
 class Crosshair extends Control:
+	var progress := -1.0
+
 	func _draw() -> void:
+		if progress >= 0.0:
+			draw_arc(Vector2.ZERO, 20.0, 0.0, TAU, 48, Color(0, 0, 0, 0.45), 5.0)
+			draw_arc(Vector2.ZERO, 20.0, -PI * 0.5, -PI * 0.5 + TAU * progress, 48, Color(1.0, 0.7, 0.2), 3.0)
 		var c := Color(1, 1, 1, 0.9)
 		var o := Color(0, 0, 0, 0.6)
 		draw_circle(Vector2.ZERO, 3.2, o)

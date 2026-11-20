@@ -10,8 +10,11 @@ signal message(text: String)
 signal part_replaced(old_part: Part, pieces: Array, cut_plane_local: Plane)
 signal part_removed(part: Part)
 
-const WELD_SEARCH_RADII: Array[float] = [0.04, 0.09, 0.15]
-const WELD_BALL_RADIUS := 0.055
+const WELD_BALL_RADIUS := 0.05
+## A solda só alcança o que está dentro da bolinha (não atravessa chapas).
+const WELD_REACH := 0.045
+## Distância mínima entre bolinhas: um ponto novo só nasce onde não há outra bolinha.
+const WELD_MIN_SPACING := 0.09
 const MIN_PIECE_VOLUME := 0.0004
 const MIN_PIECE_THICKNESS := 0.02
 
@@ -84,51 +87,54 @@ func is_ground(collider: Object) -> bool:
 # Solda
 # ---------------------------------------------------------------------------
 
-## Procura algo para soldar perto de `point`. Retorna {"ok", "part", "ground"}.
+## Procura algo para soldar perto de `point` (dentro da bolinha de solda).
+## Retorna {"ok", "part", "ground"}. Peças têm preferência sobre o chão.
 func find_weld_target(part: Part, point: Vector3) -> Dictionary:
 	var space := part.get_world_3d().direct_space_state
 	var sphere := SphereShape3D.new()
+	sphere.radius = WELD_REACH
 	var params := PhysicsShapeQueryParameters3D.new()
 	params.shape = sphere
 	params.collision_mask = Layers.AIM
 	params.transform = Transform3D(Basis(), point)
-	for r in WELD_SEARCH_RADII:
-		sphere.radius = r
-		var found_ground := false
-		var results := space.intersect_shape(params, 32)
-		for res: Dictionary in results:
-			var other := part_from_collision(res["collider"], res["shape"])
-			if other != null and other != part:
-				return {"ok": true, "part": other, "ground": false}
-			if other == null and is_ground(res["collider"]):
-				found_ground = true
-		if found_ground:
-			return {"ok": true, "part": null, "ground": true}
+	var found_ground := false
+	for res: Dictionary in space.intersect_shape(params, 32):
+		var other := part_from_collision(res["collider"], res["shape"])
+		if other != null and other != part:
+			return {"ok": true, "part": other, "ground": false}
+		if other == null and is_ground(res["collider"]):
+			found_ground = true
+	if found_ground:
+		return {"ok": true, "part": null, "ground": true}
 	return {"ok": false}
 
 
-## Tenta soldar `part` no ponto `point` (na superfície dela). Retorna true se soldou.
-func weld_at(part: Part, point: Vector3) -> bool:
+## Já existe uma bolinha de solda neste ponto?
+func weld_spot_taken(point: Vector3) -> bool:
+	for w in welds:
+		if w.world_pos().distance_to(point) < WELD_MIN_SPACING:
+			return true
+	return false
+
+
+## Tenta soldar `part` no ponto `point` (na superfície dela).
+## Retorna a solda criada, ou null se não havia nada para soldar ou o ponto já tem solda.
+func weld_at(part: Part, point: Vector3) -> Weld:
+	if weld_spot_taken(point):
+		return null
 	var target := find_weld_target(part, point)
 	if not target["ok"]:
-		message.emit("Nada perto para soldar — encoste outra peça")
-		return false
+		return null
 	var other: Part = target["part"]
-	for w in welds:
-		if w.world_pos().distance_to(point) < 0.07:
-			var same_pair := (w.part_a == part and w.part_b == other) or (w.part_a == other and w.part_b == part)
-			if same_pair:
-				message.emit("Já existe uma solda aqui")
-				return false
 	var w := Weld.new()
 	w.part_a = part
 	w.part_b = other
 	w.local_pos = part.global_transform.affine_inverse() * point
 	w.ball = MeshInstance3D.new()
 	w.ball.mesh = _ball_mesh
-	w.ball.material_override = _ball_material
 	part.add_child(w.ball)
 	w.ball.position = w.local_pos
+	_heat_ball(w.ball)
 	welds.append(w)
 	part.welds.append(w)
 	if other:
@@ -137,11 +143,21 @@ func weld_at(part: Part, point: Vector3) -> bool:
 	var asm := part.assembly()
 	if other == null:
 		asm.set_anchored(true)
-		message.emit("Soldado no chão (ancorado)")
 	else:
-		var merged := _merge(asm, other.assembly())
-		message.emit("Soldado" if merged.get_parts().size() <= 2 else "Soldado (%d peças)" % merged.get_parts().size())
-	return true
+		_merge(asm, other.assembly())
+	return w
+
+
+## A bolinha nasce incandescente e esfria.
+func _heat_ball(ball: MeshInstance3D) -> void:
+	var hot := _ball_material.duplicate() as StandardMaterial3D
+	hot.emission_enabled = true
+	hot.emission = Color(1.0, 0.45, 0.12)
+	hot.emission_energy_multiplier = 4.0
+	ball.material_override = hot
+	var tw := ball.create_tween()
+	tw.tween_property(hot, "emission_energy_multiplier", 0.0, 1.8).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(func() -> void: ball.material_override = _ball_material)
 
 
 func remove_weld(w: Weld) -> void:

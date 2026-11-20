@@ -17,6 +17,12 @@
 - Opções de gráficos (Baixo/Médio/Alto), FOV e sensibilidade; Direct3D 12 no Windows
 - Release automático pelo GitHub Actions
 
+## ✅ v0.3 — Ferramentas e loja melhores
+- Solda segurando o botão (vários pontos), alcance do tamanho da bolinha, máscara de solda
+- Esmerilhadeira: segurar para cortar, corte travado, tempo pelo tamanho, faíscas, remover solda com o mesmo botão
+- Loja com ícones, prévia 3D e medidas ajustáveis
+- Nome: Junk Contruction Simulator
+
 ## Marco 2 — Mecânica
 - Motor (giro contínuo), servo (ângulo), pistão (linear), dobradiça livre
 - Rodas e pneus de vários tamanhos

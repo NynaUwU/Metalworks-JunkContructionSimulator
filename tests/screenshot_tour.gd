@@ -48,13 +48,17 @@ func _ready() -> void:
 	await _frames(10)
 	await _shot("04_preview_corte_45")
 
-	# 5) Corta a chapa em diagonal
-	var ev := InputEventAction.new()
-	ev.action = "primary"
-	ev.pressed = true
-	grinder.handle_input(ev)
+	# 5) Corta a chapa em diagonal (segurando: faíscas e anel de progresso)
+	grinder.begin_use()
+	for i in 35:
+		await get_tree().physics_frame
+	await _shot("05_cortando")
+	for i in 300:
+		if grinder.mode == GrinderTool.Mode.IDLE:
+			break
+		await get_tree().physics_frame
 	await _frames(6)
-	await _shot("05_cortada")
+	await _shot("05b_cortada")
 	await _frames(90)
 
 	# 6) Monta um "L" soldado na bancada e mostra as bolinhas de solda
@@ -73,6 +77,16 @@ func _ready() -> void:
 	player.select_tool(1)
 	await _frames(10)
 	await _shot("06_solda")
+	var welder: WeldTool = player.tools[1]
+	_look_from_eye(Vector3(8.3, 1.11, -6.39))
+	await _frames(3)
+	welder.begin_use()
+	await _frames(25)
+	await _shot("06b_mascara_solda")
+	var rel := InputEventAction.new()
+	rel.action = "primary"
+	rel.pressed = false
+	welder.handle_input(rel)
 
 	# 7) Esmerilhadeira mirando um bloco com corte reto
 	player.select_tool(2)
@@ -107,10 +121,17 @@ func _ready() -> void:
 	# 11) Loja aberta
 	Economy.reset(240)
 	world.hud.open_shop(world.shop)
-	await _frames(5)
+	var ui: ShopUI = world.hud.shop
+	ui._select(Catalog.get_item("viga"))
+	await _frames(2)
+	for row in ui._params_box.get_children():
+		for c in row.get_children():
+			if c is HSlider:
+				(c as HSlider).value = 5.0
+	await _frames(10)
 	await _shot("11_loja")
 	world.shop.buy("cunha")
-	world.shop.buy("chapa_tri")
+	world.shop.buy("viga", Vector3(0, 0, 5))
 	world.hud.shop.close()
 	player.global_position = Vector3(12.5, 0.05, -26.0)
 	_look_from_eye(Vector3(10, 0.4, -29.7))

@@ -1,12 +1,30 @@
 class_name WeldTool
 extends GameTool
-## Máquina de solda: cria um ponto de solda onde duas peças estão encostadas/próximas.
-## Mire na emenda entre duas peças (ou entre a peça e o chão) e clique.
+## Máquina de solda.
+##
+## - Segure o clique na emenda entre duas peças (ou entre a peça e o chão).
+## - A solda só alcança o que está dentro da bolinha: mire bem na emenda.
+## - Segurando e arrastando, novos pontos nascem onde ainda não há bolinha.
+## - Enquanto solda, a tela escurece como numa máscara de solda (ver Hud).
+
+const FIRST_DELAY := 0.18     ## tempo segurando até o primeiro ponto
+const INTERVAL := 0.08        ## intervalo mínimo entre pontos
+
+var active := false           ## botão segurado
+var _held := 0.0
+var _since_last := 0.0
+var _count := 0
+var _arc := false
+var _arc_point := Vector3.ZERO
+var _arc_normal := Vector3.UP
 
 var _marker: MeshInstance3D
 var _ok_mat: StandardMaterial3D
 var _bad_mat: StandardMaterial3D
-var _can_weld := false
+var _taken_mat: StandardMaterial3D
+var _state := ""              ## "ok", "taken", "none" ou "" (sem peça)
+var _light: OmniLight3D
+var _sparks: CPUParticles3D
 
 
 func _init(p_player: Player) -> void:
@@ -19,21 +37,50 @@ func _ready() -> void:
 	super()
 	_marker = MeshInstance3D.new()
 	var sm := SphereMesh.new()
-	sm.radius = 0.06
-	sm.height = 0.12
+	sm.radius = Build.WELD_BALL_RADIUS
+	sm.height = Build.WELD_BALL_RADIUS * 2.0
 	_marker.mesh = sm
-	_ok_mat = glow_material(Color(0.3, 1.0, 0.45), 1.5)
-	_ok_mat.no_depth_test = true
-	_ok_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	_ok_mat.albedo_color.a = 0.75
-	_bad_mat = glow_material(Color(1.0, 0.3, 0.25), 1.0)
-	_bad_mat.no_depth_test = true
-	_bad_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	_bad_mat.albedo_color.a = 0.5
+	_ok_mat = _marker_mat(Color(0.3, 1.0, 0.45), 0.75)
+	_bad_mat = _marker_mat(Color(1.0, 0.3, 0.25), 0.5)
+	_taken_mat = _marker_mat(Color(1.0, 0.8, 0.2), 0.5)
 	_marker.top_level = true
 	_marker.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_marker.visible = false
 	add_child(_marker)
+
+	_light = OmniLight3D.new()
+	_light.light_color = Color(0.75, 0.88, 1.0)
+	_light.omni_range = 3.0
+	_light.light_energy = 0.0
+	_light.shadow_enabled = false
+	_light.top_level = true
+	add_child(_light)
+
+	_sparks = CPUParticles3D.new()
+	_sparks.emitting = false
+	_sparks.amount = 70
+	_sparks.lifetime = 0.45
+	_sparks.direction = Vector3.UP
+	_sparks.spread = 75.0
+	_sparks.initial_velocity_min = 1.5
+	_sparks.initial_velocity_max = 4.5
+	_sparks.gravity = Vector3(0, -9.8, 0)
+	var spark := BoxMesh.new()
+	spark.size = Vector3(0.01, 0.01, 0.04)
+	_sparks.mesh = spark
+	_sparks.material_override = glow_material(Color(1.0, 0.75, 0.35), 5.0)
+	_sparks.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_sparks.top_level = true
+	_sparks.local_coords = false
+	add_child(_sparks)
+
+
+func _marker_mat(color: Color, alpha: float) -> StandardMaterial3D:
+	var m := glow_material(color, 1.2)
+	m.no_depth_test = true
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.albedo_color.a = alpha
+	return m
 
 
 func _build_viewmodel() -> void:
@@ -51,38 +98,93 @@ func _build_viewmodel() -> void:
 
 
 func unequip() -> void:
+	_stop()
 	_marker.visible = false
 	super()
 
 
-func physics_update(_delta: float) -> void:
-	var part := player.aim_part()
-	if part == null:
-		_marker.visible = false
-		_can_weld = false
-		return
-	var point: Vector3 = player.aim["position"]
-	_can_weld = Build.find_weld_target(part, point)["ok"]
-	_marker.visible = true
-	_marker.global_position = point
-	_marker.material_override = _ok_mat if _can_weld else _bad_mat
-
-
 func handle_input(event: InputEvent) -> bool:
 	if event.is_action_pressed("primary"):
-		var part := player.aim_part()
-		if part == null:
-			return true
-		var point: Vector3 = player.aim["position"]
-		if Build.weld_at(part, point):
-			spawn_sparks(point, player.aim["normal"], 45)
+		begin_use()
+		return true
+	if event.is_action_released("primary"):
+		_stop()
 		return true
 	return false
 
 
+func begin_use() -> void:
+	active = true
+	_held = 0.0
+	_since_last = INTERVAL
+	_count = 0
+
+
+func _stop() -> void:
+	if active and _count > 0:
+		player.toast("%d ponto%s de solda" % [_count, "" if _count == 1 else "s"])
+	active = false
+	_arc = false
+	_count = 0
+
+
+## A tocha está acesa (para o efeito de máscara de solda).
+func is_arc_active() -> bool:
+	return _arc
+
+
+func arc_point() -> Vector3:
+	return _arc_point
+
+
+func physics_update(delta: float) -> void:
+	var part := player.aim_part()
+	_state = ""
+	if part:
+		var point: Vector3 = player.aim["position"]
+		if Build.weld_spot_taken(point):
+			_state = "taken"
+		elif Build.find_weld_target(part, point)["ok"]:
+			_state = "ok"
+		else:
+			_state = "none"
+		_marker.visible = not active
+		_marker.global_position = point
+		_marker.material_override = {"ok": _ok_mat, "taken": _taken_mat, "none": _bad_mat}[_state]
+	else:
+		_marker.visible = false
+
+	_arc = active and part != null
+	if _arc:
+		_arc_point = player.aim["position"]
+		_arc_normal = player.aim["normal"]
+		_held += delta
+		_since_last += delta
+		if _state == "ok" and _held >= FIRST_DELAY and _since_last >= INTERVAL:
+			if Build.weld_at(part, _arc_point):
+				_since_last = 0.0
+				_count += 1
+
+
+func _process(_delta: float) -> void:
+	_sparks.emitting = _arc and visible
+	_light.visible = _arc and visible
+	if _arc and visible:
+		_sparks.global_position = _arc_point + _arc_normal * 0.01
+		_sparks.direction = _arc_normal
+		_light.global_position = _arc_point + _arc_normal * 0.15
+		_light.light_energy = randf_range(3.0, 6.0)
+		viewmodel.position = VIEW_POS + Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * 0.002
+	elif viewmodel:
+		viewmodel.position = VIEW_POS
+
+
 func hint_text() -> String:
-	if player.aim_part() == null:
-		return "Mire em uma peça encostada em outra (ou no chão)"
-	if _can_weld:
-		return "Clique: soldar aqui"
-	return "Nada perto deste ponto — mire na emenda entre as peças"
+	match _state:
+		"ok":
+			return "Segure o clique para soldar · arraste pela emenda para fazer vários pontos"
+		"taken":
+			return "Já tem solda neste ponto: mova a mira para fazer outro"
+		"none":
+			return "Mire bem na emenda: a solda só alcança o que estiver dentro da bolinha"
+	return "Mire na emenda entre duas peças (ou entre a peça e o chão)"

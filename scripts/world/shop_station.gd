@@ -34,23 +34,24 @@ func _ready() -> void:
 	StationBuilder.label_sign(self, "ENTREGA", PAD_OFFSET + Vector3(0, 1.2, -PAD_SIZE * 0.5), 56)
 
 
-## Tenta comprar o item. Retorna a peça criada (ou null).
-func buy(item_id: String) -> Part:
+## Tenta comprar o item (com o tamanho escolhido, se ajustável). Retorna a peça criada (ou null).
+func buy(item_id: String, size := Vector3.ZERO) -> Part:
 	var item := Catalog.get_item(item_id)
 	if item.is_empty() or Catalog.is_locked(item):
 		return null
-	var cost := Catalog.price(item)
+	size = Catalog.clamp_size(item, size)
+	var cost := Catalog.price(item, size)
 	if not Economy.can_afford(cost):
 		Build.message.emit("Pontos insuficientes (precisa de %d)" % cost)
 		return null
-	var xf := _free_spawn_transform(item)
-	var part := Build.spawn_planes(Catalog.planes(item), item["mat"], xf)
+	var xf := _free_spawn_transform(item, size)
+	var part := Build.spawn_planes(Catalog.planes(item, size), item["mat"], xf)
 	if part == null:
 		return null
 	_recent.append([part, Time.get_ticks_msec()])
 	Economy.spend(cost)
 	StationBuilder.sparks(get_parent(), xf.origin, 25, Color(0.4, 0.8, 1.0))
-	Build.message.emit("Comprado: %s (−%d pontos) — está na ENTREGA" % [item["nome"], cost])
+	Build.message.emit("Comprado: %s (−%d pontos): está na ENTREGA" % [item["nome"], cost])
 	return part
 
 
@@ -63,8 +64,8 @@ func _hits_recent(box: AABB) -> bool:
 
 
 ## Procura uma altura livre acima da plataforma para o item aparecer.
-func _free_spawn_transform(item: Dictionary) -> Transform3D:
-	var geo := Catalog.geometry(item)
+func _free_spawn_transform(item: Dictionary, size: Vector3) -> Transform3D:
+	var geo := Catalog.geometry(item, size)
 	var shape := ConvexPolygonShape3D.new()
 	shape.points = geo["verts"]
 	var aabb: AABB = geo["aabb"]

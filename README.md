@@ -1,4 +1,4 @@
-# Sucata — sandbox de engenharia
+# Junk Contruction Simulator
 
 Jogo de construção física inspirado na ideia de *Metalworks Sandbox Demo* (Roblox, 2014):
 pegue sucata espalhada pelo mapa, **corte**, **solde** e monte estruturas e máquinas.
@@ -9,10 +9,10 @@ Nome, mapa, visual e código são próprios.
 
 ## Como jogar
 
-- **Só jogar:** abra `Sucata.exe` (não precisa instalar nada).
+- **Só jogar:** abra `JunkContructionSimulator.exe` (não precisa instalar nada).
 - **Imagem estranha (partes pretas, quadrados)?** No menu (Esc), mude **Gráficos** para
-  Médio ou Baixo. Se não resolver, use `Sucata (Vulkan).bat` ou
-  `Sucata (modo compatibilidade).bat`, que vêm junto com o `.exe`.
+  Médio ou Baixo. Se não resolver, use `Abrir com Vulkan.bat` ou
+  `Abrir em modo compatibilidade.bat`, que vêm junto com o `.exe`.
 - **Abrir o projeto:** instale o Godot 4.7.2 (versão padrão, não a .NET). Abra o
   `project.godot` e aperte **F5**.
 
@@ -35,20 +35,22 @@ Nome, mapa, visual e código são próprios.
 - Roda do mouse: aproxima ou afasta.
 
 **Solda**
-- Clique na emenda entre duas peças encostadas: cria um **ponto de solda** (bolinha).
+- Segure o clique bem na emenda entre duas peças: cria um **ponto de solda** (bolinha).
+  A solda só alcança o que está dentro da bolinha. Arraste segurando para fazer vários pontos.
 - Peças soldadas viram um corpo só.
 - Soldar uma peça no chão ou numa estrutura do mapa **ancora** a montagem (ela fica parada).
 
 **Esmerilhadeira**
-- Clique: corta **a face que está na mira**. A linha de corte fica sobre essa face (prévia laranja).
+- **Segure** o clique: corta **a face que está na mira**. A linha de corte fica sobre essa face (prévia laranja).
+  O corte trava no lugar ao clicar; soltar antes de terminar cancela.
 - **R**: gira a linha de corte sobre a face: 0°, 45°, 90°, 135°.
 - O corte encaixa numa grade de 5 cm; segure **Ctrl** para cortar livre.
 - Prévia **vermelha** = perto demais da borda; mire mais para dentro da face.
-- Botão direito: remove a solda mais próxima da mira.
+- Segure o clique numa bolinha de solda para removê-la.
 
 **Reciclador e loja**
 - Para se livrar de peças, jogue-as no **RECICLADOR**. Cada peça vira **pontos**, conforme o peso e o metal (alumínio vale mais por kg, ferro velho vale menos).
-- No terminal da **LOJA** (tecla **F**), gaste os pontos em chapas, vigas, blocos e peças pré-cortadas. Os itens aparecem na plataforma **ENTREGA**.
+- No terminal da **LOJA** (tecla **F**), gaste os pontos em chapas, vigas, blocos e peças pré-cortadas, escolhendo as medidas (com limite). Os itens aparecem na plataforma **ENTREGA**.
 
 ## Estrutura do código
 
@@ -69,7 +71,8 @@ scripts/
   world/world.gd          mapa: terreno, pátio, estruturas e pilhas de sucata
   world/recycler.gd       reciclador (peças viram pontos)
   world/shop_station.gd   terminal da loja + plataforma de entrega
-  ui/shop_ui.gd           tela da loja
+  ui/shop_ui.gd           tela da loja (ícones, prévia 3D, medidas)
+  ui/part_preview.gd      mini cena 3D para ícones e prévias
 tests/                    testes automáticos e tour de screenshots (não vão no .exe)
 ```
 
@@ -85,5 +88,5 @@ godot --headless --path . res://tests/test_build.tscn
 **Gerar o .exe localmente:**
 
 ```bash
-godot --headless --path . --export-release "Windows Desktop" build/Sucata.exe
+godot --headless --path . --export-release "Windows Desktop" build/JunkContructionSimulator.exe
 ```

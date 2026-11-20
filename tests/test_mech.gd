@@ -2,7 +2,7 @@ extends Node3D
 ## Testes da mecânica (motores, servos, pistões, dobradiças, controles, assento).
 ##   godot --headless --path . res://tests/test_mech.tscn
 
-const EXPECTED_CHECKS := 66
+const EXPECTED_CHECKS := 73
 
 var _fails := 0
 var _checks := 0
@@ -170,6 +170,7 @@ func _run() -> void:
 	await _demo_car_test()
 	await _player_test()
 	await _v05_test()
+	await _crouch_test()
 
 
 func _key(code: Key, pressed: bool) -> InputEventKey:
@@ -471,6 +472,26 @@ func _v05_test() -> void:
 	grav.handle_input(_press("rotate_cut", true))
 	check(not crate.assembly().frozen and not crate2.assembly().frozen, "R R descongela tudo")
 
+	print("== Gravitador: firmeza (sem efeito de corda)")
+	var heavy := Build.spawn_box(Vector3(2, 0.2, 2), "aco", Transform3D(Basis(), o + Vector3(30, 0.1, 10)))
+	await _frames(5)
+	var center := o + Vector3(30, 2.5, 10)
+	var radius := 2.0
+	var worst := 0.0
+	var worst_ang := 0.0
+	for i in 120:
+		var t := i / 60.0
+		var w := 4.0   # rad/s → 8 m/s na borda do círculo
+		var target := Transform3D(Basis(Vector3.UP, w * t), center + Vector3(cos(w * t), 0, sin(w * t)) * radius)
+		heavy.assembly().set_hold(heavy, Vector3.ZERO, target)
+		await get_tree().physics_frame
+		if i > 20:
+			worst = maxf(worst, heavy.global_position.distance_to(target.origin))
+			worst_ang = maxf(worst_ang, heavy.global_basis.get_rotation_quaternion().angle_to(target.basis.get_rotation_quaternion()))
+	heavy.assembly().clear_hold()
+	check(worst < 0.2, "peça de 314 kg segue um alvo a 8 m/s de perto (atraso máx %.2f m)" % worst)
+	check(worst_ang < 0.15, "e gira junto sem atraso (máx %.0f°)" % rad_to_deg(worst_ang))
+
 	print("== Fiação: ajustes pelo botão direito")
 	player.select_tool(3)
 	var wire: WireTool = player.tools[3]
@@ -480,4 +501,46 @@ func _v05_test() -> void:
 	await _frames(3)
 	wire.handle_input(_press("secondary", true))
 	check(got.size() == 1 and got[0] == slj, "botão direito no componente abre os ajustes dele")
+	player.queue_free()
+
+
+func _crouch_test() -> void:
+	print("== Agachar")
+	var player := Player.new()
+	add_child(player)
+	await _frames(2)
+	var o := Vector3(-60, 0, -60)
+	player.teleport(o)
+	await _frames(20)
+	var stand_eye := player.eye_position().y
+	Input.action_press("crouch")
+	await _frames(30)
+	check(player.crouching and player.eye_position().y < stand_eye - 0.5, "Ctrl agacha: olhos %.2f m mais baixos" % (stand_eye - player.eye_position().y))
+	# Teto baixo em cima: soltar o Ctrl não levanta.
+	var roof := StaticBody3D.new()
+	roof.collision_layer = Layers.WORLD
+	var cs := CollisionShape3D.new()
+	var bs := BoxShape3D.new()
+	bs.size = Vector3(3, 0.2, 3)
+	cs.shape = bs
+	roof.add_child(cs)
+	add_child(roof)
+	roof.global_position = o + Vector3(0, 1.4, 0)
+	await _frames(3)
+	Input.action_release("crouch")
+	await _frames(20)
+	check(player.crouching, "embaixo de um teto baixo continua agachado")
+	roof.queue_free()
+	await _frames(20)
+	check(not player.crouching and absf(player.eye_position().y - stand_eye) < 0.05, "sem o teto, levanta sozinho")
+	Input.action_press("crouch")
+	await _frames(5)
+	var seat := Components.spawn("assento", Transform3D(Basis(), o + Vector3(3, 0.1, 0)))[0]
+	await _frames(10)
+	player.sit(seat)
+	check(not player.crouching, "sentar cancela o agachar")
+	player.stand_up()
+	Input.action_release("crouch")
+	await _frames(20)
+	check(not player.crouching, "em pé de novo depois de levantar")
 	player.queue_free()

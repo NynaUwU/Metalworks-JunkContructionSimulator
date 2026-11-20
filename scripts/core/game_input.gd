@@ -11,7 +11,8 @@ const KEYS := {
 	"modifier": [KEY_SHIFT],      # Shift: correr / girar em passos de 45° (Gravitador)
 	"rotate_cut": [KEY_R],        # R: ângulo do corte · Gravitador: descongelar
 	"align": [KEY_T],             # T: alinha a peça segurada à grade do mundo
-	"free_cut": [KEY_CTRL],       # Ctrl: corte livre (sem grade)
+	"crouch": [KEY_CTRL],         # Ctrl: agachar
+	"toggle_grid": [KEY_G],       # G: liga/desliga a grade de 5 cm da esmerilhadeira
 	"tool_1": [KEY_1],
 	"tool_2": [KEY_2],
 	"tool_3": [KEY_3],

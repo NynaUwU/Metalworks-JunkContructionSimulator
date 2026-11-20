@@ -11,6 +11,10 @@ const AIR_ACCEL := 3.0
 const REACH := 14.0
 const DOUBLE_TAP_TIME := 0.3
 const EYE_HEIGHT := 1.62
+const STAND_HEIGHT := 1.8
+const CROUCH_HEIGHT := 1.15
+const CROUCH_EYE := 0.98
+const CROUCH_SPEED := 2.2
 const PUSH_FORCE := 45.0
 
 signal tool_changed(index: int)
@@ -37,6 +41,9 @@ var aim: Dictionary = {}          ## resultado do raycast da mira (vazio se nada
 var seat: Part = null             ## assento em que está sentado
 var _using: ControlDevice = null  ## botão sendo segurado
 var _ghost_frames := 0            ## quadros sem colisão depois de um teleporte
+var crouching := false            ## agachado (Ctrl): mais baixo e mais devagar
+var _capsule: CapsuleShape3D
+var _body_shape: CollisionShape3D
 
 var _last_tap := {}
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
@@ -49,13 +56,13 @@ func _init() -> void:
 	floor_snap_length = 0.3
 	floor_max_angle = deg_to_rad(50)
 
-	var shape := CollisionShape3D.new()
-	var capsule := CapsuleShape3D.new()
-	capsule.radius = 0.35
-	capsule.height = 1.8
-	shape.shape = capsule
-	shape.position.y = 0.9
-	add_child(shape)
+	_body_shape = CollisionShape3D.new()
+	_capsule = CapsuleShape3D.new()
+	_capsule.radius = 0.35
+	_capsule.height = STAND_HEIGHT
+	_body_shape.shape = _capsule
+	_body_shape.position.y = STAND_HEIGHT * 0.5
+	add_child(_body_shape)
 
 	head = Node3D.new()
 	head.name = "Head"
@@ -165,6 +172,9 @@ func interact_hint() -> String:
 func sit(p_seat: Part) -> void:
 	if is_seated():
 		return
+	if crouching:
+		_set_crouch(false)
+		head.position.y = EYE_HEIGHT
 	seat = p_seat
 	_release_device()
 	current().unequip()
@@ -371,6 +381,7 @@ func _physics_process(delta: float) -> void:
 	if current() != hand:
 		current().physics_update(delta)
 
+	_update_crouch(delta)
 	var input := Vector2.ZERO
 	if not current().blocks_movement() and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		input = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
@@ -378,6 +389,8 @@ func _physics_process(delta: float) -> void:
 		running = false
 	var shift_run := Input.is_action_pressed("modifier") and not (hand.holding and current() == hand)
 	var speed := RUN_SPEED if (running or shift_run) else WALK_SPEED
+	if crouching:
+		speed = CROUCH_SPEED
 	var dir := (Basis(Vector3.UP, yaw) * Vector3(input.x, 0, input.y))
 	var target := dir * speed
 
@@ -395,6 +408,37 @@ func _physics_process(delta: float) -> void:
 
 	if global_position.y < -60.0:
 		teleport(spawn_point)
+
+
+## Agachar (Ctrl segurado): cápsula mais baixa, olhos mais baixos, anda devagar.
+## Ao soltar, só levanta se houver espaço em cima.
+func _update_crouch(delta: float) -> void:
+	var want := Input.is_action_pressed("crouch")
+	if want and not crouching:
+		_set_crouch(true)
+	elif not want and crouching and _can_stand():
+		_set_crouch(false)
+	var eye := CROUCH_EYE if crouching else EYE_HEIGHT
+	head.position.y = move_toward(head.position.y, eye, delta * 6.0)
+
+
+func _set_crouch(value: bool) -> void:
+	crouching = value
+	var h := CROUCH_HEIGHT if value else STAND_HEIGHT
+	_capsule.height = h
+	_body_shape.position.y = h * 0.5
+
+
+func _can_stand() -> bool:
+	var probe := CapsuleShape3D.new()
+	probe.radius = _capsule.radius - 0.02
+	probe.height = STAND_HEIGHT - 0.04
+	var params := PhysicsShapeQueryParameters3D.new()
+	params.shape = probe
+	params.collision_mask = Layers.WORLD | Layers.PARTS
+	params.exclude = [get_rid()]
+	params.transform = Transform3D(Basis(), global_position + Vector3.UP * (STAND_HEIGHT * 0.5 + 0.02))
+	return get_world_3d().direct_space_state.intersect_shape(params, 1).is_empty()
 
 
 func _push_bodies(delta: float) -> void:

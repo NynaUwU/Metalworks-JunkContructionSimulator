@@ -24,6 +24,7 @@ Nome, mapa, visual e código são próprios.
 |---|---|
 | Andar / pular | W A S D / Espaço |
 | Correr | toque duplo numa tecla de andar (ou Shift) |
+| Agachar (mais devagar, alcança mais baixo) | Ctrl |
 | Trocar ferramenta | 1 Gravitador · 2 Solda · 3 Esmerilhadeira · 4 Fiação |
 | Usar (loja, assento, botão, alavanca) | E |
 | Modo edição do assento (sentado) | Tab |
@@ -48,7 +49,7 @@ Nome, mapa, visual e código são próprios.
 - **Segure** o clique: corta **a face que está na mira**. A linha de corte fica sobre essa face (prévia laranja).
   O corte trava no lugar ao clicar; soltar antes de terminar cancela.
 - **R**: gira a linha de corte sobre a face: 0°, 45°, 90°, 135°.
-- O corte encaixa numa grade de 5 cm; segure **Ctrl** para cortar livre.
+- O corte encaixa numa grade de 5 cm; **G** liga/desliga a grade (corte livre).
 - Prévia **vermelha** = perto demais da borda; mire mais para dentro da face.
 - Segure o clique numa bolinha de solda para removê-la, ou num isolador para arrancá-lo.
 

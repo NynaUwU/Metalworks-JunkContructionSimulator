@@ -7,7 +7,7 @@ extends GameTool
 ## - Ao clicar, o corte TRAVA no lugar; é preciso segurar até a barra encher.
 ##   Soltar antes cancela. O tempo depende do tamanho do corte.
 ## - Mirando numa bolinha de solda, segurar o clique remove a solda.
-## - A posição do corte encaixa numa grade de 5 cm (segure Ctrl para corte livre).
+## - A posição do corte encaixa numa grade de 5 cm (G liga/desliga a grade).
 
 enum Mode { IDLE, CUTTING, UNWELDING, REMOVING }
 
@@ -20,6 +20,7 @@ const CUT_MAX_TIME := 3.5
 const LOST_AIM_GRACE := 0.25       ## tempo que a mira pode sair da peça sem cancelar
 
 var angle_index := 0
+var grid_on := true
 var mode := Mode.IDLE
 var elapsed := 0.0
 var duration := 1.0
@@ -146,6 +147,10 @@ func progress() -> float:
 
 
 func handle_input(event: InputEvent) -> bool:
+	if event.is_action_pressed("toggle_grid"):
+		grid_on = not grid_on
+		player.toast("Grade de 5 cm: %s" % ("ligada" if grid_on else "desligada (corte livre)"))
+		return true
 	if event.is_action_pressed("rotate_cut"):
 		if mode == Mode.IDLE:
 			angle_index = (angle_index + 1) % ConvexGeo.CUT_ANGLES.size()
@@ -234,7 +239,7 @@ func _update_targets() -> void:
 	var inv := part.global_transform.affine_inverse()
 	var local := inv * point
 	var face_n := ConvexGeo.closest_face_normal(part.planes, (inv.basis * (player.aim["normal"] as Vector3)).normalized())
-	if not Input.is_action_pressed("free_cut"):
+	if grid_on:
 		local = local.snapped(Vector3.ONE * GRID)
 	var n := ConvexGeo.face_cut_normal(face_n, ConvexGeo.CUT_ANGLES[angle_index])
 	_target_plane = Plane(n, n.dot(local))
@@ -357,5 +362,5 @@ func hint_text() -> String:
 		return "Segure o clique para remover esta solda"
 	if _target_part and not _target_valid:
 		return "Muito perto da borda (vermelho): mire mais para dentro da face   ·   R: girar o corte"
-	return "Segure o clique para cortar a face mirada · ângulo %d°   ·   R: girar   ·   Ctrl: livre" \
-		% roundi(ConvexGeo.CUT_ANGLES[angle_index])
+	return "Segure o clique para cortar a face mirada · ângulo %d°   ·   R: girar   ·   G: grade %s" \
+		% [roundi(ConvexGeo.CUT_ANGLES[angle_index]), "ligada" if grid_on else "desligada"]

@@ -7,7 +7,7 @@ const HELP_TEXT := """[b]CONTROLES[/b]
 [b]Movimento[/b]
 W A S D — andar
 Toque duplo (ou Shift) — correr
-Espaço — pular
+Espaço — pular · Ctrl — agachar
 E — usar (loja, assento, botão, alavanca)
 
 [b]Ferramentas[/b]
@@ -32,7 +32,7 @@ Arraste segurando para fazer vários pontos
 Segure o clique — corta a face mirada
 (o corte trava no lugar; soltar cancela)
 R — girar o corte (0° / 45° / 90° / 135°)
-Ctrl — corte livre (sem grade de 5 cm)
+G — liga/desliga a grade de 5 cm (corte livre)
 Segure o clique numa bolinha — remove a solda
 Segure o clique num isolador — arranca
 

@@ -1,5 +1,5 @@
 class_name ControlDevice
-extends RefCounted
+extends SignalNode
 ## Controle físico que gera um sinal para componentes ligados por fio.
 ##
 ##   botao         — vale 1 enquanto está apertado (E a pé, clique sentado)
@@ -20,6 +20,22 @@ var _moving: Node3D       ## parte visual que se mexe (capa do botão, haste, cu
 var _light: MeshInstance3D
 var _on_mat: StandardMaterial3D
 var _off_mat: StandardMaterial3D
+
+
+func signal_part() -> Part:
+	return part
+
+
+func kind_label() -> String:
+	return display_name()
+
+
+func outputs() -> Array:
+	return [["Saída", NUM]]
+
+
+func update_outputs(_dt: float) -> void:
+	out["Saída"] = value
 
 
 func display_name() -> String:

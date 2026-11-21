@@ -23,6 +23,9 @@ signal interact_requested(target: Node)
 signal seat_changed(seated: bool)
 signal edit_requested
 signal config_requested(joint: MechJoint)
+signal node_config_requested(node: SignalNode)                       ## ajustes de chip, tela, constante...
+signal port_menu_requested(title: String, items: Array, callback: Callable)   ## escolher porta (Fiação)
+signal keypad_requested(node: KeypadNode)
 
 const INTERACT_DISTANCE := 3.5
 const SEAT_EYE := Vector3(0, 0.92, 0.04)   ## olhos em relação à base do assento
@@ -81,7 +84,7 @@ func _init() -> void:
 
 func _ready() -> void:
 	hand = HandTool.new(self)
-	tools = [hand, WeldTool.new(self), GrinderTool.new(self), WireTool.new(self)]
+	tools = [hand, WeldTool.new(self), GrinderTool.new(self), WireTool.new(self), DebugTool.new(self)]
 	for t in tools:
 		camera.add_child(t)
 	select_tool(0)
@@ -163,6 +166,8 @@ func interact_hint() -> String:
 			return "%s: %s" % [key, part.device.hint()]
 		if part.interact_kind == "assento" and not is_seated():
 			return "E: sentar"
+		if part.interact_kind == "teclado":
+			return "%s: digitar a senha" % key
 		if part.interact_kind == "engate" and part.mech:
 			return "%s: %s o engate" % [key, "desligar" if part.mech.manual else "ligar"]
 		return ""
@@ -186,6 +191,7 @@ func sit(p_seat: Part) -> void:
 	yaw = 0.0
 	pitch = deg_to_rad(-8.0)
 	Build.active_seat = seat
+	Build.seat_player = self
 	seat_changed.emit(true)
 	toast("Sentado · Tab: modo edição (teclas) · E: levantar")
 
@@ -202,6 +208,7 @@ func stand_up() -> void:
 		look_yaw = atan2(-fwd.x, -fwd.z)
 	seat = null
 	Build.active_seat = null
+	Build.seat_player = null
 	teleport(out)
 	yaw = look_yaw
 	pitch = 0.0
@@ -269,6 +276,9 @@ func _use_device_press() -> bool:
 	if t is Part and (t as Part).device:
 		_using = (t as Part).device
 		_using.press()
+		return true
+	if t is Part and (t as Part).interact_kind == "teclado" and (t as Part).node is KeypadNode:
+		keypad_requested.emit((t as Part).node)
 		return true
 	if t is Part and (t as Part).interact_kind == "engate" and (t as Part).mech:
 		var j: MechJoint = (t as Part).mech

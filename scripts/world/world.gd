@@ -84,6 +84,7 @@ func populate() -> void:
 	_rng.seed = 20141
 	_spawn_scrap()
 	_spawn_component_depot()
+	_spawn_logic_depot()
 	demo_seat = DemoBuilds.build_car(Vector3(-7, 0, 3))
 
 
@@ -128,6 +129,7 @@ func _build_stations() -> void:
 	add_child(shop)
 	shop.position = Vector3(10, 0, -25.5)
 	StationBuilder.label_sign(self, "COMPONENTES", Vector3(-30, 5.22, 19.8))
+	StationBuilder.label_sign(self, "ELETRÔNICA", Vector3(-32, 2.2, 0.6))
 	var wires := WireRenderer.new()
 	wires.name = "Wires"
 	add_child(wires)
@@ -448,6 +450,20 @@ func _spawn_component_depot() -> void:
 	for r in rows.size():
 		for c in rows[r].size():
 			_spawn_component(rows[r][c], o + Vector3(-4.5 + c * 1.8, 0, -4.55 + r * 1.3))
+
+
+## Depósito de eletrônica (lógica, teclas, mostradores), ao lado do galpão.
+func _spawn_logic_depot() -> void:
+	var o := Vector3(-32, 0.02, 5)
+	var rows := [
+		["chip", "chip", "chip", "chip", "chip", "chip"],
+		["chip", "chip", "constante", "constante", "constante", "constante"],
+		["teclas", "teclas", "teclado", "teclado", "indicador", "indicador"],
+		["pixel", "pixel", "mostrador", "mostrador", "tela", "tela_texto"],
+	]
+	for r in rows.size():
+		for c in rows[r].size():
+			_spawn_component(rows[r][c], o + Vector3(-3.0 + c * 1.2, 0, -2.4 + r * 1.2))
 
 
 func _spawn_pile(center: Vector3) -> void:

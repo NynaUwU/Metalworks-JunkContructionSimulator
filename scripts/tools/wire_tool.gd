@@ -1,17 +1,19 @@
 class_name WireTool
 extends GameTool
-## Fiação: liga botões, alavancas e alavancas variáveis aos componentes.
+## Fiação: liga a SAÍDA de uma peça à ENTRADA de outra (estilo Wiremod).
 ##
-## 1) Clique num controle (botão / alavanca / alavanca variável).
-## 2) (Opcional) Clique nas superfícies por onde o fio deve passar: cada clique cria
-##    um isolador ali (ou usa um isolador que já existe). Clicar no último desfaz.
-## 3) Clique no componente que ele vai controlar (motor, servo, pistão).
-## Clicar de novo no mesmo par desliga o fio.
+## 1) Clique numa peça com saídas (controle, chip, componente, sensor, assento...).
+##    Se ela tiver mais de uma saída, escolha qual no menu.
+## 2) (Opcional) Clique nas superfícies por onde o fio deve passar: cada clique cria um
+##    isolador ali (ou usa um isolador que já existe). Clicar no último desfaz.
+## 3) Clique na peça de destino e escolha a entrada (só aparecem as do mesmo tipo).
+## Escolher de novo a mesma ligação desliga o fio.
 ## Botão direito: cancela o fio em andamento; ou, mirando:
 ##   isolador → remove · alavanca variável → troca a faixa (-1 a 1 / só positivo)
-##   motor, servo, pistão → abre os ajustes do componente
+##   componente, chip, tela... → abre os ajustes
 
-var _source: ControlDevice = null
+var _src: SignalNode = null
+var _src_port := ""
 var _via: Array[Part] = []
 var _preview: MeshInstance3D
 var _imesh: ImmediateMesh
@@ -60,14 +62,23 @@ func unequip() -> void:
 
 
 func _cancel() -> void:
-	_source = null
+	_src = null
+	_src_port = ""
 	_via.clear()
+
+
+## Tem ajustes que abrem no botão direito?
+static func has_config(n: SignalNode) -> bool:
+	if n is MechJoint:
+		return (n as MechJoint).is_configurable()
+	return n is ChipNode or n is ConstNode or n is KeysNode or n is KeypadNode or n is DisplayNode
 
 
 func handle_input(event: InputEvent) -> bool:
 	if event.is_action_pressed("secondary"):
 		var aimed := player.aim_part()
-		if _source:
+		var an := Signals.node_of(aimed)
+		if _src:
 			_cancel()
 			player.toast("Fio cancelado")
 		elif aimed and aimed.kind == "isolador":
@@ -78,8 +89,10 @@ func handle_input(event: InputEvent) -> bool:
 		elif aimed and aimed.device and aimed.device.kind == "potenciometro":
 			aimed.device.toggle_range()
 			player.toast("Alavanca variável: %s" % ("só positivo (0 a 1)" if aimed.device.positive_only else "de -1 a 1"))
-		elif aimed and aimed.mech and aimed.mech.is_configurable():
-			player.config_requested.emit(aimed.mech)
+		elif an is MechJoint and (an as MechJoint).is_configurable():
+			player.config_requested.emit(an)
+		elif an and has_config(an):
+			player.node_config_requested.emit(an)
 		return true
 	if not event.is_action_pressed("primary"):
 		return false
@@ -89,14 +102,10 @@ func handle_input(event: InputEvent) -> bool:
 	if part == null:
 		_place_insulator(null)
 		return true
-	if part.device:
-		_source = part.device
-		_via.clear()
-		player.toast("%s selecionado: clique nos isoladores (opcional) e depois no componente" % _source.display_name())
-		return true
+	var n := Signals.node_of(part)
 	if part.kind == "isolador":
-		if _source == null:
-			player.toast("Primeiro clique num botão, alavanca ou alavanca variável")
+		if _src == null:
+			player.toast("Primeiro clique numa peça com saída (controle, chip, componente...)")
 		elif not _via.is_empty() and _via.back() == part:
 			_via.pop_back()
 			player.toast("Isolador removido do caminho")
@@ -106,23 +115,80 @@ func handle_input(event: InputEvent) -> bool:
 			_via.append(part)
 			player.toast("Fio passando pelo isolador %d" % _via.size())
 		return true
-	if part.mech and part.mech.is_actuator():
-		if _source == null:
-			player.toast("Primeiro clique num botão, alavanca ou alavanca variável")
-			return true
-		if not is_instance_valid(_source.part):
-			_cancel()
-			return true
-		var linked := Build.toggle_link(_source, part.mech, _via)
-		player.toast(("%s ligado ao %s" % [_source.display_name(), part.mech.display_name()]) if linked else "Fio removido")
-		spawn_sparks(player.aim["position"], player.aim["normal"], 12, Color(1.0, 0.85, 0.3))
-		_cancel()
+	if _src == null or n == _src:
+		if n == null:
+			_place_insulator(part)       # sem fio em andamento: só coloca o isolador
+		elif n.outputs().is_empty():
+			player.toast("%s não tem saídas de sinal" % n.title())
+		else:
+			_pick_output(n)
 		return true
-	if part.mech and part.mech.type == "dobradica" and _source == null:
-		player.toast("A dobradiça é livre: não tem o que controlar")
+	if n and not _compatible_inputs(n).is_empty():
+		_pick_input(n)
+		return true
+	if n and not n.inputs().is_empty():
+		player.toast("%s não tem entrada de %s" % [n.title(), SignalNode.TYPE_NAMES.get(_src_type(), "?")])
 		return true
 	_place_insulator(part)
 	return true
+
+
+func _src_type() -> String:
+	return _src.port_type(_src_port, true) if _src else ""
+
+
+func _compatible_inputs(n: SignalNode) -> Array:
+	var t := _src_type()
+	return n.inputs().filter(func(p: Array) -> bool: return p[1] == t)
+
+
+## Escolhe a saída de `n` (direto, se só tiver uma).
+func _pick_output(n: SignalNode) -> void:
+	var outs := n.outputs()
+	if outs.size() == 1:
+		_start(n, outs[0][0])
+		return
+	var items: Array = []
+	for p: Array in outs:
+		items.append({"text": "%s  (%s) = %s" % [p[0], SignalNode.TYPE_NAMES[p[1]], SignalNode.format(n.out.get(p[0], SignalNode.zero(p[1])))],
+			"color": SignalNode.TYPE_COLORS[p[1]]})
+	player.port_menu_requested.emit("%s · qual saída?" % n.title(), items, func(i: int) -> void:
+		if i >= 0 and i < outs.size():
+			_start(n, outs[i][0]))
+
+
+func _start(n: SignalNode, port: String) -> void:
+	_src = n
+	_src_port = port
+	_via.clear()
+	player.toast("%s · %s: clique nos isoladores (opcional) e depois no destino" % [n.title(), port])
+
+
+## Escolhe a entrada de `n` do mesmo tipo da saída escolhida (direto, se só tiver uma).
+func _pick_input(n: SignalNode) -> void:
+	var ins := _compatible_inputs(n)
+	if ins.size() == 1:
+		_link(n, ins[0][0])
+		return
+	var items: Array = []
+	for p: Array in ins:
+		var linked := Signals.is_linked(_src, _src_port, n, p[0])
+		items.append({"text": "%s  (%s)%s" % [p[0], SignalNode.TYPE_NAMES[p[1]], "   — ligado: escolha para desligar" if linked else ""],
+			"color": SignalNode.TYPE_COLORS[p[1]]})
+	player.port_menu_requested.emit("%s · ligar em qual entrada?" % n.title(), items, func(i: int) -> void:
+		if i >= 0 and i < ins.size():
+			_link(n, ins[i][0]))
+
+
+func _link(n: SignalNode, port: String) -> void:
+	if _src == null or not _src.is_alive():
+		_cancel()
+		return
+	var linked := Signals.toggle(_src, _src_port, n, port, _via)
+	player.toast(("Fio: %s · %s → %s · %s" % [_src.title(), _src_port, n.title(), port]) if linked else "Fio removido")
+	if not player.aim.is_empty():
+		spawn_sparks(player.aim["position"], player.aim["normal"], 12, Color(1.0, 0.85, 0.3))
+	_cancel()
 
 
 ## Cria um isolador na superfície mirada (peça ou chão). Com um fio em andamento,
@@ -136,23 +202,24 @@ func _place_insulator(on: Part) -> void:
 		player.toast("Já tem um isolador aqui")
 		return
 	spawn_sparks(point, player.aim["normal"], 10, Color(1.0, 0.85, 0.3))
-	if _source:
+	if _src:
 		_via.append(ins)
 		player.toast("Isolador %d no caminho do fio" % _via.size())
 	else:
-		player.toast("Isolador colocado: comece um fio num controle para passar por ele")
+		player.toast("Isolador colocado: comece um fio numa peça com saída para passar por ele")
 
 
 func physics_update(_delta: float) -> void:
 	_imesh.clear_surfaces()
-	if _source == null or not is_instance_valid(_source.part):
+	if _src == null or not _src.is_alive():
 		_cancel()
 		return
-	var pts: Array[Vector3] = [_source.part.global_position]
+	var pts: Array[Vector3] = [Signals.anchor(_src.signal_part())]
 	for ins in _via:
 		if is_instance_valid(ins):
 			pts.append(Components.wire_anchor(ins))
 	pts.append(player.aim["position"] if not player.aim.is_empty() else player.eye_position() + player.aim_direction() * 3.0)
+	_line_mat.albedo_color = SignalNode.TYPE_COLORS.get(_src_type(), Color(1.0, 0.8, 0.2))
 	_imesh.surface_begin(Mesh.PRIMITIVE_LINES, _line_mat)
 	for i in pts.size() - 1:
 		_imesh.surface_add_vertex(pts[i])
@@ -162,22 +229,24 @@ func physics_update(_delta: float) -> void:
 
 func hint_text() -> String:
 	var part := player.aim_part()
-	if _source:
-		if part and part.mech and part.mech.is_actuator():
-			var linked := part.mech.sources.has(_source)
-			return "Clique: %s o fio até este %s   ·   Botão direito: cancelar" % ["remover" if linked else "ligar", part.mech.display_name()]
+	var n := Signals.node_of(part)
+	if _src:
+		if n and n != _src and not _compatible_inputs(n).is_empty():
+			return "Clique: ligar %s · %s em %s   ·   Botão direito: cancelar" % [_src.title(), _src_port, n.title()]
 		if part and part.kind == "isolador":
 			return "Clique: passar o fio por este isolador"
-		return "Clique na estrutura para criar um isolador no caminho (%d) ou no componente para terminar   ·   Botão direito: cancelar" % _via.size()
+		return "Fio de %s · %s: clique no destino ou na estrutura para um isolador (%d)   ·   Botão direito: cancelar" % [_src.title(), _src_port, _via.size()]
+	if part and part.kind == "isolador":
+		return "Botão direito: remover este isolador   ·   Clique numa peça com saída para começar um fio"
 	if part and part.device and part.device.kind == "potenciometro":
 		return "Clique: começar um fio   ·   Botão direito: faixa %s" % ("0 a 1 → -1 a 1" if part.device.positive_only else "-1 a 1 → só positivo")
-	if part and part.device:
-		return "Clique: começar um fio a partir deste controle"
-	if part and part.mech and part.mech.is_actuator():
-		var n := part.mech.sources.size()
-		return "%s com %d controle%s · Botão direito: ajustes do componente" % [part.mech.display_name(), n, "" if n == 1 else "s"]
-	if part and part.mech and part.mech.is_configurable():
-		return "%s · Botão direito: ajustes do componente" % part.mech.display_name()
-	if part and part.kind == "isolador":
-		return "Botão direito: remover este isolador   ·   Clique num controle para começar um fio"
-	return "Clique num controle para começar um fio   ·   Clique numa superfície: isolador"
+	if n:
+		var ins := Signals.wires_into(n).size()
+		var outs := Signals.wires_from(n).size()
+		var parts: Array[String] = ["%s (%d fio%s chegando, %d saindo)" % [n.title(), ins, "" if ins == 1 else "s", outs]]
+		if not n.outputs().is_empty():
+			parts.append("Clique: começar um fio")
+		if has_config(n):
+			parts.append("Botão direito: ajustes")
+		return "   ·   ".join(parts)
+	return "Clique numa peça com saída para começar um fio   ·   Clique numa superfície: isolador"

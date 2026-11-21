@@ -237,6 +237,65 @@ func _physperf() -> void:
 	print("PHYS média %.2f ms, pior %.2f ms por tick" % [total / 300.0, worst])
 
 
+func _logic() -> void:
+	# Circuito de exemplo: pulsador → contador → mostrador / tela de texto; alavanca → NÃO → indicador.
+	var o := Vector3(6, 0.03, 0)
+	var sp := func(kind: String, at: Vector3) -> Part:
+		return Components.spawn(kind, Transform3D(Basis(), o + at))[0]
+	var pul: Part = sp.call("chip", Vector3(-1.2, 0, 0))
+	(pul.node as ChipNode).set_mode("pulsador")
+	var cnt: Part = sp.call("chip", Vector3(-0.4, 0, 0))
+	(cnt.node as ChipNode).set_mode("contador")
+	var num: Part = sp.call("mostrador", Vector3(0.6, 0, 0))
+	var txt: Part = sp.call("tela_texto", Vector3(0.4, 0, -0.9))
+	(txt.node as DisplayNode).template = "Contagem: {A}\nJunk Construction"
+	var lever: Part = Components.spawn("alavanca", Transform3D(Basis(), o + Vector3(-1.2, 0.01, 0.9)))[0]
+	var nao: Part = sp.call("chip", Vector3(-0.4, 0, 0.9))
+	(nao.node as ChipNode).set_mode("nao")
+	var ind: Part = sp.call("indicador", Vector3(0.4, 0, 0.9))
+	var px: Part = sp.call("pixel", Vector3(1.2, 0, 0.9))
+	var kc: Part = sp.call("constante", Vector3(1.2, 0, 1.6))
+	(kc.node as ConstNode).set_value(SignalNode.VEC, Vector3(255, 120, 0))
+	Signals.connect_ports(pul.node, "Pulso", cnt.node, "Somar")
+	Signals.connect_ports(cnt.node, "Valor", num.node, "Valor")
+	Signals.connect_ports(cnt.node, "Valor", txt.node, "A")
+	Signals.connect_ports(lever.device, "Saída", nao.node, "A")
+	Signals.connect_ports(nao.node, "Saída", ind.node, "Valor")
+	Signals.connect_ports(kc.node, "Valor", px.node, "Cor")
+	await _frames(200)
+	player.teleport(o + Vector3(0, 0.03, 2.6))
+	_look_from_eye(o + Vector3(0, 0.0, 0.1))
+	await _frames(10)
+	await _shot("l1_circuito")
+	# Depurador mirando no contador
+	player.select_tool(4)
+	_look_from_eye(cnt.global_position)
+	await _frames(5)
+	await _shot("l2_depurador")
+	# Ajustes do chip
+	var hud: Hud = world.hud
+	hud.node_config.open(player, cnt.node)
+	await _frames(5)
+	await _shot("l3_ajustes_chip")
+	hud.node_config.close()
+	# Menu de portas (rotear tem 4 saídas)
+	(pul.node as ChipNode).set_mode("roteia")
+	player.select_tool(3)
+	_look_from_eye(pul.global_position)
+	await _frames(3)
+	var wt: WireTool = player.tools[3]
+	wt._pick_output(pul.node)
+	await _frames(5)
+	await _shot("l4_menu_portas")
+	hud.port_menu.close()
+	# Depósito de eletrônica
+	player.select_tool(0)
+	player.teleport(Vector3(-32, 0.05, 9.5))
+	_look_from_eye(Vector3(-32, 0.0, 4.5))
+	await _frames(30)
+	await _shot("l5_deposito")
+
+
 func _bisect_sit() -> void:
 	player.sit(world.demo_seat)
 	for i in 30:

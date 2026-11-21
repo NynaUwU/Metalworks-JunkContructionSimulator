@@ -24,6 +24,7 @@ var joints: Array[MechJoint] = []
 var devices: Array[ControlDevice] = []
 ## Assento em que o jogador está sentado (as teclas controlam a rede dele).
 var active_seat: Part = null
+var seat_player: Node = null      ## jogador sentado (para a "Mira" do assento)
 var seat_keys_enabled := true
 
 var _ball_mesh: SphereMesh
@@ -48,6 +49,7 @@ func reset(root: Node3D) -> void:
 	welds.clear()
 	joints.clear()
 	devices.clear()
+	Signals.reset()
 	active_seat = null
 	seat_keys_enabled = true
 
@@ -298,6 +300,10 @@ func delete_part(part: Part) -> void:
 		_remove_joint(part.mech)
 	if part.device:
 		_remove_device(part.device)
+	if part.node:
+		Signals.unregister(part.node)
+	if part.kind == "isolador":
+		Signals.remove_via(part)
 	if part == active_seat:
 		active_seat = null
 	for w: Weld in part.welds.duplicate():
@@ -417,6 +423,7 @@ func _group_anchored(group: Array) -> bool:
 
 func add_joint(j: MechJoint) -> void:
 	joints.append(j)
+	Signals.register(j)
 	j.part_a.mech = j
 	j.part_b.mech = j
 	j.rebuild(world_root)
@@ -426,11 +433,19 @@ func add_joint(j: MechJoint) -> void:
 func add_device(d: ControlDevice) -> void:
 	devices.append(d)
 	d.part.device = d
+	Signals.register(d)
+
+
+## Chip, tela, assento... (qualquer outro nó de sinal preso a uma peça).
+func add_node(n: SignalNode) -> void:
+	n.signal_part().node = n
+	Signals.register(n)
 
 
 func _remove_joint(j: MechJoint) -> void:
 	j.destroy()
 	joints.erase(j)
+	Signals.unregister(j)
 	for p in [j.part_a, j.part_b]:
 		if is_instance_valid(p) and (p as Part).mech == j:
 			(p as Part).mech = null
@@ -438,22 +453,14 @@ func _remove_joint(j: MechJoint) -> void:
 
 func _remove_device(d: ControlDevice) -> void:
 	devices.erase(d)
-	for j in joints:
-		j.sources.erase(d)
-		j.routes.erase(d)
+	Signals.unregister(d)
 
 
 ## Liga (ou desliga, se já estava ligado) um controle a um componente. Retorna true se ligou.
 ## `via`: isoladores por onde o fio passa (na ordem).
-func toggle_link(d: ControlDevice, j: MechJoint, via: Array = []) -> bool:
-	if j.sources.has(d):
-		j.sources.erase(d)
-		j.routes.erase(d)
-		return false
-	j.sources.append(d)
-	if not via.is_empty():
-		j.routes[d] = via.duplicate()
-	return true
+## Liga (ou desliga) um controle na entrada "Sinal" de um componente.
+func toggle_link(d: SignalNode, j: MechJoint, via: Array = []) -> bool:
+	return Signals.toggle(d, "Saída", j, "Sinal", via)
 
 
 ## Recria as juntas cujas peças mudaram de montagem (solda, corte, separação).
@@ -573,6 +580,7 @@ func network(seat: Part) -> Array[MechJoint]:
 
 
 func _physics_process(delta: float) -> void:
+	Signals.tick(delta)
 	if _balance_dirty:
 		_balance_dirty = false
 		balance_masses()

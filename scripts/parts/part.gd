@@ -11,6 +11,7 @@ var label := ""              ## nome mostrado no HUD (componentes); vazio = nome
 var cuttable := true
 var mech: MechJoint = null   ## junta mecânica da qual esta peça faz parte (componentes)
 var device: ControlDevice = null   ## botão / alavanca / potenciômetro
+var node: SignalNode = null        ## chip, tela, assento... (nó de sinal desta peça)
 var interact_kind := ""      ## "assento", "botao"... (tecla F)
 var planes: Array[Plane] = []
 var volume := 0.0

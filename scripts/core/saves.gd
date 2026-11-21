@@ -15,7 +15,7 @@ extends Node
 signal changed   ## a lista de saves mudou
 
 const FORMAT := "junk-construction-simulator"
-const VERSION := 1
+const VERSION := 2
 const DIR_WORLDS := "user://saves/mundos"
 const DIR_BUILDS := "user://saves/construcoes"
 const AUTOSAVE_INTERVAL := 300.0
@@ -116,6 +116,14 @@ static func read(path: String) -> Dictionary:
 
 ## Atualiza saves de versões antigas do formato.
 static func _migrate(data: Dictionary) -> Dictionary:
+	# Versão 1: fios só de controle → componente ("links").
+	if int(data.get("version", 1)) < 2:
+		var wires: Array = []
+		for ld: Dictionary in data.get("links", []):
+			wires.append({"f": ld["d"], "fp": "Saída", "t": ld["j"], "tp": "Sinal", "via": ld.get("via", [])})
+		data["wires"] = wires
+		data.erase("links")
+		data["version"] = 2
 	# Na 0.7.2 o padrão era "lados sem colisão" (o jogador não escolheu): volta a colidir.
 	if str(data.get("game", "")) == "0.7.2":
 		for gd: Dictionary in data.get("groups", []):
@@ -223,6 +231,7 @@ func clear_world() -> void:
 		j.destroy()
 	Build.joints.clear()
 	Build.devices.clear()
+	Signals.reset()
 	Build.welds.clear()
 	Build.active_seat = null
 	for c in Build.world_root.get_children():
@@ -261,24 +270,27 @@ static func machine_of(part: Part) -> Array:
 	var changed_any := true
 	while changed_any:
 		changed_any = false
+		var groups_to_add: Array = []
 		for j in Build.joints:
 			if not j.is_valid():
 				continue
 			var a := j.part_a.assembly()
 			var b := j.part_b.assembly()
-			var linked := found.has(a) or found.has(b)
-			for d: ControlDevice in j.sources:
-				if is_instance_valid(d.part) and found.has(d.part.assembly()):
-					linked = true
-			if not linked:
+			if found.has(a) or found.has(b):
+				groups_to_add.append([a, b])
+		# Fios: os dois lados e os isoladores do caminho.
+		for w in Signals.wires:
+			if not w.is_valid():
 				continue
-			var add: Array = [a, b]
-			for d: ControlDevice in j.sources:
-				if is_instance_valid(d.part):
-					add.append(d.part.assembly())
-				for ins in j.routes.get(d, []):
+			var fa: Assembly = w.from_node.signal_part().assembly()
+			var ta: Assembly = w.to_node.signal_part().assembly()
+			if found.has(fa) or found.has(ta):
+				var add: Array = [fa, ta]
+				for ins in w.via:
 					if is_instance_valid(ins):
 						add.append((ins as Part).assembly())
+				groups_to_add.append(add)
+		for add: Array in groups_to_add:
 			for asm in add:
 				if asm and not found.has(asm):
 					found[asm] = true
@@ -395,6 +407,13 @@ static func serialize(assemblies: Array, origin: Transform3D) -> Dictionary:
 			if p.device:
 				groups[gi]["d"] = {"v": p.device.value if p.device.kind != "botao" else 0.0,
 					"po": p.device.positive_only}
+			var sn := Signals.node_of(p)
+			if sn and sn.signal_part() == p:
+				var st := sn.save_state()
+				if sn.node_name != "":
+					st["name"] = sn.node_name
+				if not st.is_empty():
+					groups[gi]["sn"] = st
 
 	var welds: Array = []
 	for w in Build.welds:
@@ -416,24 +435,26 @@ static func serialize(assemblies: Array, origin: Transform3D) -> Dictionary:
 		if bd.size() > 1:
 			bodies.append(bd)
 
-	var links: Array = []
-	for j in Build.joints:
-		if not ids.has(j.part_a) or not group_index.has(j.part_a.comp_group):
+	var wires: Array = []
+	for w in Signals.wires:
+		if not w.is_valid():
 			continue
-		for d: ControlDevice in j.sources:
-			if not is_instance_valid(d.part) or not ids.has(d.part) or not group_index.has(d.part.comp_group):
-				continue
-			var via: Array = []
-			for ins in j.routes.get(d, []):
-				if is_instance_valid(ins) and ids.has(ins):
-					via.append(ids[ins])
-			links.append({"j": group_index[j.part_a.comp_group], "d": group_index[d.part.comp_group], "via": via})
+		var fp: Part = w.from_node.signal_part()
+		var tp: Part = w.to_node.signal_part()
+		if not ids.has(fp) or not ids.has(tp) or not group_index.has(fp.comp_group) or not group_index.has(tp.comp_group):
+			continue
+		var via: Array = []
+		for ins in w.via:
+			if is_instance_valid(ins) and ids.has(ins):
+				via.append(ids[ins])
+		wires.append({"f": group_index[fp.comp_group], "fp": w.from_port,
+			"t": group_index[tp.comp_group], "tp": w.to_port, "via": via})
 
 	return {
 		"format": FORMAT, "version": VERSION,
 		"game": str(ProjectSettings.get_setting("application/config/version", "")),
 		"time": int(Time.get_unix_time_from_system()),
-		"parts": part_list, "groups": groups, "welds": welds, "bodies": bodies, "links": links,
+		"parts": part_list, "groups": groups, "welds": welds, "bodies": bodies, "wires": wires,
 	}
 
 
@@ -546,21 +567,30 @@ func restore(data: Dictionary, origin: Transform3D) -> Array:
 			base.device.value = clampf(float(gd["d"].get("v", 0.0)), base.device.min_value(), 1.0)
 			base.device.update_visual()
 
-	# 6) Fios.
-	for ld: Dictionary in data.get("links", []):
-		var jarr: Array = group_parts[int(ld["j"])]
-		var darr: Array = group_parts[int(ld["d"])]
-		if jarr.is_empty() or darr.is_empty() or not is_instance_valid(jarr[0]) or not is_instance_valid(darr[0]):
+	# 6) Nós de sinal (nome, modo do chip, valor da constante...) e fios.
+	for gi in groups.size():
+		var gd: Dictionary = groups[gi]
+		var arr: Array = group_parts[gi]
+		if not gd.has("sn") or arr.is_empty() or not is_instance_valid(arr[0]):
 			continue
-		var j: MechJoint = (jarr[0] as Part).mech
-		var d: ControlDevice = (darr[0] as Part).device
-		if j == null or d == null or j.sources.has(d):
+		var sn := Signals.node_of(arr[0])
+		if sn:
+			sn.node_name = str(gd["sn"].get("name", ""))
+			sn.load_state(gd["sn"])
+	for wd: Dictionary in data.get("wires", []):
+		var farr: Array = group_parts[int(wd["f"])]
+		var tarr: Array = group_parts[int(wd["t"])]
+		if farr.is_empty() or tarr.is_empty() or not is_instance_valid(farr[0]) or not is_instance_valid(tarr[0]):
+			continue
+		var from := Signals.node_of(farr[0])
+		var to := Signals.node_of(tarr[0])
+		if from == null or to == null:
 			continue
 		var via: Array = []
-		for id in ld.get("via", []):
+		for id in wd.get("via", []):
 			if by_id.has(int(id)):
 				via.append(by_id[int(id)])
-		Build.toggle_link(d, j, via)
+		Signals.connect_ports(from, str(wd["fp"]), to, str(wd["tp"]), via)
 
 	return created
 

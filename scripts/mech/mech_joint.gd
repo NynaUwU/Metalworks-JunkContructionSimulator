@@ -1,5 +1,5 @@
 class_name MechJoint
-extends RefCounted
+extends SignalNode
 ## Junta mecânica entre duas peças.
 ##
 ## A junta liga a peça "base" (part_a: carcaça) à peça "móvel" (part_b: rotor, haste,
@@ -93,9 +93,19 @@ const MAX_KEYS := 2
 var bind_pos: Array = []
 var bind_neg: Array = []
 
-## Controles ligados por fio
-var sources: Array = []           ## ControlDevice
-var routes := {}                  ## ControlDevice -> Array de isoladores (Part) por onde o fio passa
+## Fios ligados à entrada "Sinal" (atalhos; os fios ficam no autoload Signals).
+var sources: Array:               ## nós ligados na entrada "Sinal"
+	get:
+		var out_nodes: Array = []
+		for w in Signals.wires_into(self, "Sinal"):
+			out_nodes.append(w.from_node)
+		return out_nodes
+var routes: Dictionary:           ## nó de origem -> isoladores por onde o fio passa
+	get:
+		var r := {}
+		for w in Signals.wires_into(self, "Sinal"):
+			r[w.from_node] = w.via
+		return r
 
 var key_value := 0.0              ## valor vindo das teclas (calculado pelo Build)
 var _latched := 0.0
@@ -123,13 +133,68 @@ func is_valid() -> bool:
 
 
 ## Pontos do fio de um controle até este componente (passando pelos isoladores).
-func wire_points(d: ControlDevice) -> PackedVector3Array:
-	var pts := PackedVector3Array([d.part.global_position])
-	for ins in routes.get(d, []):
-		if is_instance_valid(ins) and (ins as Part).is_inside_tree():
-			pts.append(Components.wire_anchor(ins))
-	pts.append(part_a.global_position)
-	return pts
+func wire_points(d: SignalNode) -> PackedVector3Array:
+	for w in Signals.wires_into(self, "Sinal"):
+		if w.from_node == d:
+			return Signals.wire_points(w)
+	return PackedVector3Array()
+
+
+# --- Sinais (SignalNode) -----------------------------------------------------------
+
+func signal_part() -> Part:
+	return part_a
+
+
+func is_alive() -> bool:
+	return is_valid()
+
+
+func kind_label() -> String:
+	return display_name()
+
+
+func inputs() -> Array:
+	return [["Sinal", NUM]] if is_actuator() else []
+
+
+func outputs() -> Array:
+	match type:
+		"motor":
+			return [["Ângulo", NUM], ["Giro", NUM]]
+		"servo", "dobradica", "pino", "trava", "torcao":
+			return [["Ângulo", NUM]]
+		"pistao", "servo_linear":
+			return [["Extensão", NUM]]
+		"mola":
+			return [["Compressão", NUM]]
+		"guincho":
+			return [["Cabo", NUM]]
+		"ima", "engate":
+			return [["Grudado", NUM]]
+	return []
+
+
+## Saídas: ângulo em graus, giro em rad/s, distâncias em metros.
+func update_outputs(_dt: float) -> void:
+	match type:
+		"motor":
+			out["Ângulo"] = rad_to_deg(angle())
+			var a := part_a.assembly()
+			var b := part_b.assembly()
+			if a and b:
+				var ax := (part_a.global_basis.orthonormalized() * axis).normalized()
+				out["Giro"] = (b.angular_velocity - a.angular_velocity).dot(ax)
+		"servo", "dobradica", "pino", "trava", "torcao":
+			out["Ângulo"] = rad_to_deg(angle())
+		"pistao", "servo_linear":
+			out["Extensão"] = extension()
+		"mola":
+			out["Compressão"] = -extension()
+		"guincho":
+			out["Cabo"] = rope_len
+		"ima", "engate":
+			out["Grudado"] = 1.0 if lock_target else 0.0
 
 
 ## Guarda a posição atual como "zero" (chamado ao criar o componente).
@@ -309,9 +374,8 @@ func extension() -> float:
 ## Valor de controle final (-1..1).
 func control_value() -> float:
 	var v := key_value
-	for s: ControlDevice in sources:
-		if is_instance_valid(s.part):
-			v += s.value
+	if is_actuator():
+		v += float(Signals.input(self, "Sinal"))
 	v = clampf(v, -1.0, 1.0)
 	return -v if invert else v
 
@@ -320,10 +384,7 @@ func control_value() -> float:
 func has_input() -> bool:
 	if absf(key_value) > 0.001:
 		return true
-	for s: ControlDevice in sources:
-		if is_instance_valid(s.part) and absf(s.value) > 0.001:
-			return true
-	return false
+	return is_actuator() and absf(float(Signals.input(self, "Sinal"))) > 0.001
 
 
 ## Lê as teclas do assento (chamado só quando alguém está sentado na mesma rede).

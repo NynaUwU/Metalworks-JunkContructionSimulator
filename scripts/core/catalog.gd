@@ -59,6 +59,15 @@ const ITEMS := [
 	{"id": "botao", "nome": "Botão", "cat": "Controles", "component": "botao"},
 	{"id": "alavanca", "nome": "Alavanca", "cat": "Controles", "component": "alavanca"},
 	{"id": "potenciometro", "nome": "Alavanca variável", "cat": "Controles", "component": "potenciometro"},
+	{"id": "teclas", "nome": "Teclas", "cat": "Controles", "component": "teclas"},
+	{"id": "teclado", "nome": "Teclado de senha", "cat": "Controles", "component": "teclado"},
+	{"id": "chip", "nome": "Chip lógico", "cat": "Lógica", "component": "chip"},
+	{"id": "constante", "nome": "Valor constante", "cat": "Lógica", "component": "constante"},
+	{"id": "indicador", "nome": "Indicador", "cat": "Mostradores", "component": "indicador"},
+	{"id": "pixel", "nome": "Pixel", "cat": "Mostradores", "component": "pixel"},
+	{"id": "mostrador", "nome": "Mostrador numérico", "cat": "Mostradores", "component": "mostrador"},
+	{"id": "tela", "nome": "Tela de valores", "cat": "Mostradores", "component": "tela"},
+	{"id": "tela_texto", "nome": "Tela de texto", "cat": "Mostradores", "component": "tela_texto"},
 ]
 
 static var _geo_cache := {}

@@ -62,6 +62,7 @@ jobs:
           timeout 300 "$RUNNER_TEMP/godot" --headless --path . res://tests/test_mech.tscn
           timeout 300 "$RUNNER_TEMP/godot" --headless --path . res://tests/test_save.tscn
           timeout 300 "$RUNNER_TEMP/godot" --headless --path . res://tests/test_rigid.tscn
+          timeout 300 "$RUNNER_TEMP/godot" --headless --path . res://tests/test_logic.tscn
 
       - name: Exportar para Windows
         if: steps.ver.outputs.exists == 'false'

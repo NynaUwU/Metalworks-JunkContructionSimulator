@@ -29,6 +29,15 @@ const INFO := {
 	"alavanca": {"nome": "Alavanca", "preco": 5, "desc": "Liga e desliga. Ligue com a Fiação."},
 	"potenciometro": {"nome": "Alavanca variável", "preco": 8, "desc": "Segure E e mova o mouse para cima/baixo. Na Fiação, botão direito: só positivo ou -1 a 1."},
 	"isolador": {"nome": "Isolador", "preco": 0, "desc": "Guia os fios. Criado com a ferramenta de Fiação."},
+	"chip": {"nome": "Chip lógico", "preco": 6, "desc": "E, OU, somar, comparar, memória, temporizador... (86 modos). Escolha o modo no botão direito da Fiação."},
+	"constante": {"nome": "Valor constante", "preco": 3, "desc": "Sai sempre o mesmo número, vetor ou texto."},
+	"teclas": {"nome": "Teclas", "preco": 5, "desc": "Teclas + e − viram um sinal (-1 a 1). Sentado na máquina, ou sempre (a pé)."},
+	"teclado": {"nome": "Teclado de senha", "preco": 8, "desc": "E nele para digitar a senha: Certo ou Errado."},
+	"indicador": {"nome": "Indicador", "preco": 3, "desc": "Lâmpada que muda de cor conforme o valor."},
+	"pixel": {"nome": "Pixel", "preco": 3, "desc": "Mostra uma cor RGB (vetor de 0 a 255)."},
+	"mostrador": {"nome": "Mostrador numérico", "preco": 6, "desc": "Mostra um número grande."},
+	"tela": {"nome": "Tela de valores", "preco": 8, "desc": "Mostra dois valores com nome."},
+	"tela_texto": {"nome": "Tela de texto", "preco": 10, "desc": "Mostra um texto; {A}, {B}, {C}, {D} e {texto} viram os valores."},
 }
 
 const INSULATOR_ANCHOR := Vector3(0, 0.055, 0)   ## onde o fio encosta no isolador (no "pescoço")
@@ -94,6 +103,9 @@ static func bounds(kind: String, size := Vector3.ZERO) -> AABB:
 			return AABB(Vector3(-0.1, -0.04, -0.2), Vector3(0.2, 0.14, 0.4))
 		"isolador":
 			return AABB(Vector3(-0.07, -0.08, -0.07), Vector3(0.14, 0.18, 0.14))
+	if SIGNAL_SIZES.has(kind):
+		var s: Vector3 = SIGNAL_SIZES[kind]
+		return AABB(-s * 0.5, s + Vector3(0, 0.06 if kind == "indicador" else 0.0, 0))
 	return AABB(Vector3(-0.5, -0.5, -0.5), Vector3.ONE)
 
 
@@ -150,6 +162,8 @@ static func _spawn_kind(kind: String, xform: Transform3D, size: Vector3) -> Arra
 			return [_spawn_device(kind, xform)]
 		"isolador":
 			return [_spawn_insulator(xform)]
+		"chip", "constante", "teclas", "teclado", "indicador", "pixel", "mostrador", "tela", "tela_texto":
+			return [_spawn_signal(kind, xform)]
 	return []
 
 
@@ -540,6 +554,9 @@ static func _spawn_seat(xform: Transform3D) -> Array[Part]:
 	_deco_box(base, Vector3(0.5, 0.03, 0.5), Vector3(0, 0.07, -0.02), Color(0.45, 0.12, 0.1))
 	_deco_box(base, Vector3(0.12, 0.02, 0.04), Vector3(0, 0.0, -0.31), Color(1.0, 0.75, 0.2), 1.5)
 	Build.make_weld(base, back, xform * Vector3(0, 0.06, 0.25), false).internal = true
+	var sn := SeatNode.new()
+	sn.part = base
+	Build.add_node(sn)
 	return [base, back]
 
 
@@ -592,6 +609,104 @@ static func _insulator_visual(parent: Node3D) -> void:
 	_deco_cyl(parent, 0.072, 0.02, Transform3D(Basis(), Vector3(0, 0.07, 0)), black, 0.0)
 	_deco_cyl(parent, 0.012, 0.004, Transform3D(Basis(), Vector3(0, 0.081, 0)), Color(0.7, 0.72, 0.75), 0.9)
 	_deco_cyl(parent, 0.006, 0.08, Transform3D(Basis(), Vector3(0, -0.12, 0)), Color(0.6, 0.62, 0.66), 0.9)
+
+
+# --- Lógica e mostradores ----------------------------------------------------------
+
+const SIGNAL_SIZES := {
+	"chip": Vector3(0.24, 0.05, 0.18), "constante": Vector3(0.18, 0.06, 0.18),
+	"teclas": Vector3(0.22, 0.05, 0.16), "teclado": Vector3(0.18, 0.04, 0.24),
+	"indicador": Vector3(0.12, 0.05, 0.12), "pixel": Vector3(0.2, 0.04, 0.2),
+	"mostrador": Vector3(0.4, 0.05, 0.16), "tela": Vector3(0.5, 0.04, 0.32),
+	"tela_texto": Vector3(0.7, 0.04, 0.45),
+}
+const SIGNAL_LABELS := {
+	"chip": "Chip lógico", "constante": "Valor constante", "teclas": "Teclas", "teclado": "Teclado de senha",
+	"indicador": "Indicador", "pixel": "Pixel", "mostrador": "Mostrador numérico", "tela": "Tela de valores",
+	"tela_texto": "Tela de texto",
+}
+const BOARD_DARK := Color(0.07, 0.08, 0.09)
+const SCREEN_DARK := Color(0.02, 0.04, 0.06)
+
+
+static func _spawn_signal(kind: String, xform: Transform3D) -> Part:
+	var size: Vector3 = SIGNAL_SIZES[kind]
+	var top := size.y * 0.5
+	var p := _box(size, "plastico", xform, SIGNAL_LABELS[kind], kind)
+	var node: SignalNode
+	match kind:
+		"chip":
+			var c := ChipNode.new()
+			c.part = p
+			for i in 4:
+				for side: float in [-1.0, 1.0]:
+					_deco_box(p, Vector3(0.025, 0.012, 0.02), Vector3(-0.09 + i * 0.06, -0.012, side * (size.z * 0.5 + 0.008)), Color(0.85, 0.7, 0.25))
+			c.label = _label3d(p, Gates.DEFS[c.mode]["sym"], top, 64, Color(0.95, 0.95, 0.95))
+			node = c
+		"constante":
+			var k := ConstNode.new()
+			k.part = p
+			_deco_box(p, Vector3(size.x - 0.02, 0.004, size.z - 0.02), Vector3(0, top, 0), Color(0.12, 0.3, 0.7))
+			k.label = _label3d(p, "1", top + 0.003, 48, Color.WHITE)
+			node = k
+		"teclas":
+			var t := KeysNode.new()
+			t.part = p
+			for x: float in [-0.05, 0.05]:
+				_deco_box(p, Vector3(0.07, 0.02, 0.07), Vector3(x, top + 0.008, -0.025), Color(0.85, 0.85, 0.88))
+			t.label = _label3d(p, t.keys_text(), top + 0.002, 24, Color(1.0, 0.8, 0.3), Vector3(0, 0, 0.055))
+			node = t
+		"teclado":
+			var kp := KeypadNode.new()
+			kp.part = p
+			for r in 4:
+				for col in 3:
+					_deco_box(p, Vector3(0.04, 0.012, 0.035), Vector3(-0.05 + col * 0.05, top + 0.004, -0.04 + r * 0.045), Color(0.75, 0.77, 0.8))
+			kp.label = _label3d(p, "SENHA", top + 0.002, 26, Color(0.8, 0.85, 0.9), Vector3(0, 0, -0.088))
+			p.interact_kind = "teclado"
+			node = kp
+		"indicador", "pixel", "mostrador", "tela", "tela_texto":
+			var d := DisplayNode.new()
+			d.part = p
+			d.kind = kind
+			match kind:
+				"indicador":
+					d.setup_lamp(_deco_sphere(p, 0.05, Vector3(0, top, 0), Color.WHITE))
+				"pixel":
+					d.setup_lamp(_deco_box(p, Vector3(size.x - 0.02, 0.006, size.z - 0.02), Vector3(0, top, 0), Color.WHITE))
+				"mostrador":
+					_deco_box(p, Vector3(size.x - 0.03, 0.004, size.z - 0.03), Vector3(0, top, 0), SCREEN_DARK)
+					d.label = _label3d(p, "0.0", top + 0.003, 110, Color(1.0, 0.22, 0.12))
+					d.decimals = 1
+				"tela":
+					_deco_box(p, Vector3(size.x - 0.04, 0.004, size.z - 0.04), Vector3(0, top, 0), SCREEN_DARK)
+					d.label = _label3d(p, "A: 0\nB: 0", top + 0.003, 84, Color(0.75, 0.95, 1.0))
+				"tela_texto":
+					_deco_box(p, Vector3(size.x - 0.04, 0.004, size.z - 0.04), Vector3(0, top, 0), SCREEN_DARK)
+					d.label = _label3d(p, "", top + 0.003, 64, Color(0.75, 1.0, 0.8), Vector3.ZERO, size.x - 0.08)
+			node = d
+	Build.add_node(node)
+	return p
+
+
+## Texto deitado em cima da peça (lido de quem está na frente, olhando para -Z).
+static func _label3d(parent: Node3D, text: String, top_y: float, font_size: int, color: Color, offset := Vector3.ZERO, width := 0.0) -> Label3D:
+	var l := Label3D.new()
+	l.text = text
+	l.font_size = font_size
+	l.pixel_size = 0.0011
+	l.modulate = color
+	l.outline_size = 0
+	l.shaded = false
+	l.double_sided = false
+	l.position = Vector3(0, top_y + 0.002, 0) + offset
+	l.rotation.x = -PI * 0.5
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	if width > 0.0:
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.width = width / l.pixel_size
+	parent.add_child(l)
+	return l
 
 
 # --- Aparência para a loja (sem física) ---------------------------------------
@@ -689,4 +804,34 @@ static func build_visual(kind: String, size := Vector3.ZERO) -> Node3D:
 			_deco_box(root, Vector3(0.1, 0.06, 0.05), Vector3(0, 0.07, -0.07), Color(0.95, 0.65, 0.1))
 		"isolador":
 			_insulator_visual(root)
+		"chip", "constante", "teclas", "teclado", "indicador", "pixel", "mostrador", "tela", "tela_texto":
+			var ssz: Vector3 = SIGNAL_SIZES[kind]
+			_deco_box(root, ssz, Vector3.ZERO, BOARD_DARK)
+			var top := ssz.y * 0.5
+			match kind:
+				"chip":
+					_label3d(root, "E", top, 64, Color.WHITE)
+					for i in 4:
+						for side: float in [-1.0, 1.0]:
+							_deco_box(root, Vector3(0.025, 0.012, 0.02), Vector3(-0.09 + i * 0.06, -0.012, side * (ssz.z * 0.5 + 0.008)), Color(0.85, 0.7, 0.25))
+				"constante":
+					_deco_box(root, Vector3(ssz.x - 0.02, 0.004, ssz.z - 0.02), Vector3(0, top, 0), Color(0.12, 0.3, 0.7))
+					_label3d(root, "1", top + 0.003, 48, Color.WHITE)
+				"teclas":
+					for x: float in [-0.05, 0.05]:
+						_deco_box(root, Vector3(0.07, 0.02, 0.07), Vector3(x, top + 0.008, -0.025), Color(0.85, 0.85, 0.88))
+				"teclado":
+					for r in 4:
+						for col in 3:
+							_deco_box(root, Vector3(0.04, 0.012, 0.035), Vector3(-0.05 + col * 0.05, top + 0.004, -0.04 + r * 0.045), Color(0.75, 0.77, 0.8))
+				"indicador":
+					_deco_sphere(root, 0.05, Vector3(0, top, 0), Color(0.2, 1.0, 0.3))
+				"pixel":
+					_deco_box(root, Vector3(ssz.x - 0.02, 0.006, ssz.z - 0.02), Vector3(0, top, 0), Color(0.9, 0.3, 0.8), 1.0)
+				"mostrador":
+					_deco_box(root, Vector3(ssz.x - 0.03, 0.004, ssz.z - 0.03), Vector3(0, top, 0), SCREEN_DARK)
+					_label3d(root, "12.5", top + 0.003, 110, Color(1.0, 0.22, 0.12))
+				"tela", "tela_texto":
+					_deco_box(root, Vector3(ssz.x - 0.04, 0.004, ssz.z - 0.04), Vector3(0, top, 0), SCREEN_DARK)
+					_label3d(root, "A: 1\nB: 0" if kind == "tela" else "Olá!", top + 0.003, 56, Color(0.75, 0.95, 1.0))
 	return root

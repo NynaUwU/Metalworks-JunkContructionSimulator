@@ -25,7 +25,7 @@ Nome, mapa, visual e código são próprios.
 | Andar / pular | W A S D / Espaço |
 | Correr | toque duplo numa tecla de andar (ou Shift) |
 | Agachar (mais devagar, alcança mais baixo) | Ctrl |
-| Trocar ferramenta | 1 Gravitador · 2 Solda · 3 Esmerilhadeira · 4 Fiação |
+| Trocar ferramenta | 1 Gravitador · 2 Solda · 3 Esmerilhadeira · 4 Fiação · 5 Depurador |
 | Usar (loja, assento, botão, alavanca, engate rápido) | E |
 | Modo edição do assento (sentado) | Tab |
 | Ajuda / menu / FPS / tela cheia | H / Esc / F3 / F11 |
@@ -94,6 +94,26 @@ Nome, mapa, visual e código são próprios.
   - num componente: abre os ajustes dele (mola, torção, dobradiças e junta esférica não usam teclas, mas têm ajustes).
 - Perto de onde você nasce tem um **carrinho de exemplo**: sente e use W/S/A/D.
 
+**Lógica e sinais** (estilo Wiremod)
+- Toda peça com sinais tem **entradas** e **saídas** com tipo: número, vetor (X, Y, Z), texto, peça ou lista.
+  Controles, componentes (o motor dá Ângulo e Giro, o pistão dá Extensão...), chips, teclas, assento e telas.
+  Lógica é de graça: sinais não gastam energia.
+- **Fiação (4):** clique na peça de origem e escolha a saída, passe pelos isoladores (opcional) e clique no destino
+  escolhendo a entrada (só aparecem as do mesmo tipo). Escolher a mesma ligação de novo desliga o fio.
+  Vários fios numa entrada de número somam. Cor do fio = tipo; aceso quando tem sinal.
+- **Chip lógico:** uma peça só com 86 modos (botão direito com a Fiação para escolher):
+  - lógica (E, OU, NÃO, XOU...) e comparação;
+  - aritmética (somar, dividir, limitar, converter faixa...);
+  - memória (latch, liga/desliga, alternador, contador, RAM) e seleção (se/então, multiplexador, roteador);
+  - tempo (cronômetro, pulsador, pisca, temporizador, atraso, acumulador, suavizar);
+  - trigonometria em graus, bits, vetores e textos.
+- **Entradas:** valor constante (número, vetor ou texto), **Teclas** (+/−, sentado na máquina ou sempre),
+  **Teclado de senha** (E nele), e o **assento**, que dá W, A, S, D, Espaço, Shift, cliques, Ocupado e Mira.
+- **Mostradores:** indicador (cor pelo valor), pixel (cor RGB), mostrador numérico, tela de valores e tela de texto
+  (modelo com {A}, {B}, {C}, {D} e {texto}).
+- **Depurador (5):** mire numa peça para ver todas as entradas e saídas ao vivo; botão direito dá nome e ajustes.
+- Tudo isso fica no depósito **ELETRÔNICA** (ao lado do galpão) e na loja.
+
 **Salvar e carregar** (Esc → **Salvar / Carregar**)
 - **Mundos:** salve o mundo inteiro com um nome (peças, soldas, componentes com seus ajustes e teclas,
   fios, pontos e onde você está). Carregue, apague ou comece um **mundo novo**.
@@ -121,6 +141,12 @@ scripts/
   core/catalog.gd         itens e preços da loja
   core/settings.gd        opções salvas (autoload "Settings")
   core/saves.gd           salvar/carregar mundos e construções (autoload "Saves")
+  signals/signals.gd      nós de sinal e fios porta a porta (autoload "Signals")
+  signals/gates.gd        os 86 modos do chip lógico
+  signals/*_node.gd       chip, constante, teclas, teclado de senha, mostradores, assento
+  tools/debug_tool.gd     Depurador
+  ui/port_menu.gd         menu de escolher porta (Fiação)
+  ui/node_config_ui.gd    ajustes de chips, telas, constantes...
   ui/save_menu.gd         tela de salvar/carregar
   tools/build_placer.gd   colocar uma construção salva (prévia fantasma)
   parts/convex_geo.gd     geometria: peças são poliedros convexos definidos por planos
@@ -163,6 +189,10 @@ godot --headless --path . res://tests/test_save.tscn
 
 ```bash
 godot --headless --path . res://tests/test_rigid.tscn
+```
+
+```bash
+godot --headless --path . res://tests/test_logic.tscn
 ```
 
 **Publicar uma versão:** mude `config/version` no `project.godot` e crie

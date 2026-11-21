@@ -322,10 +322,22 @@ func _section(i: int, j: MechJoint) -> Control:
 	v.add_theme_constant_override("separation", 6)
 	panel.add_child(v)
 
-	var title := j.display_name() if _single else "%d · %s" % [i + 1, j.display_name()]
+	var title := j.title() if _single else "%d · %s" % [i + 1, j.title()]
 	if not j.sources.is_empty():
 		title += "   (+%d controle%s por fio)" % [j.sources.size(), "" if j.sources.size() == 1 else "s"]
 	v.add_child(_label(title, 17, Color(1.0, 0.85, 0.4)))
+	var name_row := HBoxContainer.new()
+	var nome_l := _label("Nome", 13, Color(1, 1, 1, 0.85))
+	nome_l.custom_minimum_size = Vector2(70, 0)
+	name_row.add_child(nome_l)
+	var name_edit := LineEdit.new()
+	name_edit.text = j.node_name
+	name_edit.placeholder_text = "(sem nome)"
+	name_edit.max_length = 24
+	name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_edit.text_changed.connect(func(t: String) -> void: j.node_name = t.strip_edges())
+	name_row.add_child(name_edit)
+	v.add_child(name_row)
 
 	if not j.is_actuator():
 		v.add_child(_label("Sem teclas: só ajustes.", 13, Color(1, 1, 1, 0.6)))

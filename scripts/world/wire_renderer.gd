@@ -25,19 +25,16 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	_imesh.clear_surfaces()
 	var any := false
-	for j: MechJoint in Build.joints:
-		if not j.is_valid():
+	for w in Signals.wires:
+		if not w.is_valid():
 			continue
-		for d: ControlDevice in j.sources:
-			if not is_instance_valid(d.part):
-				continue
-			if not any:
-				_imesh.surface_begin(Mesh.PRIMITIVE_LINES)
-				any = true
-			var color := Color(1.0, 0.55, 0.1) if absf(d.value) > 0.05 else Color(0.08, 0.08, 0.09)
-			var pts := j.wire_points(d)
-			for i in pts.size() - 1:
-				_cable(pts[i], pts[i + 1], color)
+		if not any:
+			_imesh.surface_begin(Mesh.PRIMITIVE_LINES)
+			any = true
+		var pts := Signals.wire_points(w)
+		var color := _wire_color(w)
+		for i in pts.size() - 1:
+			_cable(pts[i], pts[i + 1], color)
 	if any:
 		_imesh.surface_end()
 	var rope := false
@@ -81,8 +78,27 @@ func _rope(a: Vector3, b: Vector3, length: float) -> void:
 				_imesh.surface_add_vertex(v)
 
 
+## Cor do fio: escuro desligado; aceso na cor do tipo (número laranja, vetor azul,
+## texto verde, peça roxo, lista branco) quando há sinal.
+static func _wire_color(w) -> Color:
+	var t: String = w.type()
+	var v: Variant = w.value()
+	var active := false
+	match t:
+		SignalNode.NUM:
+			active = absf(float(v)) > 0.05
+		SignalNode.VEC:
+			active = (v as Vector3).length_squared() > 1e-6
+		SignalNode.TXT:
+			active = str(v) != ""
+		_:
+			active = v != null and not (v is Array and (v as Array).is_empty())
+	var c: Color = SignalNode.TYPE_COLORS.get(t, Color.WHITE)
+	return c if active else c.darkened(0.82)
+
+
 func _cable(a: Vector3, b: Vector3, color: Color) -> void:
-	var sag := clampf(a.distance_to(b) * 0.15, 0.05, 0.8)
+	var sag := clampf(a.distance_to(b) * 0.06, 0.0, 0.5)
 	var prev := a
 	for i in range(1, SEGMENTS + 1):
 		var t := float(i) / SEGMENTS

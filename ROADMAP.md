@@ -96,36 +96,18 @@
 ## Marco 4 — Lógica, energia, sensores e trem de força
 Inspirado no Wiremod e no ACF do Garry's Mod (sem nada de NPCs nem geradores de efeitos).
 
-### v0.8 — 4A: Sinais
-- [ ] Sistema de portas:
-  - cada peça tem entradas e saídas com nome e tipo (número, vetor, ângulo, texto, peça, lista);
-  - atualiza só o que mudou; os chips de tempo rodam a cada tick.
-- [ ] Componentes atuais ganham portas. Exemplos:
-  - pistão: saída Extensão;
-  - servo: saída Ângulo;
-  - guincho: saída Cabo;
-  - ímã e engate: saída Grudado.
-- [ ] Fiação porta → porta:
-  - clicar na peça abre o menu de portas;
-  - isoladores continuam;
-  - a cor do fio indica o tipo do sinal.
-- [ ] Chip lógico (um chip, vários modos):
-  - lógica: AND, OR, NOT, XOR, NAND, NOR, XNOR;
-  - aritmética, comparação e trigonometria;
-  - memória: latch, D-latch, SR, toggle, contador;
-  - seleção: mín/máx, if, select, router, mux/demux;
-  - tempo: timer, pulser, onda quadrada/serra, monoestável, delay, derivada, acumulador, suavizador;
-  - bits, vetor/ângulo e texto.
-- [ ] Ferramenta Depurador: mirar numa peça mostra o valor de todas as portas ao vivo
-- [ ] Nomear componentes (o nome aparece no menu de portas e no Depurador)
-- [ ] Assento vira "Pod":
-  - saídas W, A, S, D, Espaço, Shift, mouse, ponto mirado e ocupado;
-  - as teclas do modo edição continuam valendo.
-- [ ] Entradas novas: valor constante, Adv. Input (+/− com limites), Dual Input, keypad com senha,
-  teclado numérico usado a pé
-- [ ] Mostradores (sem energia): indicador (cor pelo valor), pixel, display de 7 segmentos, tela de valores,
-  tela de texto
-- [ ] Testes de todos os modos do chip
+### ✅ v0.8 — 4A: Sinais
+- Portas com tipo (número, vetor, texto, peça, lista); fontes primeiro, depois chips na ordem dos fios
+- Componentes com saídas: motor (Ângulo, Giro), servo/dobradiças (Ângulo), pistão (Extensão), mola (Compressão),
+  guincho (Cabo), ímã/engate (Grudado)
+- Fiação porta → porta com menu de portas; isoladores; cor do fio pelo tipo
+- Chip lógico com 86 modos: lógica, aritmética, comparação, memória, seleção, tempo, trigonometria, bits,
+  vetor e texto
+- Depurador (ferramenta 5) e nomes nas peças
+- Assento como controle: W, A, S, D, Espaço, Shift, cliques, Ocupado, Mira
+- Entradas: valor constante, Teclas (sentado ou sempre), teclado de senha
+- Mostradores: indicador, pixel, mostrador numérico, tela de valores, tela de texto
+- Depósito ELETRÔNICA; saves antigos convertidos; 91 testes de lógica
 
 ### v0.9 — 4B: Energia elétrica
 - [ ] Rede elétrica:

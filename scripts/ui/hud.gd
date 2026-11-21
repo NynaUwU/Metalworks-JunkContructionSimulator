@@ -14,7 +14,8 @@ E — usar (loja, assento, botão, alavanca, engate)
 1 — Gravitador (pegar peças)
 2 — Solda
 3 — Esmerilhadeira (cortar / remover solda)
-4 — Fiação (ligar controles a componentes)
+4 — Fiação (ligar uma saída numa entrada)
+5 — Depurador (ver os sinais de uma peça)
 
 [b]Gravitador[/b]
 Clique segurado — pegar · soltar — cai (dá pra jogar)
@@ -43,10 +44,15 @@ Tab sentado — modo edição: clique num componente
 E (clique, sentado) — usar botão / alavanca
 Alavanca variável: segure E e mova o mouse
   para cima/baixo
-Fiação: clique no controle, na estrutura por onde
-  o fio passa (cria isoladores) e no componente
-Fiação, botão direito: remove isolador, ajusta
-  componente ou faixa da alavanca variável
+Fiação: clique na peça de origem (escolha a
+  saída), na estrutura por onde o fio passa
+  (isoladores) e no destino (escolha a entrada)
+Fiação, botão direito: remove isolador, ajustes
+  (componente, chip, tela...) ou faixa da alavanca
+Chip lógico: botão direito com a Fiação escolhe
+  o modo (E, OU, somar, memória, tempo...)
+Depurador: mira mostra entradas e saídas ao vivo;
+  botão direito: nome e ajustes
 Guincho: tecla + recolhe o cabo, − solta
 Eletroímã: ligado puxa e gruda aço/ferro
 Engate rápido: E nele (ou sinal) trava no
@@ -95,6 +101,11 @@ var shop: ShopUI
 var seat_ui: SeatUI
 var save_menu: SaveMenu
 var placer: BuildPlacer
+var port_menu: PortMenu
+var node_config: NodeConfigUI
+var keypad_ui: KeypadUI
+var _debug_panel: PanelContainer
+var _debug_text: Label
 var _aimed_on_pause: Part = null
 var _bar: HBoxContainer
 var _cross: Crosshair
@@ -176,7 +187,7 @@ func _build_ui() -> void:
 	bottom.add_child(bar)
 	for t in player.tools:
 		var slot := PanelContainer.new()
-		slot.custom_minimum_size = Vector2(150, 0)
+		slot.custom_minimum_size = Vector2(140, 0)
 		var l := _label(17, Color.WHITE)
 		l.text = "%s   %s" % [t.key_hint, t.tool_name]
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -237,6 +248,29 @@ func _build_ui() -> void:
 	add_child(shop)
 	seat_ui = SeatUI.new()
 	add_child(seat_ui)
+	port_menu = PortMenu.new()
+	add_child(port_menu)
+	node_config = NodeConfigUI.new()
+	add_child(node_config)
+	keypad_ui = KeypadUI.new()
+	add_child(keypad_ui)
+	player.port_menu_requested.connect(func(title: String, items: Array, cb: Callable) -> void: port_menu.open(title, items, cb))
+	player.node_config_requested.connect(func(n: SignalNode) -> void: node_config.open(player, n))
+	player.keypad_requested.connect(func(n: KeypadNode) -> void: keypad_ui.open(player, n))
+	# Painel do Depurador (ao lado da mira)
+	_debug_panel = PanelContainer.new()
+	var dsb := StyleBoxFlat.new()
+	dsb.bg_color = Color(0.04, 0.08, 0.06, 0.82)
+	dsb.set_corner_radius_all(8)
+	dsb.set_content_margin_all(10)
+	_debug_panel.add_theme_stylebox_override("panel", dsb)
+	_debug_panel.set_anchors_preset(Control.PRESET_CENTER)
+	_debug_panel.position = Vector2(40, -40)
+	_debug_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_debug_panel.visible = false
+	_debug_text = _label(14, Color(0.6, 1.0, 0.7))
+	_debug_panel.add_child(_debug_text)
+	add_child(_debug_panel)
 	save_menu = SaveMenu.new()
 	save_menu.world = player.get_parent()
 	add_child(save_menu)
@@ -388,7 +422,13 @@ func _process(delta: float) -> void:
 	if player == null:
 		return
 	_bar.visible = not player.is_seated()
-	if seat_ui.visible:
+	var dbg := ""
+	if player.current() is DebugTool and not player.is_seated() and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		dbg = (player.current() as DebugTool).panel_text()
+	_debug_panel.visible = dbg != ""
+	if dbg != "":
+		_debug_text.text = dbg
+	if seat_ui.visible or node_config.visible or keypad_ui.visible or port_menu.visible:
 		_hint.text = ""
 	elif placer and placer.is_active():
 		_hint.text = placer.hint_text()
@@ -403,7 +443,7 @@ func _process(delta: float) -> void:
 	_update_weld_mask(delta)
 	var part := player.aim_part()
 	var usable := player.interact_hint()
-	if seat_ui.visible:
+	if seat_ui.visible or dbg != "":
 		_aim_info.text = ""
 	elif usable != "":
 		_aim_info.text = usable
@@ -439,7 +479,7 @@ func _update_weld_mask(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if seat_ui.visible:
+	if seat_ui.visible or node_config.visible or keypad_ui.visible or port_menu.visible:
 		return
 	if save_menu.visible:
 		if event.is_action_pressed("pause"):

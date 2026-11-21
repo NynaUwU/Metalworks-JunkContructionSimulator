@@ -164,8 +164,8 @@ func _v06() -> void:
 
 
 func _depot() -> void:
-	player.teleport(Vector3(-30, 0.05, 33.5))
-	_look_from_eye(Vector3(-30, 0.2, 25))
+	player.teleport(Vector3(-30, 0.05, 38.5))
+	_look_from_eye(Vector3(-30, 0.2, 30))
 	await _frames(60)
 	await _shot("m3_deposito")
 
@@ -294,6 +294,63 @@ func _logic() -> void:
 	_look_from_eye(Vector3(-32, 0.0, 4.5))
 	await _frames(30)
 	await _shot("l5_deposito")
+
+
+func _precision() -> void:
+	# Tamanhos P/M/G, cilindros, Trena com marcas, puxador.
+	var o := Vector3(6, 0.02, 0)
+	var x := 0.0
+	for kind in ["motor", "pistao", "servo"]:
+		for k in [0.6, 1.0, 1.6]:
+			var b := Components.bounds(kind, Vector3(k, 0, 0))
+			Components.spawn(kind, Transform3D(Basis(), o + Vector3(x, -b.position.y + 0.02, 0)), Vector3(k, 0, 0))
+			x += b.size.x + 0.35
+	for ws: Vector3 in [Vector3(0.35, 0.2, 0), Vector3(0.55, 0.3, 0), Vector3(0.8, 0.4, 0)]:
+		Components.spawn("roda", Transform3D(Basis(Vector3.BACK, PI * 0.5), o + Vector3(x + ws.x, ws.x + 0.02, 0)), ws)
+		x += ws.x * 2.0 + 0.3
+	await _frames(40)
+	player.teleport(o + Vector3(x * 0.5, 0.03, 4.2))
+	_look_from_eye(o + Vector3(x * 0.5, 0.4, 0))
+	await _frames(10)
+	await _shot("p1_tamanhos")
+	# Cilindros + chapa com marcas e medida
+	var c := Vector3(-6, 0, 6)
+	var cy := Catalog.get_item("cilindro")
+	Build.spawn_planes(Catalog.planes(cy, Vector3(0.4, 0.4, 2.0)), "aco", Transform3D(Basis(Vector3.UP, 0.3), c + Vector3(-1.5, 0.2, 0)))
+	Build.spawn_planes(Catalog.planes(Catalog.get_item("tambor"), Vector3(0.8, 0.8, 0.5)), "ferro", Transform3D(Basis(), c + Vector3(-1.5, 0.4, 1.4)))
+	var plate := Build.spawn_box(Vector3(2, 0.1, 1), "aco", Transform3D(Basis(), c + Vector3(1, 0.05, 0.5)))
+	await _frames(20)
+	plate.add_mark(Vector3(0.35, 0.05, 0), Vector3.UP)
+	plate.add_mark(Vector3(-0.4, 0.05, 0.25), Vector3.UP)
+	player.teleport(c + Vector3(0.6, 0.03, 2.6))
+	player.select_tool(5)
+	var tape: MeasureTool = player.tools[5]
+	_look_from_eye(c + Vector3(1.35, 0.1, 0.5))
+	await _frames(3)
+	tape.handle_input(_press_action("primary"))
+	_look_from_eye(c + Vector3(0.6, 0.1, 0.75))
+	await _frames(8)
+	await _shot("p2_trena_cilindros")
+	# Puxador numa porta
+	player.select_tool(0)
+	var hinge := Components.spawn("dobradica", Transform3D(Basis(Vector3.BACK, PI * 0.5), c + Vector3(4, 1.2, 0)))
+	hinge[0].assembly().set_anchored(true)
+	var door := Build.spawn_box(Vector3(0.05, 1.0, 0.8), "aluminio", Transform3D(Basis(), hinge[1].global_position + Vector3(0, 0, 0.5)))
+	Build.make_weld(door, hinge[1], hinge[1].global_position + Vector3(0, 0, 0.15))
+	var handle: Part = Components.spawn("puxador", Transform3D(Basis(Vector3.BACK, -PI * 0.5), door.global_position + Vector3(0.0375, 0, 0.3)))[0]
+	Build.make_weld(handle, door, door.global_position + Vector3(0.025, 0, 0.3))
+	await _frames(20)
+	player.teleport(door.global_position + Vector3(1.5, -1.2, 0.3))
+	_look_from_eye(handle.global_position + Vector3(0.05, 0, 0))
+	await _frames(5)
+	await _shot("p3_puxador")
+
+
+func _press_action(action: String) -> InputEventAction:
+	var ev := InputEventAction.new()
+	ev.action = action
+	ev.pressed = true
+	return ev
 
 
 func _bisect_sit() -> void:
@@ -439,3 +496,9 @@ func _shot(shot_name: String) -> void:
 func _frames(n: int) -> void:
 	for i in n:
 		await get_tree().process_frame
+
+
+func _help() -> void:
+	world.hud._help.visible = true
+	await _frames(10)
+	await _shot("p4_ajuda")

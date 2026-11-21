@@ -84,7 +84,8 @@ func _init() -> void:
 
 func _ready() -> void:
 	hand = HandTool.new(self)
-	tools = [hand, WeldTool.new(self), GrinderTool.new(self), WireTool.new(self), DebugTool.new(self)]
+	tools = [hand, WeldTool.new(self), GrinderTool.new(self), WireTool.new(self), DebugTool.new(self),
+		MeasureTool.new(self), AlignTool.new(self)]
 	for t in tools:
 		camera.add_child(t)
 	select_tool(0)
@@ -168,6 +169,8 @@ func interact_hint() -> String:
 			return "E: sentar"
 		if part.interact_kind == "teclado":
 			return "%s: digitar a senha" % key
+		if part.interact_kind == "puxador" and not is_seated():
+			return "E (segure): puxar"
 		if part.interact_kind == "engate" and part.mech:
 			return "%s: %s o engate" % [key, "desligar" if part.mech.manual else "ligar"]
 		return ""
@@ -277,6 +280,9 @@ func _use_device_press() -> bool:
 		_using = (t as Part).device
 		_using.press()
 		return true
+	if t is Part and (t as Part).interact_kind == "puxador" and not is_seated():
+		_start_pull(t)
+		return true
 	if t is Part and (t as Part).interact_kind == "teclado" and (t as Part).node is KeypadNode:
 		keypad_requested.emit((t as Part).node)
 		return true
@@ -303,6 +309,50 @@ func _release_device() -> void:
 	if _using:
 		_using.release()
 		_using = null
+	_pull_part = null
+
+
+# --- Puxador: E segurado puxa com força fraca na direção da mira --------------------
+
+const PULL_FORCE := 300.0         ## força máxima (N): abre portas, não levanta coisa pesada
+const PULL_STIFF := 600.0
+const PULL_DAMP := 60.0
+const PULL_BREAK := 2.5           ## longe demais da mão: solta
+var _pull_part: Part = null
+var _pull_local := Vector3.ZERO
+var _pull_dist := 1.5
+
+
+func is_pulling() -> bool:
+	return _pull_part != null and is_instance_valid(_pull_part) and _pull_part.is_inside_tree()
+
+
+func _start_pull(part: Part) -> void:
+	_pull_part = part
+	_pull_local = part.global_transform.affine_inverse() * (aim["position"] as Vector3)
+	_pull_dist = eye_position().distance_to(aim["position"])
+
+
+func _update_pull() -> void:
+	if _pull_part == null:
+		return
+	if not is_pulling():
+		_pull_part = null
+		return
+	var asm := _pull_part.assembly()
+	if asm == null or asm.freeze:
+		return
+	var grab := _pull_part.global_transform * _pull_local
+	var target := eye_position() + aim_direction() * _pull_dist
+	var err := target - grab
+	if err.length() > PULL_BREAK:
+		_pull_part = null
+		toast("Escapou da mão")
+		return
+	var v := asm.linear_velocity + asm.angular_velocity.cross(grab - asm.world_center_of_mass())
+	var f := (err * PULL_STIFF - v * PULL_DAMP).limit_length(PULL_FORCE)
+	asm.apply_force(f, grab - asm.global_position)
+	asm.sleeping = false
 
 
 ## Ajustando uma alavanca variável (E ou clique segurado + mouse para cima/baixo)?
@@ -408,6 +458,7 @@ func _physics_process(delta: float) -> void:
 	hand.physics_update(delta)
 	if current() != hand:
 		current().physics_update(delta)
+	_update_pull()
 
 	_update_crouch(delta)
 	var input := Vector2.ZERO

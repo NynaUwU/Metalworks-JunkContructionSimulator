@@ -25,8 +25,9 @@ Nome, mapa, visual e código são próprios.
 | Andar / pular | W A S D / Espaço |
 | Correr | toque duplo numa tecla de andar (ou Shift) |
 | Agachar (mais devagar, alcança mais baixo) | Ctrl |
-| Trocar ferramenta | 1 Gravitador · 2 Solda · 3 Esmerilhadeira · 4 Fiação · 5 Depurador |
+| Trocar ferramenta | 1 Gravitador · 2 Solda · 3 Esmerilhadeira · 4 Fiação · 5 Depurador · 6 Trena · 7 Alinhador |
 | Usar (loja, assento, botão, alavanca, engate rápido) | E |
+| Puxar um puxador (portas, tampas...) | E segurado |
 | Modo edição do assento (sentado) | Tab |
 | Ajuda / menu / FPS / tela cheia | H / Esc / F3 / F11 |
 
@@ -52,7 +53,24 @@ Nome, mapa, visual e código são próprios.
 - **R**: gira a linha de corte sobre a face: 0°, 45°, 90°, 135°.
 - O corte encaixa numa grade de 5 cm; **G** liga/desliga a grade (corte livre).
 - Prévia **vermelha** = perto demais da borda; mire mais para dentro da face.
+- O corte passa pela **marca da Trena** mais próxima (cruz vermelha), antes da grade.
 - Segure o clique numa bolinha de solda para removê-la, ou num isolador para arrancá-lo.
+
+**Trena (6)** — medir e marcar
+- Clique: ponto **A**. A distância até a mira aparece no meio da linha e embaixo, separada nos eixos
+  da peça (x, y, z). Outro clique fixa o ponto **B** (os pontos acompanham a peça se ela se mexer).
+- Mirando numa peça sem medida: mostra a distância do ponto até as bordas.
+- **Botão direito**: põe ou tira uma **marca** (cruz vermelha) na peça. A Esmerilhadeira corta pela marca.
+  As marcas vão junto quando a peça é cortada e ficam salvas no mundo.
+- Os pontos encaixam na grade de 5 cm da peça (a mesma do corte). **G** liga/desliga. **R** limpa a medida.
+
+**Alinhador (7)** — no estilo do *Precision Alignment* do Garry's Mod
+- 1º clique: um ponto na peça que vai **se mover** (grade de 5 cm ou uma marca).
+- 2º clique: o ponto de **destino**, em outra peça ou no chão.
+- A peça vai até lá: os dois pontos se encontram, as faces ficam encostadas uma na outra e o giro fica em
+  esquadro (90°) com a peça de destino. O que estiver preso a ela por juntas vai junto.
+- Ela fica **congelada** no lugar, pronta para soldar. **R** com o Gravitador solta.
+- **Shift** no 2º clique: só move (não gira). Botão direito cancela.
 
 **Máquinas**
 - Componentes:
@@ -70,13 +88,22 @@ Nome, mapa, visual e código são próprios.
   - **propulsor** (empurra para o lado da ponta lisa; a chama sai pelo bocal);
   - **eletroímã** (ligado, puxa e gruda aço e ferro na face de metal; alumínio não);
   - **engate rápido** (trava no que encostar na face listrada; liga com **E** ou com sinal);
-  - **roda** e **assento**.
+  - **roda**, **assento** e **puxador** (alça: segure **E** nela e mova a mira para puxar com força fraca,
+    bom para portas e tampas; afastar demais solta).
+- **Tamanhos:** os componentes mecânicos (motor, servo, pistão, servo linear, todas as dobradiças, junta esférica,
+  mola e guincho) vêm em **pequeno** (0,6×), **médio** (o de antes) e **grande** (1,6×).
+  A força cresce com o tamanho ao cubo (o grande tem ~4× a força do médio), o curso e a velocidade dos pistões
+  crescem junto. A **roda** também: pequena (a de antes), média e grande, e o raio/largura continuam ajustáveis.
+  Na loja, escolha o tamanho; na frente do depósito do galpão há grandes, pequenos e rodas média/grande.
 
   Ficam no depósito do galpão, espalhados pelo mapa e à venda na loja.
 - Solde a base (carcaça) na estrutura e a peça que se mexe (disco, haste, folha, placa) no que ela deve mover.
   Os dois lados de um componente **colidem** entre si (o que está soldado de um lado bate no outro). Nos ajustes
   há a opção **"Colidir com o que está do outro lado"** para desligar (ex.: roda encostada na carcaça).
   Pistão e servo linear nunca colidem entre os lados (a haste corre por dentro da camisa).
+- Peças soltas usam detecção contínua de colisão: chapas finas (5 cm) não atravessam umas às outras mesmo
+  arremessadas. Exceção: duas chapas finas vindo rápido **uma contra a outra** (mais de ~30 m/s somadas) ainda
+  podem passar; por isso o arremesso do Gravitador vai até 40 m/s.
 - Peças muito leves ligadas por juntas a peças muito pesadas (roda de 15 kg num carro de 2 t) ganham "massa de
   inércia" só para a física, com o peso igual. Assim as juntas não cedem sob carga.
 - **Assento:** E para sentar. Ele controla todos os componentes ligados à mesma máquina.
@@ -129,7 +156,9 @@ Nome, mapa, visual e código são próprios.
 
 **Reciclador e loja**
 - Para se livrar de peças, jogue-as no **RECICLADOR**. Cada peça vira **pontos**, conforme o peso e o metal (alumínio vale mais por kg, ferro velho vale menos).
-- No terminal da **LOJA** (tecla **E**), gaste os pontos em chapas, vigas, blocos, componentes e peças pré-cortadas, escolhendo as medidas (com limite). Os itens aparecem na plataforma **ENTREGA**.
+- No terminal da **LOJA** (tecla **E**), gaste os pontos em chapas, vigas, blocos, **cilindros** (pentagonais),
+  componentes e peças pré-cortadas, escolhendo as medidas (com limite) e o tamanho dos componentes.
+  Os itens aparecem na plataforma **ENTREGA**.
 
 ## Estrutura do código
 
@@ -145,6 +174,9 @@ scripts/
   signals/gates.gd        os 86 modos do chip lógico
   signals/*_node.gd       chip, constante, teclas, teclado de senha, mostradores, assento
   tools/debug_tool.gd     Depurador
+  tools/snap.gd           ponto mirado encaixado na grade de 5 cm da peça (ou numa marca)
+  tools/measure_tool.gd   Trena (medir e marcar)
+  tools/align_tool.gd     Alinhador (ponto → ponto, face contra face)
   ui/port_menu.gd         menu de escolher porta (Fiação)
   ui/node_config_ui.gd    ajustes de chips, telas, constantes...
   ui/save_menu.gd         tela de salvar/carregar
@@ -193,6 +225,10 @@ godot --headless --path . res://tests/test_rigid.tscn
 
 ```bash
 godot --headless --path . res://tests/test_logic.tscn
+```
+
+```bash
+godot --headless --path . res://tests/test_precision.tscn
 ```
 
 **Publicar uma versão:** mude `config/version` no `project.godot` e crie

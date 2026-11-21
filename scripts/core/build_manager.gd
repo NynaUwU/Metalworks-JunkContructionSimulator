@@ -283,6 +283,10 @@ func cut_part(part: Part, cut_local: Plane) -> Array:
 			w.part_b = piece
 		piece.welds.append(w)
 	part.welds.clear()
+	for m: Array in part.marks:
+		var mp: Vector3 = m[0]
+		var target: Part = pieces[0] if cut_local.distance_to(mp) <= 0.0 else pieces[1]
+		target.add_mark(mp, m[1])
 
 	asm.remove_child(part)
 	part_replaced.emit(part, pieces, cut_local)
@@ -477,6 +481,7 @@ func _refresh_joints() -> void:
 const MASS_RATIO := 8.0
 const MAX_MASS_BOOST := 100.0
 var _boosted: Array = []
+var _no_ccd: Array = []           ## montagens com juntas: sem colisão contínua
 var _balance_dirty := false
 
 
@@ -491,12 +496,17 @@ func request_balance() -> void:
 func balance_masses() -> void:
 	var boost := {}
 	var pairs: Array = []
+	var jointed := {}
 	for j in joints:
 		if not j.is_valid() or j.type in MechJoint.SINGLE or j.type == "guincho":
 			continue
 		var a := j.part_a.assembly()
 		var b := j.part_b.assembly()
-		if a == null or b == null or a == b or a.freeze or b.freeze:
+		if a == null or b == null or a == b:
+			continue
+		jointed[a] = true
+		jointed[b] = true
+		if a.freeze or b.freeze:
 			continue
 		pairs.append([a, b])
 		boost[a] = 1.0
@@ -514,9 +524,15 @@ func balance_masses() -> void:
 					changed = true
 		if not changed:
 			break
-	for asm: Assembly in _boosted:
-		if is_instance_valid(asm) and not boost.has(asm):
-			asm.set_mass_boost(1.0)
+	for old in _no_ccd:
+		if is_instance_valid(old) and not jointed.has(old):
+			(old as Assembly).continuous_cd = true
+	_no_ccd = jointed.keys()
+	for asm: Assembly in _no_ccd:
+		asm.continuous_cd = false
+	for old in _boosted:
+		if is_instance_valid(old) and not boost.has(old):
+			(old as Assembly).set_mass_boost(1.0)
 	_boosted = []
 	for asm: Assembly in boost:
 		asm.set_mass_boost(boost[asm])

@@ -9,6 +9,7 @@ W A S D — andar
 Toque duplo (ou Shift) — correr
 Espaço — pular · Ctrl — agachar
 E — usar (loja, assento, botão, alavanca, engate)
+E segurado num puxador — puxar (portas etc.)
 
 [b]Ferramentas[/b]
 1 — Gravitador (pegar peças)
@@ -16,6 +17,8 @@ E — usar (loja, assento, botão, alavanca, engate)
 3 — Esmerilhadeira (cortar / remover solda)
 4 — Fiação (ligar uma saída numa entrada)
 5 — Depurador (ver os sinais de uma peça)
+6 — Trena (medir e marcar)
+7 — Alinhador (encaixar um ponto em outro)
 
 [b]Gravitador[/b]
 Clique segurado — pegar · soltar — cai (dá pra jogar)
@@ -29,6 +32,7 @@ Segure o clique bem na emenda entre duas peças
 (ou entre a peça e o chão = ancorar)
 Arraste segurando para fazer vários pontos
 
+[col]
 [b]Esmerilhadeira[/b]
 Segure o clique — corta a face mirada
 (o corte trava no lugar; soltar cancela)
@@ -36,7 +40,35 @@ R — girar o corte (0° / 45° / 90° / 135°)
 G — liga/desliga a grade de 5 cm (corte livre)
 Segure o clique numa bolinha — remove a solda
 Segure o clique num isolador — arranca
+O corte encaixa nas marcas da Trena
 
+[b]Trena[/b]
+Clique — ponto A · outro clique — ponto B
+Botão direito — põe/tira marca (cruz vermelha)
+R — limpa · G — grade de 5 cm
+
+[b]Alinhador[/b]
+Clique no ponto da peça que vai se mover,
+  depois no ponto de destino (outra peça/chão)
+As faces encostam em esquadro e ela congela
+Shift no 2º clique — só mover (sem girar)
+Botão direito — cancela
+
+[b]Salvar[/b]
+Esc → Salvar / Carregar (mundos e construções)
+Para salvar uma máquina: mire nela (ou sente
+  no assento) antes de apertar Esc
+Automático a cada 5 min e ao sair
+
+[b]Reciclador e loja[/b]
+Jogue peças no RECICLADOR = pontos
+E no terminal da LOJA — comprar peças
+
+H — mostrar/ocultar ajuda
+F11 — tela cheia · F3 — FPS
+Esc — menu
+
+[col]
 [b]Máquinas[/b]
 E no assento — sentar · E de novo — levantar
 Tab sentado — modo edição: clique num componente
@@ -56,21 +88,7 @@ Depurador: mira mostra entradas e saídas ao vivo;
 Guincho: tecla + recolhe o cabo, − solta
 Eletroímã: ligado puxa e gruda aço/ferro
 Engate rápido: E nele (ou sinal) trava no
-  que encostar na face listrada
-
-[b]Salvar[/b]
-Esc → Salvar / Carregar (mundos e construções)
-Para salvar uma máquina: mire nela (ou sente
-  no assento) antes de apertar Esc
-Automático a cada 5 min e ao sair
-
-[b]Reciclador e loja[/b]
-Jogue peças no RECICLADOR = pontos
-E no terminal da LOJA — comprar peças
-
-H — mostrar/ocultar ajuda
-F11 — tela cheia · F3 — FPS
-Esc — menu"""
+  que encostar na face listrada"""
 
 ## Ao soldar: só escurece as bordas da tela (o escuro principal vem do fog preto do mundo).
 const WELD_MASK_SHADER := """
@@ -187,7 +205,7 @@ func _build_ui() -> void:
 	bottom.add_child(bar)
 	for t in player.tools:
 		var slot := PanelContainer.new()
-		slot.custom_minimum_size = Vector2(140, 0)
+		slot.custom_minimum_size = Vector2(126, 0)
 		var l := _label(17, Color.WHITE)
 		l.text = "%s   %s" % [t.key_hint, t.tool_name]
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -212,15 +230,20 @@ func _build_ui() -> void:
 	hs.set_content_margin_all(16)
 	_help.add_theme_stylebox_override("panel", hs)
 	_help.position = Vector2(16, 16)
-	var rt := RichTextLabel.new()
-	rt.bbcode_enabled = true
-	rt.fit_content = true
-	rt.scroll_active = false
-	rt.custom_minimum_size = Vector2(300, 0)
-	rt.add_theme_font_size_override("normal_font_size", 13)
-	rt.add_theme_font_size_override("bold_font_size", 14)
-	rt.text = HELP_TEXT
-	_help.add_child(rt)
+	# Duas colunas (o texto é longo demais para uma só caber na tela).
+	var cols := HBoxContainer.new()
+	cols.add_theme_constant_override("separation", 24)
+	for chunk in HELP_TEXT.split("[col]"):
+		var rt := RichTextLabel.new()
+		rt.bbcode_enabled = true
+		rt.fit_content = true
+		rt.scroll_active = false
+		rt.custom_minimum_size = Vector2(335, 0)
+		rt.add_theme_font_size_override("normal_font_size", 13)
+		rt.add_theme_font_size_override("bold_font_size", 14)
+		rt.text = chunk.strip_edges()
+		cols.add_child(rt)
+	_help.add_child(cols)
 	root.add_child(_help)
 
 	_help_tip = _label(14, Color(1, 1, 1, 0.6))

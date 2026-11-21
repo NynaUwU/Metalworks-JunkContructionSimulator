@@ -17,6 +17,8 @@ const SCRAP := [
 	{"size": Vector3(0.5, 0.5, 0.5), "w": 2, "stack": [1, 3]},   # bloco
 	{"size": Vector3(1.0, 1.0, 1.0), "w": 1, "stack": [1, 1]},   # bloco grande
 	{"size": Vector3(1.0, 0.5, 0.5), "w": 1, "stack": [1, 2]},   # tarugo
+	{"size": Vector3(0.3, 0.3, 2.0), "w": 2, "stack": [1, 3], "pent": true},   # cilindro (pentagonal)
+	{"size": Vector3(0.6, 0.6, 0.4), "w": 1, "stack": [1, 2], "pent": true},   # tambor
 ]
 
 var player: Player
@@ -450,6 +452,19 @@ func _spawn_component_depot() -> void:
 	for r in rows.size():
 		for c in rows[r].size():
 			_spawn_component(rows[r][c], o + Vector3(-4.5 + c * 1.8, 0, -4.55 + r * 1.3))
+	# Tamanhos: grandes, pequenos e rodas média/grande (fora do galpão, na frente).
+	var G := Vector3(Components.SIZE_LARGE, 0, 0)
+	var P := Vector3(Components.SIZE_SMALL, 0, 0)
+	var sized := [
+		[["motor", G], ["servo", G], ["pistao", G], ["dobradica", G], ["mola", G], ["guincho", G]],
+		[["motor", P], ["servo", P], ["pistao", P], ["dobradica", P], ["mola", P], ["pino", P]],
+	]
+	for r in sized.size():
+		for c in sized[r].size():
+			_spawn_component(sized[r][c][0], o + Vector3(-4.5 + c * 1.8, 0, 5.95 + r * 1.4), sized[r][c][1])
+	for c in 6:
+		var wheel := Vector3(0.55, 0.3, 0) if c < 3 else Vector3(0.8, 0.4, 0)
+		_spawn_component("roda", o + Vector3(-4.5 + c * 1.8, 0, 9.2), wheel)
 
 
 ## Depósito de eletrônica (lógica, teclas, mostradores), ao lado do galpão.
@@ -460,6 +475,7 @@ func _spawn_logic_depot() -> void:
 		["chip", "chip", "constante", "constante", "constante", "constante"],
 		["teclas", "teclas", "teclado", "teclado", "indicador", "indicador"],
 		["pixel", "pixel", "mostrador", "mostrador", "tela", "tela_texto"],
+		["puxador", "puxador", "puxador", "puxador", "puxador", "puxador"],
 	]
 	for r in rows.size():
 		for c in rows[r].size():
@@ -495,5 +511,8 @@ func _spawn_pile(center: Vector3) -> void:
 		for k in count:
 			y += size.y * 0.5
 			var xf := Transform3D(Basis(Vector3.UP, yaw + _rng.randf_range(-0.08, 0.08)), Vector3(base.x, y, base.z))
-			Build.spawn_box(size, material_id, xf)
+			if item.get("pent", false):
+				Build.spawn_planes(ConvexGeo.prism_planes(5, size.x, size.z), material_id, xf)
+			else:
+				Build.spawn_box(size, material_id, xf)
 			y += size.y * 0.5 + 0.03

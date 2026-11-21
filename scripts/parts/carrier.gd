@@ -15,7 +15,7 @@ extends RefCounted
 
 const LINEAR_GAIN := 0.75           ## fração do erro de posição corrigida por tick
 const ANGULAR_GAIN := 0.7
-const MAX_SPEED := 90.0
+const MAX_SPEED := 40.0                ## arremesso máximo (m/s)
 const MAX_SPIN := 40.0
 const MAX_DV := 2.0                 ## mudança máxima de velocidade por tick (m/s): 120 m/s²
 const MAX_DW := 2.5                 ## idem, rotação (rad/s)

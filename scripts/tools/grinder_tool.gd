@@ -12,6 +12,7 @@ extends GameTool
 enum Mode { IDLE, CUTTING, UNWELDING, REMOVING }
 
 const GRID := 0.05
+const MARK_SNAP := 0.05                     ## o corte "gruda" numa marca a menos de 5 cm
 const WELD_PICK_RADIUS := 0.1      ## mirar a até 10 cm de uma bolinha = remover solda
 const WELD_REMOVE_TIME := 0.6
 const CUT_BASE_TIME := 0.4
@@ -239,7 +240,10 @@ func _update_targets() -> void:
 	var inv := part.global_transform.affine_inverse()
 	var local := inv * point
 	var face_n := ConvexGeo.closest_face_normal(part.planes, (inv.basis * (player.aim["normal"] as Vector3)).normalized())
-	if grid_on:
+	var mark := part.nearest_mark(local, MARK_SNAP)
+	if mark >= 0:
+		local = part.marks[mark][0]           # marca da Trena perto: o corte passa por ela
+	elif grid_on:
 		local = local.snapped(Vector3.ONE * GRID)
 	var n := ConvexGeo.face_cut_normal(face_n, ConvexGeo.CUT_ANGLES[angle_index])
 	_target_plane = Plane(n, n.dot(local))

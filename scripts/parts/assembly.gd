@@ -22,6 +22,10 @@ var hold_part: Part = null        ## (compatibilidade) peça segurada nesta mont
 func _init() -> void:
 	center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
 	freeze_mode = RigidBody3D.FREEZE_MODE_STATIC
+	# Colisão contínua: chapas finas rápidas não atravessam umas às outras. Desligada em
+	# montagens com juntas (Build.balance_masses): ela "volta" o corpo ao ponto do impacto
+	# ignorando a junta, e a máquina desmonta em batidas fortes.
+	continuous_cd = true
 	collision_layer = Layers.PARTS
 	collision_mask = Layers.WORLD | Layers.PARTS | Layers.PLAYER
 	if _physics_material == null:

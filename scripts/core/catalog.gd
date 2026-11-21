@@ -13,6 +13,10 @@ const DIAG_YZ := Vector3(0, 0.70710678, 0.70710678)
 const LEN_BEAM := {"nome": "Comprimento", "axes": [2], "min": 0.5, "max": 6.0, "step": 0.25}
 const PLATE_W := {"nome": "Largura", "axes": [0], "min": 0.5, "max": 4.0, "step": 0.25}
 const PLATE_L := {"nome": "Comprimento", "axes": [2], "min": 0.5, "max": 4.0, "step": 0.25}
+## Escolha de tamanho das peças mecânicas (vai em size.x: 0,6 / 1 / 1,6).
+const SIZE := {"nome": "Tamanho", "axes": [0], "choices": [["Pequeno", 0.6], ["Médio", 1.0], ["Grande", 1.6]]}
+## Roda: o tamanho preenche raio e largura (que ainda dá para ajustar).
+const WHEEL_SIZE := {"nome": "Tamanho", "axes": [0, 1], "choices": [["Pequena", [0.35, 0.2]], ["Média", [0.55, 0.3]], ["Grande", [0.8, 0.4]]]}
 
 const ITEMS := [
 	{"id": "chapa", "nome": "Chapa", "cat": "Chapas", "mat": "aco", "box": Vector3(1, 0.1, 1),
@@ -36,30 +40,38 @@ const ITEMS := [
 	{"id": "bloco_1", "nome": "Bloco 1 m", "cat": "Blocos", "mat": "ferro", "box": Vector3(1, 1, 1)},
 	{"id": "tarugo", "nome": "Tarugo", "cat": "Blocos", "mat": "ferro", "box": Vector3(1, 0.5, 0.5),
 		"params": [{"nome": "Comprimento", "axes": [0], "min": 0.5, "max": 3.0, "step": 0.25}]},
+	{"id": "cilindro", "nome": "Cilindro (pentagonal)", "cat": "Cilindros", "mat": "aco", "box": Vector3(0.3, 0.3, 2), "shape": "pent",
+		"params": [{"nome": "Diâmetro", "axes": [0, 1], "min": 0.1, "max": 1.2, "step": 0.05}, LEN_BEAM]},
+	{"id": "cilindro_al", "nome": "Cilindro de alumínio", "cat": "Cilindros", "mat": "aluminio", "box": Vector3(0.2, 0.2, 2), "shape": "pent",
+		"params": [{"nome": "Diâmetro", "axes": [0, 1], "min": 0.1, "max": 1.2, "step": 0.05}, LEN_BEAM]},
+	{"id": "tambor", "nome": "Tambor (cilindro curto)", "cat": "Cilindros", "mat": "ferro", "box": Vector3(0.8, 0.8, 0.5), "shape": "pent",
+		"params": [{"nome": "Diâmetro", "axes": [0, 1], "min": 0.3, "max": 1.6, "step": 0.1},
+			{"nome": "Comprimento", "axes": [2], "min": 0.1, "max": 1.5, "step": 0.05}]},
 	{"id": "cunha", "nome": "Cunha (rampa)", "cat": "Blocos", "mat": "aco", "box": Vector3(1, 1, 1), "cut": DIAG_YZ,
 		"params": [{"nome": "Tamanho", "axes": [0, 1, 2], "min": 0.5, "max": 2.0, "step": 0.25}]},
-	{"id": "motor", "nome": "Motor", "cat": "Componentes", "component": "motor"},
-	{"id": "servo", "nome": "Servo", "cat": "Componentes", "component": "servo"},
-	{"id": "pistao", "nome": "Pistão", "cat": "Componentes", "component": "pistao"},
-	{"id": "servo_linear", "nome": "Servo linear", "cat": "Componentes", "component": "servo_linear"},
-	{"id": "dobradica", "nome": "Dobradiça", "cat": "Componentes", "component": "dobradica"},
-	{"id": "pino", "nome": "Dobradiça de pino", "cat": "Componentes", "component": "pino"},
-	{"id": "esferica", "nome": "Junta esférica", "cat": "Componentes", "component": "esferica"},
-	{"id": "trava", "nome": "Dobradiça com trava", "cat": "Componentes", "component": "trava"},
-	{"id": "torcao", "nome": "Dobradiça de torção", "cat": "Componentes", "component": "torcao"},
-	{"id": "mola", "nome": "Mola", "cat": "Componentes", "component": "mola"},
-	{"id": "guincho", "nome": "Guincho", "cat": "Componentes", "component": "guincho"},
+	{"id": "motor", "nome": "Motor", "cat": "Componentes", "component": "motor", "box": Vector3(1, 0, 0), "params": [SIZE]},
+	{"id": "servo", "nome": "Servo", "cat": "Componentes", "component": "servo", "box": Vector3(1, 0, 0), "params": [SIZE]},
+	{"id": "pistao", "nome": "Pistão", "cat": "Componentes", "component": "pistao", "box": Vector3(1, 0, 0), "params": [SIZE]},
+	{"id": "servo_linear", "nome": "Servo linear", "cat": "Componentes", "component": "servo_linear", "box": Vector3(1, 0, 0), "params": [SIZE]},
+	{"id": "dobradica", "nome": "Dobradiça", "cat": "Componentes", "component": "dobradica", "box": Vector3(1, 0, 0), "params": [SIZE]},
+	{"id": "pino", "nome": "Dobradiça de pino", "cat": "Componentes", "component": "pino", "box": Vector3(1, 0, 0), "params": [SIZE]},
+	{"id": "esferica", "nome": "Junta esférica", "cat": "Componentes", "component": "esferica", "box": Vector3(1, 0, 0), "params": [SIZE]},
+	{"id": "trava", "nome": "Dobradiça com trava", "cat": "Componentes", "component": "trava", "box": Vector3(1, 0, 0), "params": [SIZE]},
+	{"id": "torcao", "nome": "Dobradiça de torção", "cat": "Componentes", "component": "torcao", "box": Vector3(1, 0, 0), "params": [SIZE]},
+	{"id": "mola", "nome": "Mola", "cat": "Componentes", "component": "mola", "box": Vector3(1, 0, 0), "params": [SIZE]},
+	{"id": "guincho", "nome": "Guincho", "cat": "Componentes", "component": "guincho", "box": Vector3(1, 0, 0), "params": [SIZE]},
 	{"id": "propulsor", "nome": "Propulsor", "cat": "Componentes", "component": "propulsor"},
 	{"id": "ima", "nome": "Eletroímã", "cat": "Componentes", "component": "ima"},
 	{"id": "engate", "nome": "Engate rápido", "cat": "Componentes", "component": "engate"},
 	{"id": "roda", "nome": "Roda", "cat": "Componentes", "component": "roda", "box": Vector3(0.35, 0.2, 0),
-		"params": [{"nome": "Raio", "axes": [0], "min": 0.2, "max": 0.8, "step": 0.05},
-			{"nome": "Largura", "axes": [1], "min": 0.1, "max": 0.4, "step": 0.05}]},
+		"params": [WHEEL_SIZE, {"nome": "Raio", "axes": [0], "min": 0.2, "max": 1.2, "step": 0.05},
+			{"nome": "Largura", "axes": [1], "min": 0.1, "max": 0.6, "step": 0.05}]},
 	{"id": "assento", "nome": "Assento", "cat": "Componentes", "component": "assento"},
 	{"id": "botao", "nome": "Botão", "cat": "Controles", "component": "botao"},
 	{"id": "alavanca", "nome": "Alavanca", "cat": "Controles", "component": "alavanca"},
 	{"id": "potenciometro", "nome": "Alavanca variável", "cat": "Controles", "component": "potenciometro"},
 	{"id": "teclas", "nome": "Teclas", "cat": "Controles", "component": "teclas"},
+	{"id": "puxador", "nome": "Puxador", "cat": "Controles", "component": "puxador"},
 	{"id": "teclado", "nome": "Teclado de senha", "cat": "Controles", "component": "teclado"},
 	{"id": "chip", "nome": "Chip lógico", "cat": "Lógica", "component": "chip"},
 	{"id": "constante", "nome": "Valor constante", "cat": "Lógica", "component": "constante"},
@@ -109,8 +121,36 @@ static func param_value(size: Vector3, param: Dictionary) -> float:
 	return size[param["axes"][0]]
 
 
+## Escolha (Pequeno/Médio/Grande) mais perto do valor atual. Retorna o índice.
+static func choice_index(size: Vector3, param: Dictionary) -> int:
+	var best := 0
+	var best_d := INF
+	var choices: Array = param["choices"]
+	for i in choices.size():
+		var v = choices[i][1]
+		var first: float = v[0] if v is Array else v
+		var d := absf(size[param["axes"][0]] - first)
+		if d < best_d:
+			best_d = d
+			best = i
+	return best
+
+
+## Aplica uma escolha (índice) de um parâmetro de escolhas.
+static func with_choice(size: Vector3, param: Dictionary, index: int) -> Vector3:
+	var v = param["choices"][clampi(index, 0, (param["choices"] as Array).size() - 1)][1]
+	var axes: Array = param["axes"]
+	for i in axes.size():
+		size[axes[i]] = (v[i] if v is Array else v)
+	return size
+
+
 ## Aplica um valor (já limitado e arredondado ao passo) a um parâmetro.
 static func with_param(size: Vector3, param: Dictionary, value: float) -> Vector3:
+	if param.has("choices"):
+		var probe := size
+		probe[param["axes"][0]] = value
+		return with_choice(size, param, choice_index(probe, param))
 	var v := clampf(snappedf(value, param["step"]), param["min"], param["max"])
 	for axis: int in param["axes"]:
 		size[axis] = v
@@ -136,6 +176,9 @@ static func spawn_bounds(item: Dictionary, size := Vector3.ZERO) -> AABB:
 
 
 static func planes(item: Dictionary, size := Vector3.ZERO) -> Array[Plane]:
+	if item.get("shape", "") == "pent":
+		var s := clamp_size(item, size)
+		return ConvexGeo.prism_planes(5, s.x, s.z)
 	var p := ConvexGeo.box_planes(clamp_size(item, size))
 	if item.has("cut"):
 		p.append(Plane(item["cut"], 0.0))

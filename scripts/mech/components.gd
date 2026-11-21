@@ -29,6 +29,7 @@ const INFO := {
 	"alavanca": {"nome": "Alavanca", "preco": 5, "desc": "Liga e desliga. Ligue com a Fiação."},
 	"potenciometro": {"nome": "Alavanca variável", "preco": 8, "desc": "Segure E e mova o mouse para cima/baixo. Na Fiação, botão direito: só positivo ou -1 a 1."},
 	"isolador": {"nome": "Isolador", "preco": 0, "desc": "Guia os fios. Criado com a ferramenta de Fiação."},
+	"puxador": {"nome": "Puxador", "preco": 2, "desc": "Solde numa porta ou gaveta: segure E mirando nele para puxar (força fraca)."},
 	"chip": {"nome": "Chip lógico", "preco": 6, "desc": "E, OU, somar, comparar, memória, temporizador... (86 modos). Escolha o modo no botão direito da Fiação."},
 	"constante": {"nome": "Valor constante", "preco": 3, "desc": "Sai sempre o mesmo número, vetor ou texto."},
 	"teclas": {"nome": "Teclas", "preco": 5, "desc": "Teclas + e − viram um sinal (-1 a 1). Sentado na máquina, ou sempre (a pé)."},
@@ -51,7 +52,25 @@ static func wire_anchor(insulator: Part) -> Vector3:
 	return insulator.global_transform * INSULATOR_ANCHOR
 
 
+## Peças mecânicas que vêm em tamanhos (pequeno / médio / grande). O tamanho vai em
+## size.x (0 = médio, o padrão de sempre).
+const SCALED := ["motor", "servo", "pistao", "servo_linear", "dobradica", "pino", "esferica", "trava", "torcao", "mola", "guincho"]
+const SIZE_SMALL := 0.6
+const SIZE_LARGE := 1.6
+
+
+static func scale_of(kind: String, size: Vector3) -> float:
+	return size.x if kind in SCALED and size.x > 0.0 else 1.0
+
+
+static func size_name(kind: String, size: Vector3) -> String:
+	var k := scale_of(kind, size)
+	return "pequeno" if k < 0.8 else ("grande" if k > 1.2 else "médio")
+
+
 static func price(kind: String, size := Vector3.ZERO) -> int:
+	if kind in SCALED:
+		return maxi(1, roundi(float(INFO[kind]["preco"]) * pow(scale_of(kind, size), 1.5)))
 	if kind == "roda":
 		var r := size.x if size.x > 0.0 else 0.35
 		var w := size.y if size.y > 0.0 else 0.2
@@ -61,6 +80,10 @@ static func price(kind: String, size := Vector3.ZERO) -> int:
 
 ## Caixa que envolve o componente (coordenadas do ponto de criação), para achar espaço.
 static func bounds(kind: String, size := Vector3.ZERO) -> AABB:
+	if kind in SCALED and scale_of(kind, size) != 1.0:
+		var b := bounds(kind, Vector3.ZERO)
+		var k := scale_of(kind, size)
+		return AABB(b.position * k, b.size * k)
 	match kind:
 		"motor":
 			var r := MOTOR_APOTHEM / cos(PI / 8.0)
@@ -103,6 +126,8 @@ static func bounds(kind: String, size := Vector3.ZERO) -> AABB:
 			return AABB(Vector3(-0.1, -0.04, -0.2), Vector3(0.2, 0.14, 0.4))
 		"isolador":
 			return AABB(Vector3(-0.07, -0.08, -0.07), Vector3(0.14, 0.18, 0.14))
+		"puxador":
+			return AABB(Vector3(-0.09, -0.0125, -0.03), Vector3(0.18, 0.09, 0.06))
 	if SIGNAL_SIZES.has(kind):
 		var s: Vector3 = SIGNAL_SIZES[kind]
 		return AABB(-s * 0.5, s + Vector3(0, 0.06 if kind == "indicador" else 0.0, 0))
@@ -131,29 +156,23 @@ static func spawn(kind: String, xform: Transform3D, size := Vector3.ZERO) -> Arr
 static func _spawn_kind(kind: String, xform: Transform3D, size: Vector3) -> Array[Part]:
 	match kind:
 		"motor":
-			return _spawn_motor(xform)
+			return _spawn_motor(xform, scale_of(kind, size))
 		"servo":
-			return _spawn_servo(xform)
-		"pistao":
-			return _spawn_linear("pistao", xform)
-		"servo_linear":
-			return _spawn_linear("servo_linear", xform)
-		"dobradica":
-			return _spawn_hinge(xform)
-		"trava":
-			return _spawn_hinge(xform, "trava")
-		"torcao":
-			return _spawn_hinge(xform, "torcao")
+			return _spawn_servo(xform, scale_of(kind, size))
+		"pistao", "servo_linear":
+			return _spawn_linear(kind, xform, scale_of(kind, size))
+		"dobradica", "trava", "torcao":
+			return _spawn_hinge(xform, kind, scale_of(kind, size))
 		"mola":
-			return _spawn_spring(xform)
+			return _spawn_spring(xform, scale_of(kind, size))
 		"guincho":
-			return _spawn_winch(xform)
+			return _spawn_winch(xform, scale_of(kind, size))
 		"propulsor", "ima", "engate":
 			return [_spawn_single(kind, xform)]
 		"pino":
-			return _spawn_pin(xform)
+			return _spawn_pin(xform, scale_of(kind, size))
 		"esferica":
-			return _spawn_ball(xform)
+			return _spawn_ball(xform, scale_of(kind, size))
 		"roda":
 			return [_spawn_wheel(xform, size)]
 		"assento":
@@ -162,6 +181,8 @@ static func _spawn_kind(kind: String, xform: Transform3D, size: Vector3) -> Arra
 			return [_spawn_device(kind, xform)]
 		"isolador":
 			return [_spawn_insulator(xform)]
+		"puxador":
+			return [_spawn_handle(xform)]
 		"chip", "constante", "teclas", "teclado", "indicador", "pixel", "mostrador", "tela", "tela_texto":
 			return [_spawn_signal(kind, xform)]
 	return []
@@ -261,14 +282,15 @@ static func _joint(type: String, a: Part, b: Part, pivot: Vector3, axis: Vector3
 
 # --- Componentes ---------------------------------------------------------------
 
-static func _spawn_motor(xform: Transform3D) -> Array[Part]:
-	var stator := Build.spawn_planes(octagon_planes(MOTOR_APOTHEM, MOTOR_HALF_H), "carcaca", xform)
+static func _spawn_motor(xform: Transform3D, k := 1.0) -> Array[Part]:
+	var stator := Build.spawn_planes(octagon_planes(MOTOR_APOTHEM * k, MOTOR_HALF_H * k), "carcaca", xform)
 	_component(stator, "Motor (carcaça)", "motor")
-	var rotor := _cyl(0.15, 0.06, "aco", xform * Transform3D(Basis(), Vector3(0, MOTOR_HALF_H + 0.034, 0)), "Motor (disco)", "motor")
-	_deco_box(rotor, Vector3(0.2, 0.012, 0.03), Vector3(0, 0.032, 0), Color(0.9, 0.2, 0.15))
-	var j := _joint("motor", stator, rotor, Vector3(0, MOTOR_HALF_H, 0), Vector3.UP)
+	var rotor := _cyl(0.15 * k, 0.06 * k, "aco", xform * Transform3D(Basis(), Vector3(0, (MOTOR_HALF_H + 0.034) * k, 0)), "Motor (disco)", "motor")
+	_deco_box(rotor, Vector3(0.2, 0.012, 0.03) * k, Vector3(0, 0.032, 0) * k, Color(0.9, 0.2, 0.15))
+	var j := _joint("motor", stator, rotor, Vector3(0, MOTOR_HALF_H * k, 0), Vector3.UP)
+	j.size_scale = k
 	j.speed = 10.0
-	j.strength = 1500.0
+	j.strength = 1500.0 * k * k * k
 	j.bind_pos = [{"key": KEY_W}]
 	j.bind_neg = [{"key": KEY_S}]
 	j.capture_rest()
@@ -276,15 +298,17 @@ static func _spawn_motor(xform: Transform3D) -> Array[Part]:
 	return [stator, rotor]
 
 
-static func _spawn_servo(xform: Transform3D) -> Array[Part]:
-	var top := SERVO_SIZE.y * 0.5
-	var stator := _box(SERVO_SIZE, "carcaca_azul", xform, "Servo (carcaça)", "servo")
-	var disc := _cyl(0.12, 0.05, "aco", xform * Transform3D(Basis(), Vector3(0, top + 0.029, SERVO_SHAFT_Z)), "Servo (disco)", "servo")
-	_deco_box(disc, Vector3(0.16, 0.012, 0.03), Vector3(0, 0.027, 0), Color(0.95, 0.95, 0.95))
-	_deco_cyl(stator, 0.035, 0.012, Transform3D(Basis(), Vector3(0, top + 0.002, SERVO_SHAFT_Z)), Color(0.2, 0.2, 0.22), 0.6)
-	var j := _joint("servo", stator, disc, Vector3(0, top, SERVO_SHAFT_Z), Vector3.UP)
+static func _spawn_servo(xform: Transform3D, k := 1.0) -> Array[Part]:
+	var top := SERVO_SIZE.y * 0.5 * k
+	var shaft_z := SERVO_SHAFT_Z * k
+	var stator := _box(SERVO_SIZE * k, "carcaca_azul", xform, "Servo (carcaça)", "servo")
+	var disc := _cyl(0.12 * k, 0.05 * k, "aco", xform * Transform3D(Basis(), Vector3(0, top + 0.029 * k, shaft_z)), "Servo (disco)", "servo")
+	_deco_box(disc, Vector3(0.16, 0.012, 0.03) * k, Vector3(0, 0.027, 0) * k, Color(0.95, 0.95, 0.95))
+	_deco_cyl(stator, 0.035 * k, 0.012 * k, Transform3D(Basis(), Vector3(0, top + 0.002 * k, shaft_z)), Color(0.2, 0.2, 0.22), 0.6)
+	var j := _joint("servo", stator, disc, Vector3(0, top, shaft_z), Vector3.UP)
+	j.size_scale = k
 	j.speed = 4.0
-	j.strength = 2500.0
+	j.strength = 2500.0 * k * k * k
 	j.bind_pos = [{"key": KEY_A}]
 	j.bind_neg = [{"key": KEY_D}]
 	j.capture_rest()
@@ -294,13 +318,13 @@ static func _spawn_servo(xform: Transform3D) -> Array[Part]:
 
 ## Pistão e servo linear: a base e a camisa são uma peça só (dá para soldar em qualquer
 ## lugar dela); a haste corre por dentro (os dois lados nunca colidem entre si).
-static func _spawn_linear(kind: String, xform: Transform3D) -> Array[Part]:
+static func _spawn_linear(kind: String, xform: Transform3D, k := 1.0) -> Array[Part]:
 	var linear := kind == "servo_linear"
-	var base_size := Vector3(0.22, 0.1, 0.32) if linear else Vector3(0.26, 0.1, 0.26)
-	var base_y := -0.25 if linear else -0.3
-	var sleeve := Vector3(0.2, 0.45, 0.3) if linear else Vector3(0.24, 0.55, 0.24)
-	var rod_size := Vector3(0.1, 0.5, 0.1) if linear else Vector3(0.14, 0.6, 0.14)
-	var rod_y := 0.055
+	var base_size := (Vector3(0.22, 0.1, 0.32) if linear else Vector3(0.26, 0.1, 0.26)) * k
+	var base_y := (-0.25 if linear else -0.3) * k
+	var sleeve := (Vector3(0.2, 0.45, 0.3) if linear else Vector3(0.24, 0.55, 0.24)) * k
+	var rod_size := (Vector3(0.1, 0.5, 0.1) if linear else Vector3(0.14, 0.6, 0.14)) * k
+	var rod_y := 0.055 * k
 	var color := Color(0.15, 0.35, 0.7) if linear else Color(0.85, 0.6, 0.12)
 	var name := "Servo linear" if linear else "Pistão"
 	# A peça "base" continua com a origem no centro da base (saves antigos encaixam),
@@ -312,13 +336,14 @@ static func _spawn_linear(kind: String, xform: Transform3D) -> Array[Part]:
 		planes.append(Plane(pl.normal, pl.d + pl.normal.dot(body_center)))
 	var base := Build.spawn_planes(planes, "carcaca_azul" if linear else "carcaca", xform * Transform3D(Basis(), Vector3(0, base_y, 0)))
 	_component(base, name, kind)
-	_deco_box(base, Vector3(base_size.x + 0.02, 0.03, base_size.z + 0.02), Vector3(0, base_size.y * 0.5 + sleeve.y - 0.015, 0), color.darkened(0.35))
+	_deco_box(base, Vector3(base_size.x + 0.02 * k, 0.03 * k, base_size.z + 0.02 * k), Vector3(0, base_size.y * 0.5 + sleeve.y - 0.015 * k, 0), color.darkened(0.35))
 	var rod := _box(rod_size, "aco", xform * Transform3D(Basis(), Vector3(0, rod_y, 0)), name + " (haste)", kind)
-	_deco_box(rod, Vector3(rod_size.x + 0.06, 0.04, rod_size.z + 0.06), Vector3(0, rod_size.y * 0.5, 0), Color(0.3, 0.32, 0.35))
+	_deco_box(rod, Vector3(rod_size.x + 0.06 * k, 0.04 * k, rod_size.z + 0.06 * k), Vector3(0, rod_size.y * 0.5, 0), Color(0.3, 0.32, 0.35))
 	var j := _joint(kind, base, rod, Vector3(0, -base_y, 0), Vector3.UP)
-	j.stroke = 0.4 if linear else 0.5
-	j.speed = 0.8 if linear else 1.0
-	j.strength = 8000.0 if linear else 12000.0
+	j.size_scale = k
+	j.stroke = (0.4 if linear else 0.5) * k
+	j.speed = (0.8 if linear else 1.0) * k
+	j.strength = (8000.0 if linear else 12000.0) * k * k * k
 	j.capture_rest()
 	Build.add_joint(j)
 	return [base, rod]
@@ -328,71 +353,76 @@ const HINGE_KNUCKLE := {"dobradica": Color(0.4, 0.42, 0.45), "trava": Color(0.85
 
 
 ## Dobradiça (e variações com trava / torção): folhas afastadas 3 cm do eixo.
-static func _spawn_hinge(xform: Transform3D, type := "dobradica") -> Array[Part]:
+static func _spawn_hinge(xform: Transform3D, type := "dobradica", k := 1.0) -> Array[Part]:
 	var label: String = MechJoint.NAMES[type]
-	var leaf_a := _box(Vector3(0.4, 0.04, 0.25), "aco", xform * Transform3D(Basis(), Vector3(0, 0, -0.155)), label, type)
-	var leaf_b := _box(Vector3(0.4, 0.04, 0.25), "aco", xform * Transform3D(Basis(), Vector3(0, 0, 0.155)), label, type)
-	_deco_cyl(leaf_a, 0.025, 0.42, Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3(0, 0, 0.155)), HINGE_KNUCKLE[type], 0.8)
-	var j := _joint(type, leaf_a, leaf_b, Vector3(0, 0, 0.155), Vector3.RIGHT)
+	var leaf := Vector3(0.4, 0.04, 0.25) * k
+	var off := 0.155 * k
+	var leaf_a := _box(leaf, "aco", xform * Transform3D(Basis(), Vector3(0, 0, -off)), label, type)
+	var leaf_b := _box(leaf, "aco", xform * Transform3D(Basis(), Vector3(0, 0, off)), label, type)
+	_deco_cyl(leaf_a, 0.025 * k, 0.42 * k, Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3(0, 0, off)), HINGE_KNUCKLE[type], 0.8)
+	var j := _joint(type, leaf_a, leaf_b, Vector3(0, 0, off), Vector3.RIGHT)
+	j.size_scale = k
 	match type:
 		"trava":
-			j.strength = 3000.0
-			j.indicator = _light(leaf_a, Vector3(0.16, 0.03, 0.0))
+			j.strength = 3000.0 * k * k * k
+			j.indicator = _light(leaf_a, Vector3(0.16, 0.03, 0.0) * k)
 		"torcao":
-			j.strength = 60.0   # rigidez (N·m por radiano)
+			j.strength = 60.0 * k * k * k * k   # rigidez (N·m por radiano)
 			j.speed = 6.0
-			_deco_box(leaf_a, Vector3(0.1, 0.02, 0.06), Vector3(0, 0.03, 0.09), Color(0.2, 0.45, 0.9))
+			_deco_box(leaf_a, Vector3(0.1, 0.02, 0.06) * k, Vector3(0, 0.03, 0.09) * k, Color(0.2, 0.45, 0.9))
 	j.capture_rest()
 	Build.add_joint(j)
 	return [leaf_a, leaf_b]
 
 
 ## Mola (suspensão): duas placas e a espiral entre elas; curso de -0,2 / +0,12 m.
-static func _spawn_spring(xform: Transform3D) -> Array[Part]:
-	var a := _box(Vector3(0.28, 0.04, 0.28), "aco", xform, "Mola", "mola")
-	var b := _box(Vector3(0.28, 0.04, 0.28), "aco", xform * Transform3D(Basis(), Vector3(0, 0.3, 0)), "Mola", "mola")
+static func _spawn_spring(xform: Transform3D, k := 1.0) -> Array[Part]:
+	var a := _box(Vector3(0.28, 0.04, 0.28) * k, "aco", xform, "Mola", "mola")
+	var b := _box(Vector3(0.28, 0.04, 0.28) * k, "aco", xform * Transform3D(Basis(), Vector3(0, 0.3 * k, 0)), "Mola", "mola")
 	var coil := Node3D.new()
-	coil.position = Vector3(0, 0.02, 0)
+	coil.position = Vector3(0, 0.02 * k, 0)
 	a.add_child(coil)
 	for i in 6:
 		var ring := MeshInstance3D.new()
 		var tm := TorusMesh.new()
-		tm.inner_radius = 0.07
-		tm.outer_radius = 0.09
+		tm.inner_radius = 0.07 * k
+		tm.outer_radius = 0.09 * k
 		ring.mesh = tm
 		ring.material_override = StationBuilder.mat(Color(0.9, 0.75, 0.15), 0.4, 0.8)
-		ring.position = Vector3(0, 0.022 + i * 0.043, 0)
+		ring.position = Vector3(0, (0.022 + i * 0.043) * k, 0)
 		ring.rotation.x = deg_to_rad(8.0 if i % 2 == 0 else -8.0)
 		coil.add_child(ring)
 	var j := _joint("mola", a, b, Vector3.ZERO, Vector3.UP)
-	j.strength = 5000.0     # rigidez (N/m)
+	j.size_scale = k
+	j.strength = 5000.0 * k * k     # rigidez (N/m)
 	j.coil = coil
-	j.coil_gap = 0.26
+	j.coil_gap = 0.26 * k
 	j.capture_rest()
 	Build.add_joint(j)
 	return [a, b]
 
 
 ## Guincho: corpo com tambor; o cabo sai por baixo e vai até o gancho.
-static func _spawn_winch(xform: Transform3D) -> Array[Part]:
-	var body := _box(Vector3(0.34, 0.28, 0.4), "carcaca", xform, "Guincho", "guincho")
-	_deco_cyl(body, 0.1, 0.3, Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3(0, 0.16, 0)), Color(0.3, 0.32, 0.35), 0.8)
-	_deco_cyl(body, 0.03, 0.02, Transform3D(Basis(), Vector3(0, -0.145, 0)), Color(0.15, 0.15, 0.16), 0.5)
-	var hook := _box(Vector3(0.12, 0.1, 0.12), "aco", xform * Transform3D(Basis(), Vector3(0.4, -0.09, 0)), "Guincho (gancho)", "guincho")
+static func _spawn_winch(xform: Transform3D, k := 1.0) -> Array[Part]:
+	var body := _box(Vector3(0.34, 0.28, 0.4) * k, "carcaca", xform, "Guincho", "guincho")
+	_deco_cyl(body, 0.1 * k, 0.3 * k, Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3(0, 0.16, 0) * k), Color(0.3, 0.32, 0.35), 0.8)
+	_deco_cyl(body, 0.03 * k, 0.02 * k, Transform3D(Basis(), Vector3(0, -0.145, 0) * k), Color(0.15, 0.15, 0.16), 0.5)
+	var hook := _box(Vector3(0.12, 0.1, 0.12) * k, "aco", xform * Transform3D(Basis(), Vector3(0.4, -0.09, 0) * k), "Guincho (gancho)", "guincho")
 	var ring := MeshInstance3D.new()
 	var tm := TorusMesh.new()
-	tm.inner_radius = 0.025
-	tm.outer_radius = 0.045
+	tm.inner_radius = 0.025 * k
+	tm.outer_radius = 0.045 * k
 	ring.mesh = tm
 	ring.material_override = StationBuilder.mat(Color(0.75, 0.77, 0.8), 0.35, 0.9)
 	ring.rotation.x = PI * 0.5
-	ring.position = Vector3(0, 0.08, 0)
+	ring.position = Vector3(0, 0.08, 0) * k
 	hook.add_child(ring)
-	var j := _joint("guincho", body, hook, Vector3(0, -0.14, 0), Vector3.DOWN)
-	j.hook_anchor = Vector3(0, 0.1, 0)
-	j.rope_len = j.rope_start().distance_to(j.rope_end()) + 0.05
+	var j := _joint("guincho", body, hook, Vector3(0, -0.14, 0) * k, Vector3.DOWN)
+	j.size_scale = k
+	j.hook_anchor = Vector3(0, 0.1, 0) * k
+	j.rope_len = j.rope_start().distance_to(j.rope_end()) + 0.05 * k
 	j.speed = 1.0
-	j.strength = 5000.0
+	j.strength = 5000.0 * k * k * k
 	j.max_rope = 20.0
 	j.bind_pos = []
 	j.bind_neg = []
@@ -512,23 +542,25 @@ static func _flame(parent: Node3D, pos: Vector3) -> CPUParticles3D:
 	return f
 
 
-static func _spawn_pin(xform: Transform3D) -> Array[Part]:
-	var a := _box(Vector3(0.12, 0.12, 0.2), "aco", xform * Transform3D(Basis(), Vector3(-0.065, 0, 0)), "Dobradiça de pino", "pino")
-	var b := _box(Vector3(0.12, 0.12, 0.2), "ferro", xform * Transform3D(Basis(), Vector3(0.065, 0, 0)), "Dobradiça de pino", "pino")
-	_deco_cyl(a, 0.025, 0.3, Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3(0.065, 0, 0)), Color(0.75, 0.77, 0.8), 0.9)
-	var j := _joint("pino", a, b, Vector3(0.065, 0, 0), Vector3.RIGHT)
+static func _spawn_pin(xform: Transform3D, k := 1.0) -> Array[Part]:
+	var a := _box(Vector3(0.12, 0.12, 0.2) * k, "aco", xform * Transform3D(Basis(), Vector3(-0.065 * k, 0, 0)), "Dobradiça de pino", "pino")
+	var b := _box(Vector3(0.12, 0.12, 0.2) * k, "ferro", xform * Transform3D(Basis(), Vector3(0.065 * k, 0, 0)), "Dobradiça de pino", "pino")
+	_deco_cyl(a, 0.025 * k, 0.3 * k, Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3(0.065 * k, 0, 0)), Color(0.75, 0.77, 0.8), 0.9)
+	var j := _joint("pino", a, b, Vector3(0.065 * k, 0, 0), Vector3.RIGHT)
+	j.size_scale = k
 	j.capture_rest()
 	Build.add_joint(j)
 	return [a, b]
 
 
-static func _spawn_ball(xform: Transform3D) -> Array[Part]:
-	var base := _box(Vector3(0.22, 0.08, 0.22), "carcaca", xform, "Junta esférica (base)", "esferica")
-	var plate := _box(Vector3(0.22, 0.06, 0.22), "aco", xform * Transform3D(Basis(), Vector3(0, 0.24, 0)), "Junta esférica (placa)", "esferica")
-	_deco_cyl(base, 0.065, 0.04, Transform3D(Basis(), Vector3(0, 0.06, 0)), Color(0.3, 0.3, 0.32), 0.7)
-	_deco_sphere(base, 0.05, Vector3(0, 0.12, 0), Color(0.75, 0.77, 0.8))
-	_deco_cyl(plate, 0.02, 0.09, Transform3D(Basis(), Vector3(0, -0.075, 0)), Color(0.75, 0.77, 0.8), 0.9)
-	var j := _joint("esferica", base, plate, Vector3(0, 0.12, 0), Vector3.UP)
+static func _spawn_ball(xform: Transform3D, k := 1.0) -> Array[Part]:
+	var base := _box(Vector3(0.22, 0.08, 0.22) * k, "carcaca", xform, "Junta esférica (base)", "esferica")
+	var plate := _box(Vector3(0.22, 0.06, 0.22) * k, "aco", xform * Transform3D(Basis(), Vector3(0, 0.24 * k, 0)), "Junta esférica (placa)", "esferica")
+	_deco_cyl(base, 0.065 * k, 0.04 * k, Transform3D(Basis(), Vector3(0, 0.06 * k, 0)), Color(0.3, 0.3, 0.32), 0.7)
+	_deco_sphere(base, 0.05 * k, Vector3(0, 0.12 * k, 0), Color(0.75, 0.77, 0.8))
+	_deco_cyl(plate, 0.02 * k, 0.09 * k, Transform3D(Basis(), Vector3(0, -0.075 * k, 0)), Color(0.75, 0.77, 0.8), 0.9)
+	var j := _joint("esferica", base, plate, Vector3(0, 0.12 * k, 0), Vector3.UP)
+	j.size_scale = k
 	j.max_angle = deg_to_rad(50.0)
 	j.capture_rest()
 	Build.add_joint(j)
@@ -536,8 +568,8 @@ static func _spawn_ball(xform: Transform3D) -> Array[Part]:
 
 
 static func _spawn_wheel(xform: Transform3D, size: Vector3) -> Part:
-	var r := clampf(size.x if size.x > 0.0 else 0.35, 0.15, 1.0)
-	var w := clampf(size.y if size.y > 0.0 else 0.2, 0.08, 0.5)
+	var r := clampf(size.x if size.x > 0.0 else 0.35, 0.15, 1.2)
+	var w := clampf(size.y if size.y > 0.0 else 0.2, 0.08, 0.6)
 	var wheel := _cyl(r, w, "borracha", xform, "Roda", "roda")
 	_deco_cyl(wheel, r * 0.6, w + 0.008, Transform3D.IDENTITY, Color(0.62, 0.64, 0.68), 0.85)
 	_deco_cyl(wheel, r * 0.18, w + 0.016, Transform3D.IDENTITY, Color(0.25, 0.26, 0.28), 0.6)
@@ -591,6 +623,21 @@ static func _spawn_device(kind: String, xform: Transform3D) -> Part:
 	dev.part = part
 	Build.add_device(dev)
 	return part
+
+
+## Puxador: base fina + alça em "U". E segurado puxa (ver Player._update_pull).
+static func _spawn_handle(xform: Transform3D) -> Part:
+	var p := _box(Vector3(0.18, 0.025, 0.05), "aco", xform, "Puxador", "puxador")
+	_handle_visual(p)
+	p.interact_kind = "puxador"
+	return p
+
+
+static func _handle_visual(parent: Node3D) -> void:
+	var c := Color(0.75, 0.77, 0.8)
+	for x: float in [-0.065, 0.065]:
+		_deco_box(parent, Vector3(0.018, 0.06, 0.018), Vector3(x, 0.04, 0), c)
+	_deco_box(parent, Vector3(0.16, 0.02, 0.022), Vector3(0, 0.07, 0), Color(0.15, 0.15, 0.16))
 
 
 ## Isolador (como os de cerca elétrica): base, "pescoço" onde o fio passa e a tampa.
@@ -804,6 +851,9 @@ static func build_visual(kind: String, size := Vector3.ZERO) -> Node3D:
 			_deco_box(root, Vector3(0.1, 0.06, 0.05), Vector3(0, 0.07, -0.07), Color(0.95, 0.65, 0.1))
 		"isolador":
 			_insulator_visual(root)
+		"puxador":
+			_deco_box(root, Vector3(0.18, 0.025, 0.05), Vector3.ZERO, steel)
+			_handle_visual(root)
 		"chip", "constante", "teclas", "teclado", "indicador", "pixel", "mostrador", "tela", "tela_texto":
 			var ssz: Vector3 = SIGNAL_SIZES[kind]
 			_deco_box(root, ssz, Vector3.ZERO, BOARD_DARK)
@@ -834,4 +884,6 @@ static func build_visual(kind: String, size := Vector3.ZERO) -> Node3D:
 				"tela", "tela_texto":
 					_deco_box(root, Vector3(ssz.x - 0.04, 0.004, ssz.z - 0.04), Vector3(0, top, 0), SCREEN_DARK)
 					_label3d(root, "A: 1\nB: 0" if kind == "tela" else "Olá!", top + 0.003, 56, Color(0.75, 0.95, 1.0))
+	if kind in SCALED:
+		root.scale = Vector3.ONE * scale_of(kind, size)
 	return root

@@ -25,7 +25,12 @@ var comp_kind := ""
 var comp_index := -1                     ## posição no Array devolvido por Components.spawn
 var comp_group := 0                      ## igual para todas as peças do mesmo componente
 var comp_offset := Transform3D.IDENTITY  ## pose ao nascer, em relação à origem do componente
-var comp_size := Vector3.ZERO            ## medidas pedidas (rodas)
+var comp_size := Vector3.ZERO            ## medidas pedidas (rodas) ou tamanho (peças mecânicas)
+
+## Marcas da Trena (para guiar cortes): [posição local, normal local] de cada uma.
+var marks: Array = []
+var _mark_nodes: Array = []
+static var _mark_mat: StandardMaterial3D
 
 var mesh_instance: MeshInstance3D
 
@@ -96,6 +101,58 @@ func add_visual(mesh: Mesh, xform: Transform3D, material: Material) -> MeshInsta
 	mi.material_override = material
 	add_child(mi)
 	return mi
+
+
+## Põe uma marca (cruz vermelha) na superfície, em coordenadas locais.
+func add_mark(local_pos: Vector3, local_n: Vector3) -> void:
+	marks.append([local_pos, local_n.normalized()])
+	_add_mark_node(local_pos, local_n.normalized())
+
+
+func remove_mark(index: int) -> void:
+	if index < 0 or index >= marks.size():
+		return
+	marks.remove_at(index)
+	var n: Node = _mark_nodes[index]
+	_mark_nodes.remove_at(index)
+	if is_instance_valid(n):
+		n.queue_free()
+
+
+## Marca mais perto de um ponto local (índice, ou -1 se nenhuma está a menos de `max_d`).
+func nearest_mark(local_pos: Vector3, max_d: float) -> int:
+	var best := -1
+	var best_d := max_d
+	for i in marks.size():
+		var d := (marks[i][0] as Vector3).distance_to(local_pos)
+		if d < best_d:
+			best_d = d
+			best = i
+	return best
+
+
+func _add_mark_node(p: Vector3, n: Vector3) -> void:
+	if _mark_mat == null:
+		_mark_mat = StandardMaterial3D.new()
+		_mark_mat.albedo_color = Color(1.0, 0.1, 0.08)
+		_mark_mat.emission_enabled = true
+		_mark_mat.emission = Color(1.0, 0.1, 0.08)
+		_mark_mat.emission_energy_multiplier = 1.2
+		_mark_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	var x := n.cross(Vector3.UP if absf(n.y) < 0.9 else Vector3.RIGHT).normalized()
+	var root := Node3D.new()
+	root.transform = Transform3D(Basis(x, n, x.cross(n)).orthonormalized(), p + n * 0.002)
+	for ang in [PI * 0.25, -PI * 0.25]:
+		var bar := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = Vector3(0.07, 0.003, 0.008)
+		bar.mesh = bm
+		bar.material_override = _mark_mat
+		bar.rotation.y = ang
+		bar.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		root.add_child(bar)
+	add_child(root)
+	_mark_nodes.append(root)
 
 
 func assembly() -> Assembly:

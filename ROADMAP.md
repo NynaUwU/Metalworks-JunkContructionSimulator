@@ -109,6 +109,14 @@ Inspirado no Wiremod e no ACF do Garry's Mod (sem nada de NPCs nem geradores de 
 - Mostradores: indicador, pixel, mostrador numérico, tela de valores, tela de texto
 - Depósito ELETRÔNICA; saves antigos convertidos; 91 testes de lógica
 
+### ✅ v0.8.1 — Ferramentas de precisão
+- Chapas finas não se atravessam (detecção contínua nas peças soltas)
+- Trena (6): medir, distância até as bordas, marcas; a Esmerilhadeira corta pelas marcas
+- Alinhador (7): ponto → ponto, face contra face, giro em esquadro (estilo Precision Alignment)
+- Cilindros pentagonais (aço, alumínio, tambor)
+- Tamanhos pequeno/médio/grande dos componentes mecânicos e da roda
+- Puxador: alça puxada com E (força fraca), para portas
+
 ### v0.9 — 4B: Energia elétrica
 - [ ] Rede elétrica:
   - tudo o que está ligado por **fio de energia** (visível e diferente do fio de lógica) divide a mesma carga;

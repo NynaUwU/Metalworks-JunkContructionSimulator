@@ -376,6 +376,8 @@ static func serialize(assemblies: Array, origin: Transform3D) -> Dictionary:
 	var part_list: Array = []
 	for p in parts:
 		var pd := {"id": ids[p], "x": _xf(inv * p.global_transform)}
+		if not p.marks.is_empty():
+			pd["mk"] = p.marks.map(func(m: Array) -> Array: return _v(m[0]) + _v(m[1]))
 		if group_index.has(p.comp_group) and p.comp_kind != "":
 			pd["g"] = group_index[p.comp_group]
 			pd["gi"] = p.comp_index
@@ -526,6 +528,8 @@ func restore(data: Dictionary, origin: Transform3D) -> Array:
 			p.kind = pd.get("k", "metal")
 			p.label = pd.get("l", "")
 			p.cuttable = pd.get("cut", p.cuttable)
+		for m: Array in pd.get("mk", []):
+			p.add_mark(Vector3(m[0], m[1], m[2]), Vector3(m[3], m[4], m[5]))
 		by_id[int(pd["id"])] = p
 		created.append(p)
 

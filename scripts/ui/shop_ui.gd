@@ -173,9 +173,32 @@ func _select(item: Dictionary) -> void:
 	_size = Catalog.default_size(item)
 	(_cards[item["id"]] as Button).set_pressed_no_signal(true)
 	_name_label.text = item["nome"]
+	_build_params()
+	_update_detail()
+
+
+func _build_params() -> void:
+	var item := _selected
 	for c in _params_box.get_children():
 		c.queue_free()
 	for p: Dictionary in Catalog.params(item):
+		if p.has("choices"):
+			var crow := HBoxContainer.new()
+			var cname := _label(p["nome"], 13, Color(1, 1, 1, 0.85))
+			cname.custom_minimum_size = Vector2(105, 0)
+			crow.add_child(cname)
+			var opt := OptionButton.new()
+			for ch: Array in p["choices"]:
+				opt.add_item(ch[0])
+			opt.selected = Catalog.choice_index(_size, p)
+			opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			opt.item_selected.connect(func(i: int) -> void:
+				_size = Catalog.with_choice(_size, p, i)
+				_build_params.call_deferred()
+				_update_detail())
+			crow.add_child(opt)
+			_params_box.add_child(crow)
+			continue
 		var row := HBoxContainer.new()
 		var name_l := _label("%s\n(máx. %s)" % [p["nome"], Catalog.meters(p["max"])], 13, Color(1, 1, 1, 0.85))
 		name_l.custom_minimum_size = Vector2(105, 0)
@@ -197,7 +220,6 @@ func _select(item: Dictionary) -> void:
 		row.add_child(slider)
 		row.add_child(value_l)
 		_params_box.add_child(row)
-	_update_detail()
 
 
 func _update_detail() -> void:
@@ -208,6 +230,8 @@ func _update_detail() -> void:
 		var info: String = Components.INFO[_selected["component"]]["desc"]
 		if _selected["component"] == "roda":
 			info = "Raio %s · largura %s\n%s" % [Catalog.meters(_size.x), Catalog.meters(_size.y), info]
+		elif _selected["component"] in Components.SCALED:
+			info = "Tamanho %s\n%s" % [Components.size_name(_selected["component"], _size), info]
 		_info_label.text = info
 	else:
 		_info_label.text = "%s · %s\n%d kg" % [

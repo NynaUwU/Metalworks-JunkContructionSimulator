@@ -84,6 +84,7 @@ var coil: Node3D                  ## espiral da mola
 var coil_gap := 0.26
 var _lock: Joint3D                ## eletroímã / engate: junta temporária com o que grudou
 var lock_target: Part
+var size_scale := 1.0             ## tamanho do componente (pequeno 0,6 · médio 1 · grande 1,6)
 var collide := true               ## os dois lados colidem entre si (pistões nunca)
 var _sleep_ticks := 0
 static var _fx_mats := {}
@@ -243,8 +244,8 @@ func rebuild(root: Node) -> void:
 	if type == "mola":
 		var gm := Generic6DOFJoint3D.new()
 		var e := extension()
-		gm.set("linear_limit_y/lower_distance", -0.2 - e)
-		gm.set("linear_limit_y/upper_distance", 0.12 - e)
+		gm.set("linear_limit_y/lower_distance", -0.2 * size_scale - e)
+		gm.set("linear_limit_y/upper_distance", 0.12 * size_scale - e)
 		# A "mola" é o motor linear com força = rigidez × compressão (estável em qualquer rigidez).
 		gm.set("linear_motor_y/enabled", true)
 		gm.set("linear_motor_y/force_limit", 0.0)
@@ -733,7 +734,7 @@ func _update_spring() -> void:
 	if joint == null or not is_instance_valid(joint):
 		return
 	# Força limitada ao curso da mola: puxada além do fim (ex.: num tranco), não "explode".
-	joint.set("linear_motor_y/force_limit", strength * minf(absf(ext), 0.2))
+	joint.set("linear_motor_y/force_limit", strength * minf(absf(ext), 0.2 * size_scale))
 	joint.set("linear_motor_y/target_velocity", clampf(-ext * SPRING_GAIN, -2.0, 2.0) * PISTON_SIGN)
 	_spring_wake(absf(ext) > 0.01)
 

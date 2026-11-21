@@ -9,6 +9,7 @@ extends Control
 signal closed
 
 const PICK_MARGIN := 8.0
+const PANEL_WIDTH := 560.0
 
 var player: Player
 var _single := false                ## aberto pela Fiação para um componente só
@@ -60,14 +61,16 @@ func _ready() -> void:
 	sb.set_corner_radius_all(12)
 	sb.set_content_margin_all(16)
 	_panel.add_theme_stylebox_override("panel", sb)
-	_panel.anchor_left = 1.0
-	_panel.anchor_right = 1.0
+	# No centro da tela; cresce para os lados e para cima/baixo conforme o conteúdo.
+	_panel.anchor_left = 0.5
+	_panel.anchor_right = 0.5
 	_panel.anchor_top = 0.5
 	_panel.anchor_bottom = 0.5
-	_panel.offset_left = -480
-	_panel.offset_right = -20
+	_panel.offset_left = -PANEL_WIDTH * 0.5
+	_panel.offset_right = PANEL_WIDTH * 0.5
 	_panel.offset_top = -10
-	_panel.offset_bottom = 10   # cresce para cima e para baixo conforme o conteúdo
+	_panel.offset_bottom = 10
+	_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_panel.visible = false
@@ -75,6 +78,15 @@ func _ready() -> void:
 	_content = VBoxContainer.new()
 	_content.add_theme_constant_override("separation", 10)
 	_panel.add_child(_content)
+
+
+## Caixa de marcar cujo texto quebra linha (não estica o painel para fora da tela).
+func _check() -> CheckBox:
+	var c := CheckBox.new()
+	c.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	c.custom_minimum_size = Vector2(120, 0)
+	return c
 
 
 func _highlight_mat(color: Color) -> StandardMaterial3D:
@@ -330,12 +342,12 @@ func _section(i: int, j: MechJoint) -> Control:
 	var opts := HBoxContainer.new()
 	opts.visible = j.is_actuator()
 	opts.add_theme_constant_override("separation", 16)
-	var tog := CheckBox.new()
+	var tog := _check()
 	tog.text = "Alternar (liga/desliga)"
 	tog.button_pressed = j.toggle
 	tog.toggled.connect(func(on: bool) -> void: j.toggle = on)
 	opts.add_child(tog)
-	var inv := CheckBox.new()
+	var inv := _check()
 	inv.text = "Inverter"
 	inv.button_pressed = j.invert
 	inv.toggled.connect(func(on: bool) -> void: j.invert = on)
@@ -344,7 +356,7 @@ func _section(i: int, j: MechJoint) -> Control:
 
 	match j.type:
 		"motor":
-			var free := CheckBox.new()
+			var free := _check()
 			free.text = "Solto sem comando (gira livre; desmarcado = trava)"
 			free.button_pressed = j.free_idle
 			free.toggled.connect(func(on: bool) -> void: j.free_idle = on)
@@ -361,7 +373,7 @@ func _section(i: int, j: MechJoint) -> Control:
 				j.apply_strength()))
 		"pistao", "servo_linear":
 			if j.type == "pistao":
-				var hold_cb := CheckBox.new()
+				var hold_cb := _check()
 				hold_cb.text = "Ficar parado sem sinal (desmarcado = volta ao início)"
 				hold_cb.button_pressed = j.hold
 				hold_cb.toggled.connect(func(on: bool) -> void: j.hold = on)
@@ -371,7 +383,7 @@ func _section(i: int, j: MechJoint) -> Control:
 				j.strength = x
 				j.apply_strength()))
 		"trava":
-			var lock_cb := CheckBox.new()
+			var lock_cb := _check()
 			lock_cb.text = "Travada sem sinal (o sinal destrava)"
 			lock_cb.button_pressed = j.lock_idle
 			lock_cb.toggled.connect(func(on: bool) -> void: j.lock_idle = on)
@@ -399,7 +411,7 @@ func _section(i: int, j: MechJoint) -> Control:
 		"engate":
 			v.add_child(_label("Trava com sinal + ou apertando E nele.", 13, Color(1, 1, 1, 0.6)))
 	if not j.type in MechJoint.LINEAR and not j.type in MechJoint.SINGLE and j.type != "guincho":
-		var col := CheckBox.new()
+		var col := _check()
 		col.text = "Colidir com o que está do outro lado (desligue se algo soldado raspa na carcaça)"
 		col.button_pressed = j.collide
 		col.toggled.connect(func(on: bool) -> void:

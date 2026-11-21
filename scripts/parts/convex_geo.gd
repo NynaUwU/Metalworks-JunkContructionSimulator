@@ -41,7 +41,7 @@ static func closest_face_normal(planes: Array[Plane], n: Vector3) -> Vector3:
 	return best
 
 
-## Prisma de `sides` lados ao longo de Z (ex.: 5 = "cilindro" pentagonal). `diameter`:
+## Prisma de `sides` lados ao longo de Z (ex.: 8 = "cilindro" octogonal). `diameter`:
 ## diâmetro do círculo que passa pelas pontas; uma face fica virada para baixo (-Y),
 ## assim ele fica apoiado sem rolar.
 static func prism_planes(sides: int, diameter: float, length: float) -> Array[Plane]:
@@ -52,6 +52,12 @@ static func prism_planes(sides: int, diameter: float, length: float) -> Array[Pl
 		var a := -PI * 0.5 + TAU * k / sides
 		out.append(Plane(Vector3(cos(a), sin(a), 0), apothem))
 	return out
+
+
+## Prisma octogonal ao longo de Z com as faces nos eixos: `width` = distância entre faces
+## opostas (cabe na mesma caixa de um bloco width × width × length).
+static func oct_prism_planes(width: float, length: float) -> Array[Plane]:
+	return prism_planes(8, width / cos(PI / 8.0), length)
 
 
 static func box_planes(size: Vector3) -> Array[Plane]:

@@ -51,6 +51,7 @@ const ROPE_MIN := 0.25
 const MAGNET_RANGE := 0.6
 const LOCK_DIST := 0.05
 const PROBE_BACK := 0.02
+const DAMPER_MAX_SPEED := 20.0    ## amortecedor: velocidade-alvo máxima do motor (m/s)
 const SPRING_WAKE_TICKS := 30     ## mola parada: confere a cada meio segundo se a carga mudou
 const SPRING_GAIN := 4.0          ## mola/torção: quanto maior, menos amortecida
 
@@ -70,7 +71,15 @@ var stroke := 0.5                 ## pistão / servo linear (m)
 var invert := false
 var toggle := false               ## teclas: alternar em vez de segurar
 var hold := false                 ## pistão: sem sinal fica parado (em vez de voltar)
+## Pistão no modo amortecedor (suspensão): mola + amortecedor no eixo.
+var damper := false
+var stiffness := 10000.0          ## amortecedor: rigidez (N/m)
+var damping := 1000.0             ## amortecedor: amortecimento (N·s/m)
+var ride := 0.5                   ## amortecedor: altura sem carga (fração do curso)
 var free_idle := false            ## motor: sem sinal gira solto (em vez de travar)
+var ramp := 1.0                   ## motor: segundos de parado até a velocidade máxima (0 = na hora).
+                                  ## Sem rampa a roda vai a toda num tick só e patina.
+var _cmd := 0.0                   ## motor: velocidade pedida agora (vai subindo pela rampa)
 var lock_idle := false            ## dobradiça com trava: travada sem sinal (o sinal destrava)
 var manual := false               ## engate: ligado pela tecla E
 var rope_len := 1.0               ## guincho: comprimento atual do cabo (m)
@@ -176,16 +185,22 @@ func outputs() -> Array:
 	return []
 
 
+## Giro do lado b em relação ao a, em volta do eixo (rad/s).
+func spin() -> float:
+	var a := part_a.assembly()
+	var b := part_b.assembly()
+	if a == null or b == null:
+		return 0.0
+	var ax := (part_a.global_basis.orthonormalized() * axis).normalized()
+	return (b.angular_velocity - a.angular_velocity).dot(ax)
+
+
 ## Saídas: ângulo em graus, giro em rad/s, distâncias em metros.
 func update_outputs(_dt: float) -> void:
 	match type:
 		"motor":
 			out["Ângulo"] = rad_to_deg(angle())
-			var a := part_a.assembly()
-			var b := part_b.assembly()
-			if a and b:
-				var ax := (part_a.global_basis.orthonormalized() * axis).normalized()
-				out["Giro"] = (b.angular_velocity - a.angular_velocity).dot(ax)
+			out["Giro"] = spin()
 		"servo", "dobradica", "pino", "trava", "torcao":
 			out["Ângulo"] = rad_to_deg(angle())
 		"pistao", "servo_linear":
@@ -473,11 +488,20 @@ func update(delta: float) -> void:
 				_motor_on = on
 				(joint as HingeJoint3D).set_flag(HingeJoint3D.FLAG_ENABLE_MOTOR, on)
 				_wake(true)
-			_set_hinge_velocity(v * speed)
+			if not on:
+				_cmd = spin()          # solto: ao religar, parte de onde o eixo está girando
+			elif ramp <= 0.0:
+				_cmd = v * speed
+			else:
+				_cmd = move_toward(_cmd, v * speed, speed / ramp * delta)
+			_set_hinge_velocity(_cmd)
 		"servo":
 			var err := v * max_angle - angle()
 			_set_hinge_velocity(clampf(err * 10.0, -speed, speed))
 		"pistao":
+			if damper:
+				_update_damper(v)
+				return
 			var vel: float
 			if hold:
 				vel = v * speed                      # sem sinal: fica parado
@@ -737,6 +761,23 @@ func _update_spring() -> void:
 	joint.set("linear_motor_y/force_limit", strength * minf(absf(ext), 0.2 * size_scale))
 	joint.set("linear_motor_y/target_velocity", clampf(-ext * SPRING_GAIN, -2.0, 2.0) * PISTON_SIGN)
 	_spring_wake(absf(ext) > 0.01)
+
+
+## Amortecedor: F = −rigidez·(extensão − altura) − amortecimento·velocidade.
+## Feito com o motor linear: alvo = −k·e/c e força máxima = c·|alvo − v|; assim a força
+## que o motor aplica é exatamente a da mola + amortecedor, e fica estável com qualquer
+## rigidez. Teclas/sinal sobem (+) e descem (−) a altura, como uma suspensão hidráulica.
+func _update_damper(v: float) -> void:
+	var frac := ride + (1.0 - ride) * v if v > 0.0 else ride * (1.0 + v)
+	var e := extension() - frac * stroke
+	var ax := (part_a.global_basis.orthonormalized() * axis).normalized()
+	var p := part_a.global_transform * pivot
+	var vel := (_point_velocity(part_b.assembly(), p) - _point_velocity(part_a.assembly(), p)).dot(ax)
+	var c := maxf(damping, 1.0)
+	var target := clampf(-stiffness * e / c, -DAMPER_MAX_SPEED, DAMPER_MAX_SPEED)
+	joint.set("linear_motor_y/force_limit", minf(c * absf(target - vel), strength))
+	joint.set("linear_motor_y/target_velocity", target * PISTON_SIGN)
+	_spring_wake(absf(e) > 0.005)
 
 
 ## Mola/torção paradas (dormindo): a cada meio segundo acordam para ver se a carga

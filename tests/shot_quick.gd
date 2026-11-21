@@ -502,3 +502,132 @@ func _help() -> void:
 	world.hud._help.visible = true
 	await _frames(10)
 	await _shot("p4_ajuda")
+
+
+func _key(code: Key, down: bool) -> void:
+	var ev := InputEventKey.new()
+	ev.physical_keycode = code
+	ev.keycode = code
+	ev.pressed = down
+	Input.parse_input_event(ev)
+
+
+func _slipw() -> void:
+	var seat: Part = world.demo_seat
+	player.sit(seat)
+	await _frames(30)
+	var joints: Array = Build.network(seat)
+	var chassis := seat.assembly()
+	for phase in [["W", KEY_W, 180], ["solto", KEY_NONE, 60], ["D", KEY_D, 120], ["solto", KEY_NONE, 60], ["W+A", KEY_W, 120]]:
+		if phase[1] != KEY_NONE:
+			_key(phase[1], true)
+		if phase[0] == "W+A":
+			_key(KEY_A, true)
+		for i in int(phase[2]):
+			await get_tree().physics_frame
+			if i % 30 == 29:
+				var v := chassis.linear_velocity
+				var line := "%s t=%.1f car v=%.2f yaw=%.2f |" % [phase[0], (i + 1) / 60.0, Vector2(v.x, v.z).length(), chassis.angular_velocity.y]
+				for j: MechJoint in joints:
+					if j.type != "motor":
+						continue
+					var wa: Assembly = j.part_b.assembly()
+					var axis_w: Vector3 = (j.part_a.global_basis * j.axis).normalized()
+					var rel := (wa.angular_velocity - j.part_a.assembly().angular_velocity).dot(axis_w)
+					var contact := j.part_b.global_position - Vector3.UP * 0.4
+					var gv := wa.linear_velocity + wa.angular_velocity.cross(contact - wa.world_center_of_mass())
+					line += " rim %.2f slip %.2f;" % [rel * 0.4, Vector2(gv.x, gv.z).length()]
+				print(line)
+		_key(KEY_W, false)
+		_key(KEY_A, false)
+		_key(KEY_D, false)
+
+
+func _slipt() -> void:
+	# Carro no terreno (fora do pátio).
+	for spot: Vector2 in [Vector2(70, 20), Vector2(-75, 60)]:
+		var h: float = world.terrain_height(spot.x, spot.y)
+		var o := Vector3(spot.x, h + 0.3, spot.y)
+		var seat := DemoBuilds.build_car(o)
+		var joints: Array = Build.network(seat)
+		var btn: Part = Components.spawn("botao", Transform3D(Basis(), o + Vector3(4, 2, 4)))[0]
+		btn.assembly().set_frozen(true)
+		for j: MechJoint in joints:
+			Build.toggle_link(btn.device, j)
+		await _frames(90)
+		var chassis := seat.assembly()
+		btn.device.press()
+		for i in 240:
+			await get_tree().physics_frame
+			if i % 20 == 19:
+				var v := chassis.linear_velocity
+				var line := "T%s t=%.2f v=%.2f vy=%.2f |" % [str(spot), (i + 1) / 60.0, Vector2(v.x, v.z).length(), v.y]
+				for j: MechJoint in joints:
+					var wa: Assembly = j.part_b.assembly()
+					var axis_w: Vector3 = (j.part_a.global_basis * j.axis).normalized()
+					var rel := (wa.angular_velocity - j.part_a.assembly().angular_velocity).dot(axis_w)
+					var contact := j.part_b.global_position - Vector3.UP * 0.4
+					var gv := wa.linear_velocity + wa.angular_velocity.cross(contact - wa.world_center_of_mass())
+					line += " %.2f/%.2f" % [absf(rel) * 0.4, gv.length()]
+				print(line)
+		btn.device.release()
+
+
+func _octo() -> void:
+	# Peças "cilíndricas" octogonais: pistão, servo linear, motor, servo, ímã, propulsor, mola, isolador, cilindros.
+	var o := Vector3(6, 0.02, 0)
+	var x := 0.0
+	for kind in ["pistao", "servo_linear", "motor", "servo", "ima", "propulsor", "mola", "isolador", "botao", "dobradica"]:
+		var b := Components.bounds(kind)
+		Components.spawn(kind, Transform3D(Basis(), o + Vector3(x - b.position.x, -b.position.y + 0.02, 0)))
+		x += b.size.x + 0.3
+	var cy := Catalog.get_item("cilindro")
+	Build.spawn_planes(Catalog.planes(cy, Vector3(0.3, 0.3, 1.2)), "aco", Transform3D(Basis(Vector3.UP, 0.4), o + Vector3(x * 0.3, 0.15, 1.3)))
+	Build.spawn_planes(Catalog.planes(Catalog.get_item("tambor"), Vector3(0.8, 0.8, 0.5)), "ferro", Transform3D(Basis(), o + Vector3(x * 0.7, 0.4, 1.4)))
+	await _frames(40)
+	player.teleport(o + Vector3(x * 0.5, 0.03, 4.0))
+	_look_from_eye(o + Vector3(x * 0.5, 0.3, 0.4))
+	await _frames(10)
+	await _shot("o1_octogonais")
+
+
+func _runhold() -> void:
+	var o := Vector3(10, 0, 20)
+	var block := Build.spawn_box(Vector3(0.5, 0.5, 0.5), "aco", Transform3D(Basis(), o + Vector3(0, 0.25, -2)))
+	await _frames(20)
+	player.teleport(o)
+	_look_from_eye(block.global_position)
+	player.select_tool(0)
+	await _frames(3)
+	player.hand.grab()
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	Input.action_press("modifier")
+	Input.action_press("move_forward")
+	var p0 := player.global_position
+	for i in 60:
+		await get_tree().physics_frame
+	var d := player.global_position.distance_to(p0)
+	print("RUNHOLD holding=%s mouse=%d andou %.2f m em 1 s · bloco a %.2f m do jogador" % [player.hand.holding, Input.mouse_mode, d, block.global_position.distance_to(player.global_position)])
+	Input.action_release("modifier")
+	Input.action_release("move_forward")
+
+
+func _alignghost() -> void:
+	var c := Vector3(-6, 0, 10)
+	var base := Build.spawn_box(Vector3(2.0, 0.1, 1.5), "aco", Transform3D(Basis(), c + Vector3(0, 0.05, 0)))
+	var mot := Components.spawn("motor", Transform3D(Basis(Vector3(1, 0, 1).normalized(), 0.8), c + Vector3(1.6, 1.3, -0.6)))
+	var wheel: Part = Components.spawn("roda", Transform3D(Basis(Vector3(1, 0, 1).normalized(), 0.8), mot[1].global_position + mot[1].global_basis.y * 0.12), Vector3(0.35, 0.2, 0))[0]
+	Build.make_weld(wheel, mot[1], mot[1].global_position + mot[1].global_basis.y * 0.03)
+	await _frames(5)
+	for p: Part in [mot[0], mot[1], wheel]:
+		p.assembly().set_frozen(true)
+	await _frames(10)
+	player.teleport(c + Vector3(0.3, 0.03, 3.2))
+	player.select_tool(6)
+	var al: AlignTool = player.tools[6]
+	# 1º ponto: fundo da carcaça do motor
+	var bottom: Vector3 = mot[0].global_transform * Vector3(0, -Components.MOTOR_HALF_H, 0)
+	al._a = Snap.on_part(mot[0], bottom, mot[0].global_basis * Vector3.DOWN)
+	_look_from_eye(c + Vector3(-0.4, 0.1, 0.2))
+	await _frames(10)
+	await _shot("a1_previa_alinhador")

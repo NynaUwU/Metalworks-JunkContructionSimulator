@@ -6,7 +6,7 @@ const HELP_TEXT := """[b]CONTROLES[/b]
 
 [b]Movimento[/b]
 W A S D — andar
-Toque duplo (ou Shift) — correr
+Toque duplo (ou Shift) — correr (até segurando algo)
 Espaço — pular · Ctrl — agachar
 E — usar (loja, assento, botão, alavanca, engate)
 E segurado num puxador — puxar (portas etc.)
@@ -50,6 +50,7 @@ R — limpa · G — grade de 5 cm
 [b]Alinhador[/b]
 Clique no ponto da peça que vai se mover,
   depois no ponto de destino (outra peça/chão)
+Mostra a prévia transparente de onde ela vai ficar
 As faces encostam em esquadro e ela congela
 Shift no 2º clique — só mover (sem girar)
 Botão direito — cancela
@@ -85,6 +86,8 @@ Chip lógico: botão direito com a Fiação escolhe
   o modo (E, OU, somar, memória, tempo...)
 Depurador: mira mostra entradas e saídas ao vivo;
   botão direito: nome e ajustes
+Pistão no modo amortecedor = suspensão
+  (ajustes: rigidez, amortecimento, altura)
 Guincho: tecla + recolhe o cabo, − solta
 Eletroímã: ligado puxa e gruda aço/ferro
 Engate rápido: E nele (ou sinal) trava no

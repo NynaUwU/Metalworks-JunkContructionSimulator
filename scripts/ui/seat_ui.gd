@@ -366,6 +366,7 @@ func _section(i: int, j: MechJoint) -> Control:
 	opts.add_child(inv)
 	v.add_child(opts)
 
+	var k3 := j.size_scale * j.size_scale * j.size_scale   # componentes grandes/pequenos: faixa de força acompanha
 	match j.type:
 		"motor":
 			var free := _check()
@@ -374,24 +375,41 @@ func _section(i: int, j: MechJoint) -> Control:
 			free.toggled.connect(func(on: bool) -> void: j.free_idle = on)
 			v.add_child(free)
 			v.add_child(_slider("Velocidade", 1.0, 30.0, 0.5, j.speed, "%.1f rad/s", func(x: float) -> void: j.speed = x))
-			v.add_child(_slider("Força", 200.0, 6000.0, 100.0, j.strength, "%d N·m", func(x: float) -> void:
+			v.add_child(_slider("Arrancada", 0.0, 3.0, 0.1, j.ramp, "%.1f s", func(x: float) -> void: j.ramp = x))
+			v.add_child(_slider("Força", 200.0 * k3, 6000.0 * k3, 100.0, j.strength, "%d N·m", func(x: float) -> void:
 				j.strength = x
 				j.apply_strength()))
 		"servo":
 			v.add_child(_slider("Ângulo máx.", 10.0, 90.0, 5.0, rad_to_deg(j.max_angle), "±%d°", func(x: float) -> void: j.max_angle = deg_to_rad(x)))
 			v.add_child(_slider("Velocidade", 0.5, 10.0, 0.5, j.speed, "%.1f rad/s", func(x: float) -> void: j.speed = x))
-			v.add_child(_slider("Força", 200.0, 8000.0, 100.0, j.strength, "%d N·m", func(x: float) -> void:
+			v.add_child(_slider("Força", 200.0 * k3, 8000.0 * k3, 100.0, j.strength, "%d N·m", func(x: float) -> void:
 				j.strength = x
 				j.apply_strength()))
 		"pistao", "servo_linear":
 			if j.type == "pistao":
+				var damp_cb := _check()
+				damp_cb.text = "Amortecedor (suspensão: mola + amortecimento; teclas/sinal sobem e descem)"
+				damp_cb.button_pressed = j.damper
+				damp_cb.toggled.connect(func(on: bool) -> void:
+					j.damper = on
+					if not on:
+						j.apply_strength()
+					_select.call_deferred(j))
+				v.add_child(damp_cb)
+			if j.type == "pistao" and j.damper:
+				var k2 := j.size_scale * j.size_scale
+				v.add_child(_slider("Rigidez", 1000.0 * k2, 60000.0 * k2, 500.0, j.stiffness, "%d N/m", func(x: float) -> void: j.stiffness = x))
+				v.add_child(_slider("Amortecim.", 100.0 * k2, 10000.0 * k2, 100.0, j.damping, "%d N·s/m", func(x: float) -> void: j.damping = x))
+				v.add_child(_slider("Altura", 0.0, 100.0, 5.0, j.ride * 100.0, "%d %%", func(x: float) -> void: j.ride = x / 100.0))
+			elif j.type == "pistao":
 				var hold_cb := _check()
 				hold_cb.text = "Ficar parado sem sinal (desmarcado = volta ao início)"
 				hold_cb.button_pressed = j.hold
 				hold_cb.toggled.connect(func(on: bool) -> void: j.hold = on)
 				v.add_child(hold_cb)
-			v.add_child(_slider("Velocidade", 0.1, 3.0, 0.1, j.speed, "%.1f m/s", func(x: float) -> void: j.speed = x))
-			v.add_child(_slider("Força", 1000.0, 40000.0, 500.0, j.strength, "%d N", func(x: float) -> void:
+			if not (j.type == "pistao" and j.damper):
+				v.add_child(_slider("Velocidade", 0.1, 3.0, 0.1, j.speed, "%.1f m/s", func(x: float) -> void: j.speed = x))
+			v.add_child(_slider("Força máx." if j.damper else "Força", 1000.0 * k3, 40000.0 * k3, 500.0, j.strength, "%d N", func(x: float) -> void:
 				j.strength = x
 				j.apply_strength()))
 		"trava":

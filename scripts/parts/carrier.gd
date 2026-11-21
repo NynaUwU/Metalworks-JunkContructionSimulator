@@ -83,7 +83,9 @@ func step(part: Part, grab_local: Vector3, target: Transform3D, dt: float) -> vo
 
 ## Montagens que se movem junto com `asm` como um bloco. Não atravessa montagens
 ## congeladas/ancoradas; "pinned" = a máquina está presa a alguma delas.
-static func machine(asm: Assembly) -> Dictionary:
+## Com `move_frozen` (Alinhador), o que está só congelado vai junto; só o que está soldado
+## no chão (ancorado) prende.
+static func machine(asm: Assembly, move_frozen := false) -> Dictionary:
 	var out: Array = [asm]
 	var pinned := false
 	var i := 0
@@ -103,7 +105,7 @@ static func machine(asm: Assembly) -> Dictionary:
 			var other: Assembly = b if a == cur else (a if b == cur else null)
 			if other == null or other == cur or out.has(other):
 				continue
-			if other.freeze:
+			if other.freeze and (not move_frozen or other.anchored):
 				pinned = true
 				continue
 			out.append(other)

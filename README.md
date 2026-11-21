@@ -23,7 +23,7 @@ Nome, mapa, visual e código são próprios.
 | Ação | Tecla |
 |---|---|
 | Andar / pular | W A S D / Espaço |
-| Correr | toque duplo numa tecla de andar (ou Shift) |
+| Correr | toque duplo numa tecla de andar (ou Shift), também segurando algo com o Gravitador |
 | Agachar (mais devagar, alcança mais baixo) | Ctrl |
 | Trocar ferramenta | 1 Gravitador · 2 Solda · 3 Esmerilhadeira · 4 Fiação · 5 Depurador · 6 Trena · 7 Alinhador |
 | Usar (loja, assento, botão, alavanca, engate rápido) | E |
@@ -69,14 +69,19 @@ Nome, mapa, visual e código são próprios.
 - 2º clique: o ponto de **destino**, em outra peça ou no chão.
 - A peça vai até lá: os dois pontos se encontram, as faces ficam encostadas uma na outra e o giro fica em
   esquadro (90°) com a peça de destino. O que estiver preso a ela por juntas vai junto.
+- Depois do 1º clique, uma **prévia transparente** mostra onde ela vai ficar (com ou sem Shift).
 - Ela fica **congelada** no lugar, pronta para soldar. **R** com o Gravitador solta.
+  Dá para realinhar algo congelado; só o que está soldado no chão prende.
 - **Shift** no 2º clique: só move (não gira). Botão direito cancela.
 
 **Máquinas**
 - Componentes:
-  - **motor** (gira; sem sinal fica rígido ou solto);
+  - **motor** (gira; sem sinal fica rígido ou solto). A velocidade sobe e desce em rampa (**Arrancada**,
+    1 s por padrão): as rodas não patinam ao sair nem derrapam ao parar;
   - **servo** (vai até um ângulo e segura);
-  - **pistão** (empurra 0,5 m; sem sinal volta ou fica parado);
+  - **pistão** (empurra 0,5 m; sem sinal volta ou fica parado). Nos ajustes, o modo **amortecedor** vira
+    suspensão: mola + amortecimento com **rigidez**, **amortecimento** e **altura sem carga** ajustáveis;
+    teclas/sinal sobem e descem a altura (suspensão hidráulica);
   - **servo linear** (vai até uma posição e segura);
   - **dobradiça** (gira livre até quase dobrar);
   - **dobradiça de pino** (eixo livre, volta inteira);
@@ -90,6 +95,8 @@ Nome, mapa, visual e código são próprios.
   - **engate rápido** (trava no que encostar na face listrada; liga com **E** ou com sinal);
   - **roda**, **assento** e **puxador** (alça: segure **E** nela e mova a mira para puxar com força fraca,
     bom para portas e tampas; afastar demais solta).
+- **Formato:** tudo o que é "cilíndrico" é **octogonal** (pistão, hastes, discos, propulsor, ímã, isolador,
+  cilindros da loja), menos a roda, que continua redonda.
 - **Tamanhos:** os componentes mecânicos (motor, servo, pistão, servo linear, todas as dobradiças, junta esférica,
   mola e guincho) vêm em **pequeno** (0,6×), **médio** (o de antes) e **grande** (1,6×).
   A força cresce com o tamanho ao cubo (o grande tem ~4× a força do médio), o curso e a velocidade dos pistões
@@ -156,7 +163,7 @@ Nome, mapa, visual e código são próprios.
 
 **Reciclador e loja**
 - Para se livrar de peças, jogue-as no **RECICLADOR**. Cada peça vira **pontos**, conforme o peso e o metal (alumínio vale mais por kg, ferro velho vale menos).
-- No terminal da **LOJA** (tecla **E**), gaste os pontos em chapas, vigas, blocos, **cilindros** (pentagonais),
+- No terminal da **LOJA** (tecla **E**), gaste os pontos em chapas, vigas, blocos, **cilindros** (octogonais),
   componentes e peças pré-cortadas, escolhendo as medidas (com limite) e o tamanho dos componentes.
   Os itens aparecem na plataforma **ENTREGA**.
 
@@ -229,6 +236,10 @@ godot --headless --path . res://tests/test_logic.tscn
 
 ```bash
 godot --headless --path . res://tests/test_precision.tscn
+```
+
+```bash
+godot --headless --path . res://tests/test_vehicle.tscn
 ```
 
 **Publicar uma versão:** mude `config/version` no `project.godot` e crie

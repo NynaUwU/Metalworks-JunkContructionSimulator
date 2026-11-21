@@ -65,7 +65,7 @@ func recompute() -> void:
 	if has_wheel:
 		if _rubber_material == null:
 			_rubber_material = PhysicsMaterial.new()
-			_rubber_material.friction = 1.4
+			_rubber_material.friction = 2.0   # com o chão (1,0) dá ~1,4 (o Jolt usa a média geométrica)
 			_rubber_material.bounce = 0.0
 		physics_material_override = _rubber_material
 	else:

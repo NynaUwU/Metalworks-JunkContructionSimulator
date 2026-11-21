@@ -2,7 +2,7 @@ extends Node3D
 ## Testes: chapas finas rápidas, cilindros, tamanhos, Trena, marcas, Alinhador, puxador.
 ##   godot --headless --path . res://tests/test_precision.tscn
 
-const EXPECTED_CHECKS := 31
+const EXPECTED_CHECKS := 33
 
 var _fails := 0
 var _checks := 0
@@ -67,12 +67,14 @@ func _run() -> void:
 	await _frames(2)
 	check(bullet.assembly().continuous_cd and not mot[0].assembly().continuous_cd, "colisão contínua só nas peças soltas (máquinas com juntas não desmontam)")
 
-	print("== Cilindros pentagonais")
+	print("== Cilindros octogonais")
 	var cyl_item := Catalog.get_item("cilindro")
 	var geo := Catalog.geometry(cyl_item, Vector3(0.4, 0.4, 2.0))
-	var r := 0.2
-	var area := 2.5 * r * r * sin(TAU / 5.0)
-	check(Catalog.planes(cyl_item, Vector3(0.4, 0.4, 2.0)).size() == 7 and absf(geo["volume"] - area * 2.0) < 1e-3, "prisma de 5 lados com o volume certo (%.4f m³)" % geo["volume"])
+	var area := 2.0 * 0.4 * 0.4 * tan(PI / 8.0)       # octógono com 0,4 m entre faces opostas
+	var aabb: AABB = geo["aabb"]
+	check(Catalog.planes(cyl_item, Vector3(0.4, 0.4, 2.0)).size() == 10 and absf(geo["volume"] - area * 2.0) < 1e-3 \
+		and absf(aabb.size.x - 0.4) < 1e-4 and absf(aabb.size.y - 0.4) < 1e-4,
+		"prisma de 8 lados com o volume certo e do tamanho pedido (%.4f m³, %.2f × %.2f)" % [geo["volume"], aabb.size.x, aabb.size.y])
 	var cyl := Build.spawn_planes(Catalog.planes(cyl_item, Vector3(0.4, 0.4, 2.0)), "aco", Transform3D(Basis(), Vector3(20, 0.2, -40)))
 	await _frames(20)
 	check(cyl.global_position.y < 0.2 and absf(cyl.global_basis.y.dot(Vector3.UP)) > 0.99, "fica apoiado numa face, sem rolar")
@@ -168,8 +170,22 @@ func _run() -> void:
 	var a := Snap.on_part(mover, mover.global_transform * Vector3(0.01, -0.02, 0.05), mover.global_basis * Vector3.BACK)
 	# Ponto B: em cima da base, num ponto da grade.
 	var b := Snap.on_part(base, base.global_transform * Vector3(0.32, 0.05, -0.41), Vector3.UP)
+	# Prévia: com o 1º ponto marcado e mirando no destino, o fantasma aparece na pose final.
+	var aligner: AlignTool = player.tools[6]
+	player.select_tool(6)
+	aligner._a = a
+	aligner._update_ghost(b)
+	var ghost_ok := aligner._ghost != null and aligner._ghost.visible and aligner._ghost.get_child_count() == 1 \
+		and aligner._ghost.get_child(0).get_child_count() > 0
+	var ghost_xf: Transform3D = (aligner._ghost.get_child(0) as Node3D).global_transform if ghost_ok else Transform3D()
 	var msg := AlignTool.align(a, b)
 	await _frames(2)
+	check(ghost_ok and ghost_xf.origin.distance_to(mover.assembly().global_position) < 1e-3 \
+		and ghost_xf.basis.is_equal_approx(mover.assembly().global_basis), "prévia do Alinhador mostra a peça exatamente onde ela vai ficar")
+	aligner._a = {}
+	aligner._update_ghost({})
+	check(aligner._ghost == null, "cancelando, a prévia some")
+	player.select_tool(0)
 	var face_center: Vector3 = mover.global_transform * Vector3(0, 0, 0.05)
 	var face_n := mover.global_basis.orthonormalized() * Vector3.BACK
 	check(face_center.distance_to(base.global_transform * Vector3(0.3, 0.05, -0.4)) < 1e-3, "o ponto da peça vai exatamente no ponto da grade do destino (%s)" % msg)

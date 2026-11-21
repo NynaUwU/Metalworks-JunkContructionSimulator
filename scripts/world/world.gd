@@ -17,8 +17,8 @@ const SCRAP := [
 	{"size": Vector3(0.5, 0.5, 0.5), "w": 2, "stack": [1, 3]},   # bloco
 	{"size": Vector3(1.0, 1.0, 1.0), "w": 1, "stack": [1, 1]},   # bloco grande
 	{"size": Vector3(1.0, 0.5, 0.5), "w": 1, "stack": [1, 2]},   # tarugo
-	{"size": Vector3(0.3, 0.3, 2.0), "w": 2, "stack": [1, 3], "pent": true},   # cilindro (pentagonal)
-	{"size": Vector3(0.6, 0.6, 0.4), "w": 1, "stack": [1, 2], "pent": true},   # tambor
+	{"size": Vector3(0.3, 0.3, 2.0), "w": 2, "stack": [1, 3], "oct": true},   # cilindro (octogonal)
+	{"size": Vector3(0.6, 0.6, 0.4), "w": 1, "stack": [1, 2], "oct": true},   # tambor
 ]
 
 var player: Player
@@ -511,8 +511,8 @@ func _spawn_pile(center: Vector3) -> void:
 		for k in count:
 			y += size.y * 0.5
 			var xf := Transform3D(Basis(Vector3.UP, yaw + _rng.randf_range(-0.08, 0.08)), Vector3(base.x, y, base.z))
-			if item.get("pent", false):
-				Build.spawn_planes(ConvexGeo.prism_planes(5, size.x, size.z), material_id, xf)
+			if item.get("oct", false):
+				Build.spawn_planes(ConvexGeo.oct_prism_planes(size.x, size.z), material_id, xf)
 			else:
 				Build.spawn_box(size, material_id, xf)
 			y += size.y * 0.5 + 0.03

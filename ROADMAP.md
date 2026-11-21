@@ -113,9 +113,15 @@ Inspirado no Wiremod e no ACF do Garry's Mod (sem nada de NPCs nem geradores de 
 - Chapas finas não se atravessam (detecção contínua nas peças soltas)
 - Trena (6): medir, distância até as bordas, marcas; a Esmerilhadeira corta pelas marcas
 - Alinhador (7): ponto → ponto, face contra face, giro em esquadro (estilo Precision Alignment)
-- Cilindros pentagonais (aço, alumínio, tambor)
+- Cilindros (aço, alumínio, tambor)
 - Tamanhos pequeno/médio/grande dos componentes mecânicos e da roda
 - Puxador: alça puxada com E (força fraca), para portas
+
+### ✅ v0.8.2 — Ajustes de veículos e formato
+- Cilindros e peças "redondas" octogonais (menos a roda)
+- Rodas com aderência: rampa de arrancada no motor e borracha mais aderente
+- Pistão com modo amortecedor (suspensão)
+- Correr segurando algo com o Gravitador; prévia do Alinhador
 
 ### v0.9 — 4B: Energia elétrica
 - [ ] Rede elétrica:

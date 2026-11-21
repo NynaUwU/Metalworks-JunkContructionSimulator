@@ -466,7 +466,9 @@ func _physics_process(delta: float) -> void:
 		input = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	if input == Vector2.ZERO:
 		running = false
-	var shift_run := Input.is_action_pressed("modifier") and not (hand.holding and current() == hand)
+	# Shift corre sempre, inclusive segurando algo com o Gravitador (girando a peça com E o
+	# jogador fica parado, e aí o Shift serve para girar em passos de 15°).
+	var shift_run := Input.is_action_pressed("modifier")
 	var speed := RUN_SPEED if (running or shift_run) else WALK_SPEED
 	if crouching:
 		speed = CROUCH_SPEED

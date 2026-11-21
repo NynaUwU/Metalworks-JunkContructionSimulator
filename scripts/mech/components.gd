@@ -222,6 +222,21 @@ static func _cyl(radius: float, height: float, mat: String, xform: Transform3D, 
 	return p
 
 
+## Peça octogonal (o "cilindro" do jogo): eixo = Y local, faces nos eixos X/Z.
+static func _oct(apothem: float, height: float, mat: String, xform: Transform3D, label: String, kind: String) -> Part:
+	var p := Build.spawn_planes(octagon_planes(apothem, height * 0.5), mat, xform)
+	_component(p, label, kind)
+	return p
+
+
+## Planos de um prisma octogonal deslocado para `center`.
+static func _oct_planes_at(apothem: float, height: float, center: Vector3) -> Array[Plane]:
+	var out: Array[Plane] = []
+	for pl in octagon_planes(apothem, height * 0.5):
+		out.append(Plane(pl.normal, pl.d + pl.normal.dot(center)))
+	return out
+
+
 static func _deco_box(parent: Node3D, size: Vector3, pos: Vector3, color: Color, emission := 0.0) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	var bm := BoxMesh.new()
@@ -233,15 +248,19 @@ static func _deco_box(parent: Node3D, size: Vector3, pos: Vector3, color: Color,
 	return mi
 
 
-static func _deco_cyl(parent: Node3D, radius: float, height: float, xform: Transform3D, color: Color, metal := 0.5) -> MeshInstance3D:
+## Detalhe "cilíndrico": octogonal (8 lados, faces nos eixos), menos a roda (`sides` alto).
+## `radius` = distância do centro até uma face.
+static func _deco_cyl(parent: Node3D, radius: float, height: float, xform: Transform3D, color: Color, metal := 0.5, sides := 8) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	var cm := CylinderMesh.new()
-	cm.top_radius = radius
-	cm.bottom_radius = radius
+	var r := radius / cos(PI / sides) if sides == 8 else radius
+	cm.top_radius = r
+	cm.bottom_radius = r
 	cm.height = height
-	cm.radial_segments = 20
+	cm.radial_segments = sides
+	cm.rings = 1
 	mi.mesh = cm
-	mi.transform = xform
+	mi.transform = xform * Transform3D(Basis(Vector3.UP, PI / 8.0), Vector3.ZERO) if sides == 8 else xform
 	mi.material_override = StationBuilder.mat(color, 0.45, metal)
 	parent.add_child(mi)
 	return mi
@@ -285,7 +304,7 @@ static func _joint(type: String, a: Part, b: Part, pivot: Vector3, axis: Vector3
 static func _spawn_motor(xform: Transform3D, k := 1.0) -> Array[Part]:
 	var stator := Build.spawn_planes(octagon_planes(MOTOR_APOTHEM * k, MOTOR_HALF_H * k), "carcaca", xform)
 	_component(stator, "Motor (carcaça)", "motor")
-	var rotor := _cyl(0.15 * k, 0.06 * k, "aco", xform * Transform3D(Basis(), Vector3(0, (MOTOR_HALF_H + 0.034) * k, 0)), "Motor (disco)", "motor")
+	var rotor := _oct(0.15 * k, 0.06 * k, "aco", xform * Transform3D(Basis(), Vector3(0, (MOTOR_HALF_H + 0.034) * k, 0)), "Motor (disco)", "motor")
 	_deco_box(rotor, Vector3(0.2, 0.012, 0.03) * k, Vector3(0, 0.032, 0) * k, Color(0.9, 0.2, 0.15))
 	var j := _joint("motor", stator, rotor, Vector3(0, MOTOR_HALF_H * k, 0), Vector3.UP)
 	j.size_scale = k
@@ -302,7 +321,7 @@ static func _spawn_servo(xform: Transform3D, k := 1.0) -> Array[Part]:
 	var top := SERVO_SIZE.y * 0.5 * k
 	var shaft_z := SERVO_SHAFT_Z * k
 	var stator := _box(SERVO_SIZE * k, "carcaca_azul", xform, "Servo (carcaça)", "servo")
-	var disc := _cyl(0.12 * k, 0.05 * k, "aco", xform * Transform3D(Basis(), Vector3(0, top + 0.029 * k, shaft_z)), "Servo (disco)", "servo")
+	var disc := _oct(0.12 * k, 0.05 * k, "aco", xform * Transform3D(Basis(), Vector3(0, top + 0.029 * k, shaft_z)), "Servo (disco)", "servo")
 	_deco_box(disc, Vector3(0.16, 0.012, 0.03) * k, Vector3(0, 0.027, 0) * k, Color(0.95, 0.95, 0.95))
 	_deco_cyl(stator, 0.035 * k, 0.012 * k, Transform3D(Basis(), Vector3(0, top + 0.002 * k, shaft_z)), Color(0.2, 0.2, 0.22), 0.6)
 	var j := _joint("servo", stator, disc, Vector3(0, top, shaft_z), Vector3.UP)
@@ -332,18 +351,27 @@ static func _spawn_linear(kind: String, xform: Transform3D, k := 1.0) -> Array[P
 	var body_h := base_size.y + sleeve.y
 	var body_center := Vector3(0, body_h * 0.5 - base_size.y * 0.5, 0)
 	var planes: Array[Plane] = []
-	for pl in ConvexGeo.box_planes(Vector3(base_size.x, body_h, base_size.z)):
-		planes.append(Plane(pl.normal, pl.d + pl.normal.dot(body_center)))
+	if linear:
+		for pl in ConvexGeo.box_planes(Vector3(base_size.x, body_h, base_size.z)):
+			planes.append(Plane(pl.normal, pl.d + pl.normal.dot(body_center)))
+	else:
+		planes = _oct_planes_at(base_size.x * 0.5, body_h, body_center)   # pistão: corpo octogonal
 	var base := Build.spawn_planes(planes, "carcaca_azul" if linear else "carcaca", xform * Transform3D(Basis(), Vector3(0, base_y, 0)))
 	_component(base, name, kind)
-	_deco_box(base, Vector3(base_size.x + 0.02 * k, 0.03 * k, base_size.z + 0.02 * k), Vector3(0, base_size.y * 0.5 + sleeve.y - 0.015 * k, 0), color.darkened(0.35))
-	var rod := _box(rod_size, "aco", xform * Transform3D(Basis(), Vector3(0, rod_y, 0)), name + " (haste)", kind)
-	_deco_box(rod, Vector3(rod_size.x + 0.06 * k, 0.04 * k, rod_size.z + 0.06 * k), Vector3(0, rod_size.y * 0.5, 0), Color(0.3, 0.32, 0.35))
+	var ring_y := base_size.y * 0.5 + sleeve.y - 0.015 * k
+	if linear:
+		_deco_box(base, Vector3(base_size.x + 0.02 * k, 0.03 * k, base_size.z + 0.02 * k), Vector3(0, ring_y, 0), color.darkened(0.35))
+	else:
+		_deco_cyl(base, base_size.x * 0.5 + 0.01 * k, 0.03 * k, Transform3D(Basis(), Vector3(0, ring_y, 0)), color.darkened(0.35), 0.5)
+	var rod := _oct(rod_size.x * 0.5, rod_size.y, "aco", xform * Transform3D(Basis(), Vector3(0, rod_y, 0)), name + " (haste)", kind)
+	_deco_cyl(rod, rod_size.x * 0.5 + 0.03 * k, 0.04 * k, Transform3D(Basis(), Vector3(0, rod_size.y * 0.5, 0)), Color(0.3, 0.32, 0.35), 0.6)
 	var j := _joint(kind, base, rod, Vector3(0, -base_y, 0), Vector3.UP)
 	j.size_scale = k
 	j.stroke = (0.4 if linear else 0.5) * k
 	j.speed = (0.8 if linear else 1.0) * k
 	j.strength = (8000.0 if linear else 12000.0) * k * k * k
+	j.stiffness = 10000.0 * k * k
+	j.damping = 1000.0 * k * k
 	j.capture_rest()
 	Build.add_joint(j)
 	return [base, rod]
@@ -387,6 +415,8 @@ static func _spawn_spring(xform: Transform3D, k := 1.0) -> Array[Part]:
 		var tm := TorusMesh.new()
 		tm.inner_radius = 0.07 * k
 		tm.outer_radius = 0.09 * k
+		tm.rings = 8               # espiral octogonal, como o resto do jogo
+		tm.ring_segments = 6
 		ring.mesh = tm
 		ring.material_override = StationBuilder.mat(Color(0.9, 0.75, 0.15), 0.4, 0.8)
 		ring.position = Vector3(0, (0.022 + i * 0.043) * k, 0)
@@ -438,29 +468,35 @@ static func _spawn_single(kind: String, xform: Transform3D) -> Part:
 	j.type = kind
 	match kind:
 		"propulsor":
-			p = _cyl(0.12, 0.36, "aco", xform, "Propulsor", kind)
+			p = _oct(0.12, 0.36, "aco", xform, "Propulsor", kind)
 			_deco_cyl(p, 0.125, 0.04, Transform3D(Basis(), Vector3(0, 0.1, 0)), Color(0.95, 0.5, 0.1), 0.3)
 			var nozzle := MeshInstance3D.new()
 			var cm := CylinderMesh.new()
-			cm.top_radius = 0.07
-			cm.bottom_radius = 0.11
+			cm.top_radius = 0.07 / cos(PI / 8.0)
+			cm.bottom_radius = 0.11 / cos(PI / 8.0)
 			cm.height = 0.12
+			cm.radial_segments = 8
+			cm.rings = 1
 			nozzle.mesh = cm
 			nozzle.material_override = StationBuilder.mat(Color(0.2, 0.2, 0.22), 0.4, 0.8)
 			nozzle.position = Vector3(0, -0.24, 0)
+			nozzle.rotation.y = PI / 8.0
 			p.add_child(nozzle)
 			j.fx = _flame(p, Vector3(0, -0.31, 0))
 			j.axis = Vector3.UP          # empurra para a ponta lisa
 			j.pivot = Vector3.ZERO
 			j.strength = 300.0
 		"ima":
-			p = _cyl(0.22, 0.1, "plastico", xform, "Eletroímã", kind)
+			p = _oct(0.22, 0.1, "plastico", xform, "Eletroímã", kind)
 			var face := MeshInstance3D.new()
 			var fm := CylinderMesh.new()
-			fm.top_radius = 0.2
-			fm.bottom_radius = 0.2
+			fm.top_radius = 0.2 / cos(PI / 8.0)
+			fm.bottom_radius = 0.2 / cos(PI / 8.0)
 			fm.height = 0.012
+			fm.radial_segments = 8
+			fm.rings = 1
 			face.mesh = fm
+			face.rotation.y = PI / 8.0
 			face.position = Vector3(0, -0.056, 0)
 			p.add_child(face)
 			j.indicator = face             # a face acende quando liga
@@ -571,8 +607,8 @@ static func _spawn_wheel(xform: Transform3D, size: Vector3) -> Part:
 	var r := clampf(size.x if size.x > 0.0 else 0.35, 0.15, 1.2)
 	var w := clampf(size.y if size.y > 0.0 else 0.2, 0.08, 0.6)
 	var wheel := _cyl(r, w, "borracha", xform, "Roda", "roda")
-	_deco_cyl(wheel, r * 0.6, w + 0.008, Transform3D.IDENTITY, Color(0.62, 0.64, 0.68), 0.85)
-	_deco_cyl(wheel, r * 0.18, w + 0.016, Transform3D.IDENTITY, Color(0.25, 0.26, 0.28), 0.6)
+	_deco_cyl(wheel, r * 0.6, w + 0.008, Transform3D.IDENTITY, Color(0.62, 0.64, 0.68), 0.85, 28)
+	_deco_cyl(wheel, r * 0.18, w + 0.016, Transform3D.IDENTITY, Color(0.25, 0.26, 0.28), 0.6, 20)
 	wheel.assembly().recompute()
 	return wheel
 
@@ -642,7 +678,7 @@ static func _handle_visual(parent: Node3D) -> void:
 
 ## Isolador (como os de cerca elétrica): base, "pescoço" onde o fio passa e a tampa.
 static func _spawn_insulator(xform: Transform3D) -> Part:
-	var p := _cyl(0.07, 0.16, "plastico", xform, "Isolador", "isolador")
+	var p := _oct(0.07, 0.16, "plastico", xform, "Isolador", "isolador")
 	p.mesh_instance.visible = false   # a aparência vem das peças abaixo
 	_insulator_visual(p)
 	p.assembly().recompute()
@@ -781,13 +817,12 @@ static func build_visual(kind: String, size := Vector3.ZERO) -> Node3D:
 			if linear:
 				_deco_box(root, Vector3(0.22, 0.1, 0.32), Vector3(0, -0.25, 0), color)
 				_deco_box(root, Vector3(0.2, 0.45, 0.3), Vector3(0, 0.025, 0), color)
-				_deco_box(root, Vector3(0.1, 0.5, 0.1), Vector3(0, 0.055, 0), steel)
-				_deco_box(root, Vector3(0.16, 0.04, 0.16), Vector3(0, 0.305, 0), Color(0.3, 0.32, 0.35))
+				_deco_cyl(root, 0.05, 0.5, Transform3D(Basis(), Vector3(0, 0.055, 0)), steel, 0.8)
+				_deco_cyl(root, 0.08, 0.04, Transform3D(Basis(), Vector3(0, 0.305, 0)), Color(0.3, 0.32, 0.35))
 			else:
-				_deco_box(root, Vector3(0.26, 0.1, 0.26), Vector3(0, -0.3, 0), color)
-				_deco_box(root, Vector3(0.24, 0.55, 0.24), Vector3(0, 0.025, 0), color)
-				_deco_box(root, Vector3(0.14, 0.6, 0.14), Vector3(0, 0.055, 0), steel)
-				_deco_box(root, Vector3(0.2, 0.04, 0.2), Vector3(0, 0.355, 0), Color(0.3, 0.32, 0.35))
+				_deco_cyl(root, 0.13, 0.65, Transform3D(Basis(), Vector3(0, -0.025, 0)), color, 0.4)
+				_deco_cyl(root, 0.07, 0.6, Transform3D(Basis(), Vector3(0, 0.055, 0)), steel, 0.8)
+				_deco_cyl(root, 0.1, 0.04, Transform3D(Basis(), Vector3(0, 0.355, 0)), Color(0.3, 0.32, 0.35))
 		"dobradica":
 			_deco_box(root, Vector3(0.4, 0.04, 0.25), Vector3(0, 0, -0.155), steel)
 			_deco_box(root, Vector3(0.4, 0.04, 0.25), Vector3(0, 0, 0.155), steel)
@@ -829,8 +864,8 @@ static func build_visual(kind: String, size := Vector3.ZERO) -> Node3D:
 			var r := size.x if size.x > 0.0 else 0.35
 			var w := size.y if size.y > 0.0 else 0.2
 			var tilt := Basis(Vector3.RIGHT, PI * 0.5)
-			_deco_cyl(root, r, w, Transform3D(tilt, Vector3.ZERO), Color(0.08, 0.08, 0.085), 0.0)
-			_deco_cyl(root, r * 0.6, w + 0.01, Transform3D(tilt, Vector3.ZERO), steel, 0.85)
+			_deco_cyl(root, r, w, Transform3D(tilt, Vector3.ZERO), Color(0.08, 0.08, 0.085), 0.0, 28)
+			_deco_cyl(root, r * 0.6, w + 0.01, Transform3D(tilt, Vector3.ZERO), steel, 0.85, 28)
 		"assento":
 			_deco_box(root, Vector3(0.6, 0.12, 0.6), Vector3.ZERO, Color(0.16, 0.17, 0.19))
 			_deco_box(root, Vector3(0.6, 0.6, 0.1), Vector3(0, 0.36, 0.25), Color(0.16, 0.17, 0.19))

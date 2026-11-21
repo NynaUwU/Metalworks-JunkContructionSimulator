@@ -40,11 +40,11 @@ const ITEMS := [
 	{"id": "bloco_1", "nome": "Bloco 1 m", "cat": "Blocos", "mat": "ferro", "box": Vector3(1, 1, 1)},
 	{"id": "tarugo", "nome": "Tarugo", "cat": "Blocos", "mat": "ferro", "box": Vector3(1, 0.5, 0.5),
 		"params": [{"nome": "Comprimento", "axes": [0], "min": 0.5, "max": 3.0, "step": 0.25}]},
-	{"id": "cilindro", "nome": "Cilindro (pentagonal)", "cat": "Cilindros", "mat": "aco", "box": Vector3(0.3, 0.3, 2), "shape": "pent",
+	{"id": "cilindro", "nome": "Cilindro (octogonal)", "cat": "Cilindros", "mat": "aco", "box": Vector3(0.3, 0.3, 2), "shape": "oct",
 		"params": [{"nome": "Diâmetro", "axes": [0, 1], "min": 0.1, "max": 1.2, "step": 0.05}, LEN_BEAM]},
-	{"id": "cilindro_al", "nome": "Cilindro de alumínio", "cat": "Cilindros", "mat": "aluminio", "box": Vector3(0.2, 0.2, 2), "shape": "pent",
+	{"id": "cilindro_al", "nome": "Cilindro de alumínio", "cat": "Cilindros", "mat": "aluminio", "box": Vector3(0.2, 0.2, 2), "shape": "oct",
 		"params": [{"nome": "Diâmetro", "axes": [0, 1], "min": 0.1, "max": 1.2, "step": 0.05}, LEN_BEAM]},
-	{"id": "tambor", "nome": "Tambor (cilindro curto)", "cat": "Cilindros", "mat": "ferro", "box": Vector3(0.8, 0.8, 0.5), "shape": "pent",
+	{"id": "tambor", "nome": "Tambor (cilindro curto)", "cat": "Cilindros", "mat": "ferro", "box": Vector3(0.8, 0.8, 0.5), "shape": "oct",
 		"params": [{"nome": "Diâmetro", "axes": [0, 1], "min": 0.3, "max": 1.6, "step": 0.1},
 			{"nome": "Comprimento", "axes": [2], "min": 0.1, "max": 1.5, "step": 0.05}]},
 	{"id": "cunha", "nome": "Cunha (rampa)", "cat": "Blocos", "mat": "aco", "box": Vector3(1, 1, 1), "cut": DIAG_YZ,
@@ -176,9 +176,9 @@ static func spawn_bounds(item: Dictionary, size := Vector3.ZERO) -> AABB:
 
 
 static func planes(item: Dictionary, size := Vector3.ZERO) -> Array[Plane]:
-	if item.get("shape", "") == "pent":
+	if item.get("shape", "") == "oct":
 		var s := clamp_size(item, size)
-		return ConvexGeo.prism_planes(5, s.x, s.z)
+		return ConvexGeo.oct_prism_planes(s.x, s.z)
 	var p := ConvexGeo.box_planes(clamp_size(item, size))
 	if item.has("cut"):
 		p.append(Plane(item["cut"], 0.0))

@@ -71,9 +71,9 @@ func _run() -> void:
 	var w: float = m[1].assembly().angular_velocity.dot(m[0].global_basis.y)
 	check(absf(w) > mj.speed * 0.8, "motor gira com a alavanca ligada (%.1f rad/s)" % w)
 	lever.device.press()
-	await _frames(40)
+	await _frames(75)   # a velocidade desce pela rampa (Arrancada, 1 s)
 	w = m[1].assembly().angular_velocity.length()
-	check(w < 0.5, "alavanca desligada: motor freia (%.2f rad/s)" % w)
+	check(w < 0.5, "alavanca desligada: motor freia pela rampa em ~1 s (%.2f rad/s)" % w)
 	check(not is_equal_approx(mj.angle(), a0), "rotor girou")
 
 	print("== Servo")

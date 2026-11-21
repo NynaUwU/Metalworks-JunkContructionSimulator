@@ -420,6 +420,7 @@ func add_joint(j: MechJoint) -> void:
 	j.part_a.mech = j
 	j.part_b.mech = j
 	j.rebuild(world_root)
+	balance_masses()
 
 
 func add_device(d: ControlDevice) -> void:
@@ -462,6 +463,58 @@ func _refresh_joints() -> void:
 			_remove_joint(j)
 		elif j.needs_rebuild():
 			j.rebuild(world_root)
+	balance_masses()
+
+
+## Lado leve de uma junta: no mínimo 1/MASS_RATIO da massa do outro lado.
+const MASS_RATIO := 8.0
+const MAX_MASS_BOOST := 100.0
+var _boosted: Array = []
+var _balance_dirty := false
+
+
+## Pede um novo balanceamento no próximo tick (ex.: algo foi congelado/descongelado).
+func request_balance() -> void:
+	_balance_dirty = true
+
+
+## Balanceamento de massa entre os lados das juntas (ver Assembly.mass_boost).
+## Propaga pela cadeia (chassi → braço → montante → roda). Peças congeladas/ancoradas
+## não entram (o solver lida bem com corpos parados).
+func balance_masses() -> void:
+	var boost := {}
+	var pairs: Array = []
+	for j in joints:
+		if not j.is_valid() or j.type in MechJoint.SINGLE or j.type == "guincho":
+			continue
+		var a := j.part_a.assembly()
+		var b := j.part_b.assembly()
+		if a == null or b == null or a == b or a.freeze or b.freeze:
+			continue
+		pairs.append([a, b])
+		boost[a] = 1.0
+		boost[b] = 1.0
+	for pass_i in 6:
+		var changed := false
+		for pair: Array in pairs:
+			for k in 2:
+				var light: Assembly = pair[k]
+				var heavy: Assembly = pair[1 - k]
+				var want: float = heavy.real_mass() * boost[heavy] / MASS_RATIO
+				var have: float = light.real_mass() * boost[light]
+				if have < want * 0.999:
+					boost[light] = minf(want / maxf(light.real_mass(), 0.01), MAX_MASS_BOOST)
+					changed = true
+		if not changed:
+			break
+	for asm: Assembly in _boosted:
+		if is_instance_valid(asm) and not boost.has(asm):
+			asm.set_mass_boost(1.0)
+	_boosted = []
+	for asm: Assembly in boost:
+		asm.set_mass_boost(boost[asm])
+		if boost[asm] > 1.0:
+			_boosted.append(asm)
 
 
 ## Montagens ligadas a `start` por juntas (incluindo ela mesma).
@@ -520,6 +573,9 @@ func network(seat: Part) -> Array[MechJoint]:
 
 
 func _physics_process(delta: float) -> void:
+	if _balance_dirty:
+		_balance_dirty = false
+		balance_masses()
 	if joints.is_empty():
 		return
 	if active_seat != null and not is_instance_valid(active_seat):

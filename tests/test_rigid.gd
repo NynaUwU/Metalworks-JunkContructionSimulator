@@ -5,7 +5,7 @@ extends Node3D
 ## "Folga" de uma junta = o quanto o lado móvel saiu do lugar além do movimento
 ## permitido: inclinação fora do eixo (graus) e separação do pivô (cm).
 
-const EXPECTED_CHECKS := 17
+const EXPECTED_CHECKS := 19
 
 var _fails := 0
 var _checks := 0
@@ -70,6 +70,8 @@ func _flush_car(origin: Vector3) -> Array:
 			var wheel: Part = Components.spawn("roda", Transform3D(basis, motor_pos + basis.y * 0.2), Vector3(0.4, 0.2, 0))[0]
 			Build.make_weld(wheel, motor[1], motor_pos + basis.y * 0.214)
 			motor[0].mech.invert = side > 0.0
+			motor[0].mech.collide = false     # opção: a roda pode encostar na carcaça sem raspar
+			motor[0].mech.rebuild(Build.world_root)
 			out.append(motor[0].mech)
 	return out
 
@@ -157,6 +159,28 @@ func _run() -> void:
 	var cw := Vector2(maxf(drive.x, brake.x), maxf(drive.y, brake.y))
 	print("     folga: %.2f° / %.1f cm" % [cw.x, cw.y * 100.0])
 	check(cw.x < 1.0 and cw.y < 0.01, "motores do carrinho andando e freando ficam firmes (%.2f°, %.1f cm)" % [cw.x, cw.y * 100.0])
+
+	print("== Carro pesado (1,9 t) andando: as rodas não dobram")
+	var heavy_seat := DemoBuilds.build_car(Vector3(-60, 0, -40))
+	var load_h := 1500.0 / 785.0 / (1.2 * 1.6)
+	var cargo := Build.spawn_box(Vector3(1.2, load_h, 1.6), "aco", Transform3D(Basis(), Vector3(-60, 0.65 + load_h * 0.5, -40.3)))
+	Build.make_weld(cargo, heavy_seat, Vector3(-60, 0.7, -40.3))
+	var heavy_joints: Array = Build.network(heavy_seat)
+	var hb: Part = Components.spawn("botao", Transform3D(Basis(), Vector3(-55, 0.04, -35)))[0]
+	for j: MechJoint in heavy_joints:
+		Build.toggle_link(hb.device, j)
+	await _frames(60)
+	var wheel_asm: Assembly = heavy_joints[0].part_b.assembly()
+	var weight_ok := absf(wheel_asm.mass * wheel_asm.gravity_scale - wheel_asm.real_mass()) < 0.01
+	print("     roda: massa real %.0f kg, massa de inércia %.0f kg (x%.1f)" % [wheel_asm.real_mass(), wheel_asm.mass, wheel_asm.mass_boost])
+	check(wheel_asm.mass_boost > 1.0 and weight_ok, "a roda ganha massa de inércia, mas o peso continua o mesmo")
+	var start_hp := heavy_seat.global_position
+	hb.device.press()
+	var hv := await _worst(heavy_joints, 180)
+	var dist := heavy_seat.global_position.distance_to(start_hp)
+	hb.device.release()
+	print("     folga: %.2f° / %.1f cm, andou %.1f m" % [hv.x, hv.y * 100.0, dist])
+	check(hv.x < 1.0 and hv.y < 0.01 and dist > 4.0, "carro de 1,9 t anda sem as rodas dobrarem (%.2f°, %.1f cm, %.1f m)" % [hv.x, hv.y * 100.0, dist])
 
 	print("== Gravitador sacudindo o carrinho")
 	var player := Player.new()
@@ -255,7 +279,7 @@ func _run() -> void:
 	await _frames(90)
 	var after_drive := _play_of(fl)
 	print("     parado %.2f°/%.1fcm, andando %.2f°/%.1fcm, depois %.2f°/%.1fcm" % [still.x, still.y * 100, moving.x, moving.y * 100, after_drive.x, after_drive.y * 100])
-	check(moving.x < 1.5 and moving.y < 0.015 and after_drive.x < 0.5, "roda encostada na carcaça não tomba ao andar e virar (%.2f°, depois %.2f°)" % [moving.x, after_drive.x])
+	check(moving.x < 1.5 and moving.y < 0.015 and after_drive.x < 0.5, "sem colisão entre os lados, roda encostada na carcaça não tomba ao andar e virar (%.2f°, depois %.2f°)" % [moving.x, after_drive.x])
 
 	print("== Junta refeita depois de sair do lugar")
 	var hm := Components.spawn("motor", Transform3D(Basis(), Vector3(0, 1.0, -80)))
@@ -284,7 +308,6 @@ func _run() -> void:
 	var arms: Array[Part] = []
 	for x: float in [-0.8, 0.8]:
 		var h := Components.spawn("dobradica", Transform3D(Basis(), Vector3(100 + x, 1.08, 0.3)))
-		h[0].mech.collide = true          # o braço fica apoiado no chassi (não cai pela gravidade)
 		Build.make_weld(h[0], deck, Vector3(100 + x, 1.05, 0.15))
 		var bar := Build.spawn_box(Vector3(0.1, 0.06, 0.8), "aco", Transform3D(Basis(), Vector3(100 + x, 1.08, 0.75)))
 		Build.make_weld(bar, h[1], Vector3(100 + x, 1.08, 0.4))

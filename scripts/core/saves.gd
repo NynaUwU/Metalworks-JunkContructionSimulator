@@ -116,7 +116,11 @@ static func read(path: String) -> Dictionary:
 
 ## Atualiza saves de versões antigas do formato.
 static func _migrate(data: Dictionary) -> Dictionary:
-	# (versão 1 é a primeira; versões futuras convertem aqui)
+	# Na 0.7.2 o padrão era "lados sem colisão" (o jogador não escolheu): volta a colidir.
+	if str(data.get("game", "")) == "0.7.2":
+		for gd: Dictionary in data.get("groups", []):
+			if gd.has("j"):
+				(gd["j"] as Dictionary)["collide"] = true
 	return data
 
 
@@ -580,7 +584,7 @@ func _apply_joint_state(j: MechJoint, s: Dictionary, by_id: Dictionary) -> void:
 	j.toggle = bool(s.get("toggle", false))
 	j.hold = bool(s.get("hold", false))
 	j.free_idle = bool(s.get("free_idle", false))
-	j.collide = bool(s.get("collide", false))
+	j.collide = bool(s.get("collide", true))
 	j.lock_idle = bool(s.get("lock_idle", false))
 	j.manual = bool(s.get("manual", false))
 	j.rope_len = float(s.get("rope_len", j.rope_len))

@@ -356,10 +356,12 @@ func _v05_test() -> void:
 	var h := Components.spawn("dobradica", Transform3D(Basis(), o + Vector3(0, 1.5, 0)))
 	_anchor(h[0])
 	var hj: MechJoint = h[0].mech
-	check(hj.joint.exclude_nodes_from_collision == true, "por padrão os dois lados da junta não colidem entre si")
+	check(hj.joint.exclude_nodes_from_collision == false, "por padrão os dois lados da junta colidem entre si")
+	hj.collide = false
+	hj.rebuild(Build.world_root)
+	check(hj.joint.exclude_nodes_from_collision == true, "com a opção desligada, os dois lados não colidem")
 	hj.collide = true
 	hj.rebuild(Build.world_root)
-	check(hj.joint.exclude_nodes_from_collision == false, "com a opção ligada, os dois lados colidem")
 	var max_angle := 0.0
 	for i in 120:
 		h[1].assembly().angular_velocity = h[0].global_basis.x * 12.0

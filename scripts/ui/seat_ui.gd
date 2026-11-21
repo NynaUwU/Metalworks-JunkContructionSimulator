@@ -400,7 +400,7 @@ func _section(i: int, j: MechJoint) -> Control:
 			v.add_child(_label("Trava com sinal + ou apertando E nele.", 13, Color(1, 1, 1, 0.6)))
 	if not j.type in MechJoint.LINEAR and not j.type in MechJoint.SINGLE and j.type != "guincho":
 		var col := CheckBox.new()
-		col.text = "Colidir com o que está do outro lado (desligado: uma roda pode encostar na carcaça)"
+		col.text = "Colidir com o que está do outro lado (desligue se algo soldado raspa na carcaça)"
 		col.button_pressed = j.collide
 		col.toggled.connect(func(on: bool) -> void:
 			j.collide = on

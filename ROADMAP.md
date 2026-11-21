@@ -84,10 +84,14 @@
 - Pegar de perto não empurra a peça
 
 ## ✅ v0.7.2 — Mais correções de física
-- Os dois lados de um componente não colidem por padrão (opção "Colidir com o que está do outro lado")
+- Opção "Colidir com o que está do outro lado" nos ajustes de cada componente
 - Pistão e servo linear com a camisa sólida (dá para soldar nela)
 - Junta refeita sempre na pose certa (uma folga não vira permanente)
 - Gravitador: peça presa a algo congelado é puxada sozinha; o gancho do guincho não é carregado junto
+
+## ✅ v0.7.3 — Rodas de carros pesados
+- Balanceamento de massa entre os lados das juntas (peso igual): rodas não dobram em carros pesados
+- Os dois lados dos componentes voltam a colidir por padrão
 
 ## Marco 4 — Lógica, energia, sensores e trem de força
 Inspirado no Wiremod e no ACF do Garry's Mod (sem nada de NPCs nem geradores de efeitos).

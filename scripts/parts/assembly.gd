@@ -11,6 +11,11 @@ static var _rubber_material: PhysicsMaterial
 var anchored := false             ## soldada ao chão: fica parada
 var frozen := false               ## congelada pelo Gravitador (botão direito)
 var carried := false              ## sendo carregada pelo Gravitador
+## Balanceamento de massa (Build.balance_masses): peças muito mais leves que o que está
+## do outro lado de uma junta ganham "massa de inércia" só para a física, com a gravidade
+## compensada (o peso é o mesmo). Sem isso, o solver deixa a junta ceder sob carga.
+var mass_boost := 1.0
+var _part_mass := 1.0
 var hold_part: Part = null        ## (compatibilidade) peça segurada nesta montagem
 
 
@@ -45,7 +50,8 @@ func recompute() -> void:
 		com += (p.transform * p.local_centroid) * p.mass
 	if total <= 0.0:
 		return
-	mass = total
+	_part_mass = total
+	mass = total * mass_boost
 	center_of_mass = com / total
 	var has_wheel := false
 	for p in get_parts():
@@ -62,6 +68,23 @@ func recompute() -> void:
 		physics_material_override = _physics_material
 
 
+## Massa de verdade (soma das peças), sem o balanceamento.
+func real_mass() -> float:
+	return _part_mass
+
+
+func set_mass_boost(f: float) -> void:
+	if is_equal_approx(f, mass_boost):
+		return
+	mass_boost = f
+	mass = _part_mass * f
+	_apply_gravity()
+
+
+func _apply_gravity() -> void:
+	gravity_scale = 0.0 if carried else 1.0 / mass_boost
+
+
 func set_anchored(value: bool) -> void:
 	anchored = value
 	if value:
@@ -69,6 +92,7 @@ func set_anchored(value: bool) -> void:
 		linear_velocity = Vector3.ZERO
 		angular_velocity = Vector3.ZERO
 	freeze = anchored or frozen
+	Build.request_balance()
 
 
 func set_frozen(value: bool) -> void:
@@ -80,6 +104,7 @@ func set_frozen(value: bool) -> void:
 	freeze = anchored or frozen
 	if not freeze:
 		sleeping = false
+	Build.request_balance()
 
 
 func is_held() -> bool:
@@ -91,7 +116,7 @@ func set_carried(value: bool) -> void:
 	if carried == value:
 		return
 	carried = value
-	gravity_scale = 0.0 if value else 1.0
+	_apply_gravity()
 	can_sleep = not value
 	if value and sleeping:
 		sleeping = false

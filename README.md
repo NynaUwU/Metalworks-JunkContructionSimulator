@@ -74,9 +74,11 @@ Nome, mapa, visual e código são próprios.
 
   Ficam no depósito do galpão, espalhados pelo mapa e à venda na loja.
 - Solde a base (carcaça) na estrutura e a peça que se mexe (disco, haste, folha, placa) no que ela deve mover.
-  Por padrão, os dois lados de um componente **não colidem** entre si: uma roda soldada no disco pode encostar
-  na carcaça sem raspar. Nos ajustes há a opção **"Colidir com o que está do outro lado"** (ex.: porta que bate
-  no batente). Pistão e servo linear nunca colidem entre os lados (a haste corre por dentro da camisa).
+  Os dois lados de um componente **colidem** entre si (o que está soldado de um lado bate no outro). Nos ajustes
+  há a opção **"Colidir com o que está do outro lado"** para desligar (ex.: roda encostada na carcaça).
+  Pistão e servo linear nunca colidem entre os lados (a haste corre por dentro da camisa).
+- Peças muito leves ligadas por juntas a peças muito pesadas (roda de 15 kg num carro de 2 t) ganham "massa de
+  inércia" só para a física, com o peso igual. Assim as juntas não cedem sob carga.
 - **Assento:** E para sentar. Ele controla todos os componentes ligados à mesma máquina.
   **Tab** abre o **modo edição**: os componentes configuráveis ficam destacados (através de tudo) e o mouse fica livre.
   Clique num componente para escolher até 2 teclas (ou botões do mouse) por sentido, "alternar", "inverter",

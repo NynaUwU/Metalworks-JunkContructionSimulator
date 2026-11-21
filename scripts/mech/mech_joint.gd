@@ -24,10 +24,9 @@ extends RefCounted
 ##   ima          (1 peça) eletroímã: puxa e gruda aço/ferro enquanto ligado
 ##   engate       (1 peça) engate rápido: trava no que encostar na face (E ou sinal)
 ##
-## Por padrão os dois lados da junta NÃO colidem entre si (uma roda soldada no disco do
-## motor pode encostar na carcaça sem raspar). Opção `collide` liga a colisão (ex.: uma
-## porta que deve bater no batente). Pistão/servo linear nunca colidem: a haste corre
-## por dentro da camisa.
+## Por padrão os dois lados da junta COLIDEM entre si (o que for soldado de um lado bate
+## no outro). A opção `collide` desligada deixa passar (ex.: roda encostada na carcaça).
+## Pistão/servo linear nunca colidem: a haste corre por dentro da camisa.
 
 const HINGE_SIGN := -1.0          ## sentido do motor da HingeJoint3D em relação ao nosso ângulo
 const PISTON_SIGN := 1.0
@@ -85,7 +84,7 @@ var coil: Node3D                  ## espiral da mola
 var coil_gap := 0.26
 var _lock: Joint3D                ## eletroímã / engate: junta temporária com o que grudou
 var lock_target: Part
-var collide := false              ## os dois lados colidem entre si (exceto pistões)
+var collide := true               ## os dois lados colidem entre si (pistões nunca)
 var _sleep_ticks := 0
 static var _fx_mats := {}
 

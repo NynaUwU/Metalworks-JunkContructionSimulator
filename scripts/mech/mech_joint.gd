@@ -24,7 +24,10 @@ extends RefCounted
 ##   ima          (1 peça) eletroímã: puxa e gruda aço/ferro enquanto ligado
 ##   engate       (1 peça) engate rápido: trava no que encostar na face (E ou sinal)
 ##
-## Os dois lados da junta COLIDEM entre si (o que for soldado de um lado bate no outro).
+## Por padrão os dois lados da junta NÃO colidem entre si (uma roda soldada no disco do
+## motor pode encostar na carcaça sem raspar). Opção `collide` liga a colisão (ex.: uma
+## porta que deve bater no batente). Pistão/servo linear nunca colidem: a haste corre
+## por dentro da camisa.
 
 const HINGE_SIGN := -1.0          ## sentido do motor da HingeJoint3D em relação ao nosso ângulo
 const PISTON_SIGN := 1.0
@@ -39,7 +42,7 @@ const NAMES := {
 ## Recebem sinal (teclas do assento / fios).
 const ACTUATORS := ["motor", "servo", "pistao", "servo_linear", "trava", "guincho", "propulsor", "ima", "engate"]
 ## Não recebem sinal, mas têm ajustes (botão direito da Fiação).
-const CONFIG_ONLY := ["torcao", "mola"]
+const CONFIG_ONLY := ["torcao", "mola", "dobradica", "pino", "esferica"]
 const ROTARY := ["motor", "servo", "dobradica", "pino", "trava", "torcao"]
 const LINEAR := ["pistao", "servo_linear", "mola"]
 ## Componentes de uma peça só (part_b == part_a), sem junta física.
@@ -82,6 +85,7 @@ var coil: Node3D                  ## espiral da mola
 var coil_gap := 0.26
 var _lock: Joint3D                ## eletroímã / engate: junta temporária com o que grudou
 var lock_target: Part
+var collide := false              ## os dois lados colidem entre si (exceto pistões)
 var _sleep_ticks := 0
 static var _fx_mats := {}
 
@@ -147,18 +151,24 @@ func needs_rebuild() -> bool:
 
 
 func destroy() -> void:
+	_free_joint()
+	_release_lock()
+
+
+## Tira a junta física da cena NA HORA (se ficasse até o fim do quadro, ao sair ela
+## poderia desfazer a "não colisão" da junta nova entre os mesmos corpos).
+func _free_joint() -> void:
 	if joint and is_instance_valid(joint):
+		if joint.get_parent():
+			joint.get_parent().remove_child(joint)
 		joint.queue_free()
 	joint = null
-	_release_lock()
 
 
 ## (Re)cria a junta física entre as montagens atuais das duas peças.
 ## A junta "nasce" na pose atual; por isso os limites são compensados pela posição atual.
 func rebuild(root: Node) -> void:
-	if joint and is_instance_valid(joint):
-		joint.queue_free()
-	joint = null
+	_free_joint()
 	if type in SINGLE or type == "guincho":
 		return
 	var a := part_a.assembly()
@@ -212,11 +222,43 @@ func rebuild(root: Node) -> void:
 		joint = h
 		# Para o hinge, o eixo é o Z local da junta.
 		xf = part_a.global_transform * Transform3D(_hinge_basis(), pivot)
-	joint.exclude_nodes_from_collision = false
+	joint.exclude_nodes_from_collision = not sides_collide()
 	root.add_child(joint)
 	joint.global_transform = xf
 	joint.node_a = joint.get_path_to(a)
+	# A junta guarda a pose dos dois lados no momento em que é criada. Para uma folga
+	# momentânea (ou um tranco) não virar permanente, ela é criada com o lado b na pose
+	# CERTA (só com o movimento permitido) e o corpo volta para onde estava; a junta
+	# puxa de volta.
+	var actual := b.global_transform
+	b.global_transform = ideal_b_transform() * part_b.transform.affine_inverse()
 	joint.node_b = joint.get_path_to(b)
+	b.global_transform = actual
+
+
+func sides_collide() -> bool:
+	return collide and not type in LINEAR
+
+
+## Onde a peça b deveria estar agora: igual à pose atual, mas sem folga (só com o
+## movimento que a junta permite: giro no eixo, deslizar no eixo ou girar no pivô).
+func ideal_b_transform() -> Transform3D:
+	var at := part_a.global_transform
+	var cur := at.affine_inverse() * part_b.global_transform
+	var ax := axis.normalized()
+	var rel: Transform3D
+	if type in LINEAR:
+		var ext := (cur.origin - rest.origin).dot(ax)
+		rel = Transform3D(rest.basis, rest.origin + ax * ext)
+	elif type == "esferica":
+		var rot := cur.basis.orthonormalized() * rest.basis.orthonormalized().inverse()
+		var pivot_in_b := rest.affine_inverse() * pivot
+		var bb := rot * rest.basis
+		rel = Transform3D(bb, pivot - bb * pivot_in_b)
+	else:
+		var twist := Transform3D(Basis(ax, angle()), Vector3.ZERO)
+		rel = Transform3D(Basis(), pivot) * twist * Transform3D(Basis(), -pivot) * rest
+	return at * rel
 
 
 func _axis_basis() -> Basis:

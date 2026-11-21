@@ -74,7 +74,9 @@ Nome, mapa, visual e código são próprios.
 
   Ficam no depósito do galpão, espalhados pelo mapa e à venda na loja.
 - Solde a base (carcaça) na estrutura e a peça que se mexe (disco, haste, folha, placa) no que ela deve mover.
-  Os dois lados de uma junta **colidem** entre si.
+  Por padrão, os dois lados de um componente **não colidem** entre si: uma roda soldada no disco pode encostar
+  na carcaça sem raspar. Nos ajustes há a opção **"Colidir com o que está do outro lado"** (ex.: porta que bate
+  no batente). Pistão e servo linear nunca colidem entre os lados (a haste corre por dentro da camisa).
 - **Assento:** E para sentar. Ele controla todos os componentes ligados à mesma máquina.
   **Tab** abre o **modo edição**: os componentes configuráveis ficam destacados (através de tudo) e o mouse fica livre.
   Clique num componente para escolher até 2 teclas (ou botões do mouse) por sentido, "alternar", "inverter",
@@ -87,7 +89,7 @@ Nome, mapa, visual e código são próprios.
   **isolador**, opcional) e por fim no componente. **Botão direito**:
   - num isolador: remove;
   - numa alavanca variável: alterna entre -1 a 1 e só positivo;
-  - num componente: abre os ajustes dele (mola e torção não usam teclas, mas têm ajustes).
+  - num componente: abre os ajustes dele (mola, torção, dobradiças e junta esférica não usam teclas, mas têm ajustes).
 - Perto de onde você nasce tem um **carrinho de exemplo**: sente e use W/S/A/D.
 
 **Salvar e carregar** (Esc → **Salvar / Carregar**)

@@ -278,8 +278,8 @@ static func _spawn_servo(xform: Transform3D) -> Array[Part]:
 	return [stator, disc]
 
 
-## Pistão e servo linear: só a BASE tem colisão do corpo (a "camisa" é visual), assim a
-## haste pode ficar dentro dela e os dois lados ainda colidem com o resto do mundo.
+## Pistão e servo linear: a base e a camisa são uma peça só (dá para soldar em qualquer
+## lugar dela); a haste corre por dentro (os dois lados nunca colidem entre si).
 static func _spawn_linear(kind: String, xform: Transform3D) -> Array[Part]:
 	var linear := kind == "servo_linear"
 	var base_size := Vector3(0.22, 0.1, 0.32) if linear else Vector3(0.26, 0.1, 0.26)
@@ -289,9 +289,16 @@ static func _spawn_linear(kind: String, xform: Transform3D) -> Array[Part]:
 	var rod_y := 0.055
 	var color := Color(0.15, 0.35, 0.7) if linear else Color(0.85, 0.6, 0.12)
 	var name := "Servo linear" if linear else "Pistão"
-	var base := _box(base_size, "carcaca_azul" if linear else "carcaca", xform * Transform3D(Basis(), Vector3(0, base_y, 0)), name + " (base)", kind)
-	var sleeve_bottom := base_size.y * 0.5
-	_deco_box(base, sleeve, Vector3(0, sleeve_bottom + sleeve.y * 0.5, 0), color)
+	# A peça "base" continua com a origem no centro da base (saves antigos encaixam),
+	# mas a forma vai do fundo da base até o topo da camisa.
+	var body_h := base_size.y + sleeve.y
+	var body_center := Vector3(0, body_h * 0.5 - base_size.y * 0.5, 0)
+	var planes: Array[Plane] = []
+	for pl in ConvexGeo.box_planes(Vector3(base_size.x, body_h, base_size.z)):
+		planes.append(Plane(pl.normal, pl.d + pl.normal.dot(body_center)))
+	var base := Build.spawn_planes(planes, "carcaca_azul" if linear else "carcaca", xform * Transform3D(Basis(), Vector3(0, base_y, 0)))
+	_component(base, name, kind)
+	_deco_box(base, Vector3(base_size.x + 0.02, 0.03, base_size.z + 0.02), Vector3(0, base_size.y * 0.5 + sleeve.y - 0.015, 0), color.darkened(0.35))
 	var rod := _box(rod_size, "aco", xform * Transform3D(Basis(), Vector3(0, rod_y, 0)), name + " (haste)", kind)
 	_deco_box(rod, Vector3(rod_size.x + 0.06, 0.04, rod_size.z + 0.06), Vector3(0, rod_size.y * 0.5, 0), Color(0.3, 0.32, 0.35))
 	var j := _joint(kind, base, rod, Vector3(0, -base_y, 0), Vector3.UP)

@@ -437,7 +437,7 @@ static func _joint_state(j: MechJoint, ids: Dictionary) -> Dictionary:
 	var s := {
 		"rest": _xf(j.rest), "speed": j.speed, "strength": j.strength, "max_angle": j.max_angle,
 		"stroke": j.stroke, "invert": j.invert, "toggle": j.toggle, "hold": j.hold,
-		"free_idle": j.free_idle, "lock_idle": j.lock_idle, "manual": j.manual,
+		"free_idle": j.free_idle, "lock_idle": j.lock_idle, "manual": j.manual, "collide": j.collide,
 		"rope_len": j.rope_len, "max_rope": j.max_rope, "latch": j._latched,
 		"pos": _binds(j.bind_pos), "neg": _binds(j.bind_neg),
 	}
@@ -580,6 +580,7 @@ func _apply_joint_state(j: MechJoint, s: Dictionary, by_id: Dictionary) -> void:
 	j.toggle = bool(s.get("toggle", false))
 	j.hold = bool(s.get("hold", false))
 	j.free_idle = bool(s.get("free_idle", false))
+	j.collide = bool(s.get("collide", false))
 	j.lock_idle = bool(s.get("lock_idle", false))
 	j.manual = bool(s.get("manual", false))
 	j.rope_len = float(s.get("rope_len", j.rope_len))

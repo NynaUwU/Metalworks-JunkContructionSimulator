@@ -5,7 +5,7 @@ extends Node3D
 ## "Folga" de uma junta = o quanto o lado móvel saiu do lugar além do movimento
 ## permitido: inclinação fora do eixo (graus) e separação do pivô (cm).
 
-const EXPECTED_CHECKS := 11
+const EXPECTED_CHECKS := 17
 
 var _fails := 0
 var _checks := 0
@@ -45,6 +45,33 @@ func _ready() -> void:
 func _frames(n: int) -> void:
 	for i in n:
 		await get_tree().physics_frame
+
+
+func _play_of(joints: Array) -> Vector2:
+	var w := Vector2.ZERO
+	for j: MechJoint in joints:
+		w = w.max(play(j))
+	return w
+
+
+## Carrinho de exemplo com as rodas soldadas encostando na carcaça do motor.
+func _flush_car(origin: Vector3) -> Array:
+	var out: Array = []
+	var chassis := Build.spawn_box(Vector3(1.6, 0.1, 2.4), "aco", Transform3D(Basis(), origin + Vector3(0, 0.6, 0)))
+	var seat: Array[Part] = Components.spawn("assento", Transform3D(Basis(), origin + Vector3(0, 0.71, 0.35)))
+	Build.make_weld(seat[0], chassis, origin + Vector3(0, 0.65, 0.35))
+	for side: float in [-1.0, 1.0]:
+		for z: float in [-0.9, 0.9]:
+			var basis := Basis(Vector3.BACK, -side * PI * 0.5)
+			var motor_pos := origin + Vector3(side * 0.95, 0.6, z)
+			var motor: Array[Part] = Components.spawn("motor", Transform3D(basis, motor_pos))
+			Build.make_weld(motor[0], chassis, origin + Vector3(side * 0.8, 0.6, z))
+			# face interna da roda 5 cm DENTRO da carcaça (encostando/raspando)
+			var wheel: Part = Components.spawn("roda", Transform3D(basis, motor_pos + basis.y * 0.2), Vector3(0.4, 0.2, 0))[0]
+			Build.make_weld(wheel, motor[1], motor_pos + basis.y * 0.214)
+			motor[0].mech.invert = side > 0.0
+			out.append(motor[0].mech)
+	return out
 
 
 ## Folga atual: [inclinação fora do eixo (graus), separação do pivô (m)].
@@ -205,6 +232,109 @@ func _run() -> void:
 	check(grav.holding and absf(after - eye_dist) < 0.25, "pegar de perto não empurra a peça para longe (%.2f → %.2f m)" % [eye_dist, after])
 	grav.drop()
 	player.queue_free()
+
+	print("== Roda soldada encostada na carcaça do motor, andando e virando")
+	var fl := _flush_car(Vector3(0, 0, -60))
+	await _frames(30)
+	var still := _play_of(fl)
+	var go: Part = Components.spawn("botao", Transform3D(Basis(), Vector3(6, 0.04, -55)))[0]
+	var spin: Part = Components.spawn("botao", Transform3D(Basis(), Vector3(7, 0.04, -55)))[0]
+	for j: MechJoint in fl:
+		Build.toggle_link(go.device, j)
+		if j.invert:
+			Build.toggle_link(spin.device, j)
+	go.device.press()
+	var moving := Vector2.ZERO
+	for f in 240:
+		if f == 120:
+			spin.device.press()        # lado direito ao contrário: vira no lugar
+		await get_tree().physics_frame
+		moving = moving.max(_play_of(fl))
+	go.device.release()
+	spin.device.release()
+	await _frames(90)
+	var after_drive := _play_of(fl)
+	print("     parado %.2f°/%.1fcm, andando %.2f°/%.1fcm, depois %.2f°/%.1fcm" % [still.x, still.y * 100, moving.x, moving.y * 100, after_drive.x, after_drive.y * 100])
+	check(moving.x < 1.5 and moving.y < 0.015 and after_drive.x < 0.5, "roda encostada na carcaça não tomba ao andar e virar (%.2f°, depois %.2f°)" % [moving.x, after_drive.x])
+
+	print("== Junta refeita depois de sair do lugar")
+	var hm := Components.spawn("motor", Transform3D(Basis(), Vector3(0, 1.0, -80)))
+	hm[0].assembly().set_anchored(true)
+	await _frames(5)
+	var rotor_asm := hm[1].assembly()
+	rotor_asm.global_transform = Transform3D(Basis(Vector3.RIGHT, deg_to_rad(8.0)), Vector3(0.03, 0, 0)) * rotor_asm.global_transform
+	var broken := play(hm[0].mech)
+	hm[0].mech.rebuild(Build.world_root)
+	await _frames(40)
+	var healed := play(hm[0].mech)
+	print("     torta %.1f°/%.1fcm → refeita %.2f°/%.2fcm" % [broken.x, broken.y * 100, healed.x, healed.y * 100])
+	check(broken.x > 5.0 and healed.x < 0.3 and healed.y < 0.003, "ao refazer a junta (solda, corte, save), ela volta para a pose certa (%.2f°)" % healed.x)
+
+	print("== Pistão: dá para soldar na camisa")
+	var ps := Components.spawn("pistao", Transform3D(Basis(), Vector3(0, 0.36, -90)))
+	await _frames(10)
+	var side_pt := ps[0].global_transform * Vector3(0.13, 0.35, 0)
+	var plate := Build.spawn_box(Vector3(0.1, 0.4, 0.4), "aco", Transform3D(Basis(), side_pt + Vector3(0.05, 0, 0)))
+	await _frames(2)
+	var wsleeve := Build.weld_at(plate, side_pt)
+	check(wsleeve != null and plate.assembly() == ps[0].assembly(), "soldar na lateral da camisa prende na base do pistão")
+
+	print("== Parte congelada: puxar um braço não arrasta o outro")
+	var deck := Build.spawn_box(Vector3(2, 0.1, 1), "aco", Transform3D(Basis(), Vector3(100, 1.0, 0)))
+	var arms: Array[Part] = []
+	for x: float in [-0.8, 0.8]:
+		var h := Components.spawn("dobradica", Transform3D(Basis(), Vector3(100 + x, 1.08, 0.3)))
+		h[0].mech.collide = true          # o braço fica apoiado no chassi (não cai pela gravidade)
+		Build.make_weld(h[0], deck, Vector3(100 + x, 1.05, 0.15))
+		var bar := Build.spawn_box(Vector3(0.1, 0.06, 0.8), "aco", Transform3D(Basis(), Vector3(100 + x, 1.08, 0.75)))
+		Build.make_weld(bar, h[1], Vector3(100 + x, 1.08, 0.4))
+		arms.append(bar)
+	deck.assembly().set_frozen(true)
+	await _frames(5)
+	var other_start := arms[1].global_position
+	var pulled_start := arms[0].global_position
+	var pc := Carrier.new()
+	for i in 60:
+		pc.step(arms[0], Vector3.ZERO, arms[0].global_transform.translated(Vector3(0, 0.6, 0) * minf(i / 20.0, 1.0)), 1.0 / 60.0)
+		await get_tree().physics_frame
+	var other_moved := arms[1].global_position.distance_to(other_start)
+	var pulled_moved := arms[0].global_position.distance_to(pulled_start)
+	pc.release()
+	print("     puxado andou %.2f m, o outro %.3f m" % [pulled_moved, other_moved])
+	check(pulled_moved > 0.1 and other_moved < 0.02, "com o chassi congelado, só o braço puxado se mexe (o outro andou %.3f m)" % other_moved)
+
+	print("== Carregar o guincho: o gancho não vem junto rígido")
+	var cw2 := Components.spawn("guincho", Transform3D(Basis(), Vector3(120, 0.14, 0)))
+	await _frames(30)
+	var wc := Carrier.new()
+	var body_y0 := cw2[0].global_position.y
+	var hook_y0 := cw2[1].global_position.y
+	for i in 8:
+		wc.step(cw2[0], Vector3.ZERO, cw2[0].global_transform.translated(Vector3(0, 0.3, 0)), 1.0 / 60.0)
+		await get_tree().physics_frame
+	var body_up := cw2[0].global_position.y - body_y0
+	var hook_up := cw2[1].global_position.y - hook_y0
+	print("     corpo subiu %.2f m, gancho %.2f m" % [body_up, hook_up])
+	check(not wc.carried.has(cw2[1].assembly()) and hook_up < body_up * 0.5, "o gancho fica no cabo, não é carregado junto (corpo +%.2f m, gancho +%.2f m)" % [body_up, hook_up])
+	wc.release()
+
+	print("== Guincho congelado no ar: gancho chegando ao fim do cabo")
+	var fw := Components.spawn("guincho", Transform3D(Basis(), Vector3(140, 4, 0)))
+	fw[0].assembly().set_frozen(true)
+	var fj: MechJoint = fw[0].mech
+	fj.rope_len = 1.5
+	var taut := false
+	var bounce := 0.0
+	var frames_after := 0
+	for i in 240:
+		await get_tree().physics_frame
+		if not taut and fj.rope_start().distance_to(fj.rope_end()) >= fj.rope_len - 0.01:
+			taut = true
+		if taut and frames_after < 90:
+			frames_after += 1
+			bounce = maxf(bounce, fw[1].assembly().linear_velocity.y)
+	print("     chegou ao fim: %s, maior velocidade para cima depois %.2f m/s" % [taut, bounce])
+	check(taut and bounce < 0.6, "ao chegar no fim do cabo, o gancho para sem quicar (sobe no máx %.2f m/s)" % bounce)
 
 	print("== Guincho com o gancho pendurado")
 	var w := Components.spawn("guincho", Transform3D(Basis(), Vector3(80, 4, 0)))

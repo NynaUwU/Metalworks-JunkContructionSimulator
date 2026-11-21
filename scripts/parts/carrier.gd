@@ -7,6 +7,11 @@ extends RefCounted
 ## antecipa o movimento do alvo (sem efeito de "pendurado numa corda"). A MESMA mudança
 ## de movimento é aplicada, como corpo rígido, às outras montagens da máquina. Assim as
 ## juntas não precisam arrastar nada e não são arrancadas em movimentos bruscos.
+##
+## O que conta como "máquina": montagens ligadas por juntas e por engates/ímãs travados.
+## O cabo do guincho NÃO conta (cabo não é rígido: o gancho fica pendurado e balança).
+## Se a máquina está presa a algo congelado ou ancorado, ela não pode se mover como um
+## bloco: aí só a peça segurada é puxada e o resto acompanha pelas juntas (mecanismo).
 
 const LINEAR_GAIN := 0.75           ## fração do erro de posição corrigida por tick
 const ANGULAR_GAIN := 0.7
@@ -28,7 +33,8 @@ func step(part: Part, grab_local: Vector3, target: Transform3D, dt: float) -> vo
 	if asm == null:
 		release()
 		return
-	_set_carried(Build.connected_assemblies(asm))
+	var m := machine(asm)
+	_set_carried(m["list"] if not m["pinned"] else [asm])
 	if asm.freeze:
 		return
 	var cur := asm.global_transform * part.transform
@@ -73,6 +79,36 @@ func step(part: Part, grab_local: Vector3, target: Transform3D, dt: float) -> vo
 			continue
 		a.linear_velocity += dv + dw.cross(a.world_center_of_mass() - com)
 		a.angular_velocity += dw
+
+
+## Montagens que se movem junto com `asm` como um bloco. Não atravessa montagens
+## congeladas/ancoradas; "pinned" = a máquina está presa a alguma delas.
+static func machine(asm: Assembly) -> Dictionary:
+	var out: Array = [asm]
+	var pinned := false
+	var i := 0
+	while i < out.size():
+		var cur: Assembly = out[i]
+		for j in Build.joints:
+			if not j.is_valid() or j.type == "guincho":
+				continue
+			var a := j.part_a.assembly()
+			var b: Assembly = null
+			if j.type in MechJoint.SINGLE:
+				if j.lock_target == null or not is_instance_valid(j.lock_target) or not j.lock_target.is_inside_tree():
+					continue
+				b = j.lock_target.assembly()      # engate / ímã travado: preso de verdade
+			else:
+				b = j.part_b.assembly()
+			var other: Assembly = b if a == cur else (a if b == cur else null)
+			if other == null or other == cur or out.has(other):
+				continue
+			if other.freeze:
+				pinned = true
+				continue
+			out.append(other)
+		i += 1
+	return {"list": out, "pinned": pinned}
 
 
 ## Para de carregar (tudo volta a ter gravidade; as velocidades ficam: dá para arremessar).

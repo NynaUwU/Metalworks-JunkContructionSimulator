@@ -83,6 +83,12 @@
 - Mola não voa ao ser carregada; guincho estável com o gancho pendurado
 - Pegar de perto não empurra a peça
 
+## ✅ v0.7.2 — Mais correções de física
+- Os dois lados de um componente não colidem por padrão (opção "Colidir com o que está do outro lado")
+- Pistão e servo linear com a camisa sólida (dá para soldar nela)
+- Junta refeita sempre na pose certa (uma folga não vira permanente)
+- Gravitador: peça presa a algo congelado é puxada sozinha; o gancho do guincho não é carregado junto
+
 ## Marco 4 — Lógica, energia, sensores e trem de força
 Inspirado no Wiremod e no ACF do Garry's Mod (sem nada de NPCs nem geradores de efeitos).
 

@@ -218,6 +218,25 @@ func _loadperf() -> void:
 	Saves.delete(path)
 
 
+func _physperf() -> void:
+	# Custo da física: mundo completo + 3 carrinhos andando (desenvolvimento).
+	var btn: Part = Components.spawn("botao", Transform3D(Basis(), Vector3(0, 0.04, 20)))[0]
+	for k in 3:
+		var seat := DemoBuilds.build_car(Vector3(-20 + k * 6, 0, 20))
+		for j in Build.network(seat):
+			Build.toggle_link(btn.device, j)
+	await _frames(30)
+	btn.device.press()
+	var total := 0.0
+	var worst := 0.0
+	for i in 300:
+		await get_tree().physics_frame
+		var t := Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0
+		total += t
+		worst = maxf(worst, t)
+	print("PHYS média %.2f ms, pior %.2f ms por tick" % [total / 300.0, worst])
+
+
 func _bisect_sit() -> void:
 	player.sit(world.demo_seat)
 	for i in 30:

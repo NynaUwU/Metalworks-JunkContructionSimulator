@@ -9,8 +9,12 @@ extends GameTool
 ## - Roda do mouse: aproxima/afasta.  T: alinha à grade do mundo.
 ## - R mirando numa peça congelada: descongela (e o que estiver ligado por juntas).
 ## - R duas vezes rápido: descongela tudo.
+##
+## Carregar: a peça segurada é levada até a mira com força "infinita", mas a MESMA
+## mudança de movimento é aplicada a tudo o que está ligado a ela por juntas (como um
+## corpo rígido só). Assim a máquina inteira acompanha e as juntas não são arrancadas.
 
-const MIN_DIST := 1.2
+const MIN_DIST := 0.4
 const MAX_DIST := 30.0
 const ROTATE_SENS := 0.006          ## rad por pixel
 const SNAP := deg_to_rad(15.0)
@@ -26,7 +30,7 @@ var rotating := false              ## E segurado: o mouse gira a peça
 
 var _snap_accum := Vector2.ZERO
 var _last_r := -10.0
-var _excepted: Assembly = null
+var _carrier := Carrier.new()
 var _beam: MeshInstance3D
 var _glow: MeshInstance3D
 
@@ -40,6 +44,13 @@ func _init(p_player: Player) -> void:
 func _ready() -> void:
 	super()
 	Build.part_replaced.connect(_on_part_replaced)
+	# O que está sendo carregado não colide com o jogador.
+	_carrier.on_add = func(a: Assembly) -> void:
+		player.add_collision_exception_with(a)
+		a.add_collision_exception_with(player)
+	_carrier.on_remove = func(a: Assembly) -> void:
+		player.remove_collision_exception_with(a)
+		a.remove_collision_exception_with(player)
 	Build.part_removed.connect(_on_part_removed)
 	_beam = MeshInstance3D.new()
 	var cm := CylinderMesh.new()
@@ -149,20 +160,16 @@ func grab() -> void:
 	hold_distance = clampf(player.eye_position().distance_to(hit_pos), MIN_DIST, MAX_DIST)
 	holding = true
 	rotating = false
+	_carrier.release()
 	_update_target()
 
 
 ## Solta: a peça volta a ter física e mantém a velocidade (arremesso).
 func drop() -> void:
-	if hold_part and is_instance_valid(hold_part):
-		var asm := hold_part.assembly()
-		if asm:
-			asm.clear_hold()
-			asm.sleeping = false
+	_carrier.release()
 	hold_part = null
 	holding = false
 	rotating = false
-	_set_player_exception(null)
 
 
 ## Botão direito: congela a peça segurada onde ela está.
@@ -199,22 +206,18 @@ func unfreeze_all() -> void:
 	player.toast("Nada congelado" if n == 0 else "%d objeto%s descongelado%s" % [n, "" if n == 1 else "s", "" if n == 1 else "s"])
 
 
-func physics_update(_delta: float) -> void:
+func physics_update(delta: float) -> void:
 	if hold_part == null:
 		return
 	if not is_instance_valid(hold_part) or not hold_part.is_inside_tree():
-		hold_part = null
-		holding = false
-		rotating = false
-		_set_player_exception(null)
+		drop()
 		return
 	var asm := hold_part.assembly()
 	if asm == null or asm.anchored or asm.frozen:
 		drop()
 		return
 	_update_target()
-	asm.set_hold(hold_part, grab_local, hold_target)
-	_set_player_exception(asm)
+	_carrier.step(hold_part, grab_local, hold_target, delta)
 
 
 # --- Orientação: a peça gira junto com o "giro" (yaw) do jogador ------------------
@@ -259,18 +262,6 @@ func _update_target() -> void:
 	hold_target = Transform3D(b, grab_world - b * grab_local)
 
 
-func _set_player_exception(asm: Assembly) -> void:
-	if _excepted == asm:
-		return
-	if _excepted and is_instance_valid(_excepted):
-		player.remove_collision_exception_with(_excepted)
-		_excepted.remove_collision_exception_with(player)
-	_excepted = asm
-	if asm:
-		player.add_collision_exception_with(asm)
-		asm.add_collision_exception_with(player)
-
-
 func _process(_delta: float) -> void:
 	var show := visible and holding and hold_part != null and is_instance_valid(hold_part)
 	_beam.visible = show
@@ -301,10 +292,7 @@ func _on_part_replaced(old_part: Part, pieces: Array, cut_local: Plane) -> void:
 
 func _on_part_removed(part: Part) -> void:
 	if part == hold_part:
-		hold_part = null
-		holding = false
-		rotating = false
-		_set_player_exception(null)
+		drop()
 
 
 func hint_text() -> String:

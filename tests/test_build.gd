@@ -158,13 +158,15 @@ func _run() -> void:
 	var f := Build.spawn_box(Vector3(2, 0.1, 2), "aco", Transform3D(Basis(), Vector3(12, 0.05, 0)))
 	await _frames(5)
 	var target := Transform3D(Basis(Vector3.UP, 0.7), Vector3(12, 2.5, 1))
-	f.assembly().set_hold(f, Vector3.ZERO, target)
-	await _frames(90)
+	var carrier := Carrier.new()
+	for i in 90:
+		carrier.step(f, Vector3.ZERO, target, 1.0 / 60.0)
+		await get_tree().physics_frame
 	var err := f.global_transform.origin.distance_to(target.origin)
 	check(err < 0.03, "peça segurada flutua até o alvo (erro %.3f m)" % err)
 	var ang := f.global_transform.basis.get_rotation_quaternion().angle_to(target.basis.get_rotation_quaternion())
 	check(ang < 0.03, "peça segurada gira até o alvo (erro %.3f rad)" % ang)
-	f.assembly().clear_hold()
+	carrier.release()
 	await _frames(120)
 	check(near(f.global_position.y, 0.05, 0.012), "ao soltar (E), a peça cai e assenta no chão (y=%.3f)" % f.global_position.y)
 

@@ -31,7 +31,8 @@ Nome, mapa, visual e código são próprios.
 | Ajuda / menu / FPS / tela cheia | H / Esc / F3 / F11 |
 
 **Gravitador (no estilo da physics gun do Garry's Mod)**
-- Clique segurado: pega a peça, que segue a mira e gira junto com você.
+- Clique segurado: pega a peça, que segue a mira e gira junto com você. Tudo o que está ligado a ela
+  por juntas vem junto, como um bloco só (as juntas não são arrancadas).
 - Soltar o clique: a peça volta a ter física (dá para arremessar).
 - **Botão direito** (segurando): **congela** a peça no lugar.
 - **E + mover o mouse**: gira a peça. Com **Shift**, em passos de 15°.
@@ -120,7 +121,8 @@ scripts/
   tools/build_placer.gd   colocar uma construção salva (prévia fantasma)
   parts/convex_geo.gd     geometria: peças são poliedros convexos definidos por planos
   parts/part.gd           peça (forma de colisão + malha)
-  parts/assembly.gd       corpo rígido de peças soldadas (segurar / congelar)
+  parts/assembly.gd       corpo rígido de peças soldadas (congelar, ancorar)
+  parts/carrier.gd        Gravitador: leva a peça até a mira e carrega a máquina inteira junto
   parts/weld.gd           ponto de solda
   player/player.gd        jogador em 1ª pessoa
   tools/*.gd              Gravitador, Solda, Esmerilhadeira, Fiação
@@ -153,6 +155,10 @@ godot --headless --path . res://tests/test_mech.tscn
 
 ```bash
 godot --headless --path . res://tests/test_save.tscn
+```
+
+```bash
+godot --headless --path . res://tests/test_rigid.tscn
 ```
 
 **Publicar uma versão:** mude `config/version` no `project.godot` e crie

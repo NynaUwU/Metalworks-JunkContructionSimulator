@@ -480,16 +480,17 @@ func _v05_test() -> void:
 	var radius := 2.0
 	var worst := 0.0
 	var worst_ang := 0.0
-	for i in 120:
+	var carrier := Carrier.new()
+	for i in 150:
 		var t := i / 60.0
 		var w := 4.0   # rad/s → 8 m/s na borda do círculo
 		var target := Transform3D(Basis(Vector3.UP, w * t), center + Vector3(cos(w * t), 0, sin(w * t)) * radius)
-		heavy.assembly().set_hold(heavy, Vector3.ZERO, target)
+		carrier.step(heavy, Vector3.ZERO, target, 1.0 / 60.0)
 		await get_tree().physics_frame
-		if i > 20:
+		if i > 60:   # depois de alcançar o alvo (a aceleração é limitada, para não quebrar juntas)
 			worst = maxf(worst, heavy.global_position.distance_to(target.origin))
 			worst_ang = maxf(worst_ang, heavy.global_basis.get_rotation_quaternion().angle_to(target.basis.get_rotation_quaternion()))
-	heavy.assembly().clear_hold()
+	carrier.release()
 	check(worst < 0.2, "peça de 314 kg segue um alvo a 8 m/s de perto (atraso máx %.2f m)" % worst)
 	check(worst_ang < 0.15, "e gira junto sem atraso (máx %.0f°)" % rad_to_deg(worst_ang))
 

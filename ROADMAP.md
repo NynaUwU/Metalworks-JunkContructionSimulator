@@ -77,6 +77,12 @@
 - Botão "Abrir pasta" para trocar arquivos com amigos
 - 41 testes de salvar/carregar
 
+## ✅ v0.7.1 — Correções de física
+- Gravitador carrega a máquina inteira junto (as juntas não desmontam em movimentos bruscos)
+- Juntas mais rígidas (solver do Jolt com mais iterações)
+- Mola não voa ao ser carregada; guincho estável com o gancho pendurado
+- Pegar de perto não empurra a peça
+
 ## Marco 4 — Lógica, energia, sensores e trem de força
 Inspirado no Wiremod e no ACF do Garry's Mod (sem nada de NPCs nem geradores de efeitos).
 

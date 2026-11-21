@@ -417,6 +417,17 @@ static func _point_velocity(asm: Assembly, p: Vector3) -> Vector3:
 	return asm.linear_velocity + asm.angular_velocity.cross(p - asm.world_center_of_mass())
 
 
+## Quanto um impulso unitário na direção `n`, aplicado em `p`, muda a velocidade desse
+## ponto (massa efetiva inversa: translação + rotação).
+static func _inv_mass_at(asm: Assembly, p: Vector3, n: Vector3) -> float:
+	if asm.freeze or asm.mass <= 0.0:
+		return 0.0
+	var r := p - asm.world_center_of_mass()
+	var state := PhysicsServer3D.body_get_direct_state(asm.get_rid())
+	var inv_i: Basis = state.inverse_inertia_tensor if state else Basis.IDENTITY.scaled(Vector3.ONE / asm.mass)
+	return 1.0 / asm.mass + (inv_i * r.cross(n)).cross(r).dot(n)
+
+
 func rope_start() -> Vector3:
 	return part_a.global_transform * pivot
 
@@ -446,7 +457,7 @@ func _update_winch(delta: float) -> void:
 	if d <= rope_len or d < 1e-4:
 		return
 	var n := (pb - pa) / d
-	var inv := _inv_mass(a) + _inv_mass(b)
+	var inv := _inv_mass_at(a, pa, n) + _inv_mass_at(b, pb, n)
 	if inv <= 0.0:
 		return
 	var vrel := (_point_velocity(b, pb) - _point_velocity(a, pa)).dot(n)
@@ -454,10 +465,10 @@ func _update_winch(delta: float) -> void:
 	var lam := maxf(vrel + 0.2 * maxf(d - rope_len - 0.005, 0.0) / delta, 0.0) / inv
 	lam = minf(lam, strength * delta)   # força máxima do guincho
 	var impulse := n * lam
-	if _inv_mass(b) > 0.0:
+	if not b.freeze:
 		b.apply_impulse(-impulse, pb - b.global_position)
 		b.sleeping = false
-	if _inv_mass(a) > 0.0:
+	if not a.freeze:
 		a.apply_impulse(impulse, pa - a.global_position)
 		a.sleeping = false
 
@@ -619,7 +630,8 @@ func _update_spring() -> void:
 		coil.scale.y = maxf((coil_gap + ext) / coil_gap, 0.1)
 	if joint == null or not is_instance_valid(joint):
 		return
-	joint.set("linear_motor_y/force_limit", strength * absf(ext))
+	# Força limitada ao curso da mola: puxada além do fim (ex.: num tranco), não "explode".
+	joint.set("linear_motor_y/force_limit", strength * minf(absf(ext), 0.2))
 	joint.set("linear_motor_y/target_velocity", clampf(-ext * SPRING_GAIN, -2.0, 2.0) * PISTON_SIGN)
 	_spring_wake(absf(ext) > 0.01)
 

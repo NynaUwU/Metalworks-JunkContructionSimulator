@@ -180,10 +180,12 @@ Inspirado no Wiremod e no ACF do Garry's Mod (sem nada de NPCs nem geradores de 
 - Rádio: canais sem fio, alcance, o mais perto vale; entrada Canal
 - Testes: 28 verificações novas (test_eletronica)
 
-### v0.12.x — 4E (parte 2): Telas, marcador e pintor
-- [ ] Telas avançadas: console de letras, tela de pixels, osciloscópio, indicador no HUD, câmera externa
-- [ ] Marcador de peça (vindo da 4C): simples e avançado, com lista
-- [ ] Pintor: muda a cor de uma peça por sinal
+### ✅ v0.12.1 — 4E (parte 2): Telas, marcador e pintor
+- Console de letras (32 × 12), tela de pixels (32 × 32), osciloscópio (A e B)
+- Indicador no HUD (número, barra ou texto; só sentado na máquina ou sempre) e câmera (vê por ela sentado)
+- Marcador de peça e de lista (Fiação → Marcar peças); peças marcadas vão no save
+- Pintor (Peça, Lista ou o que está na frente do bico); pintura no save e nos pedaços cortados
+- Testes: 22 verificações novas (test_telas)
 
 ### v0.12.x — 4E (parte 3): Atuadores e trem de força
 - [ ] Atuadores: propulsor vetorial, hoverball (mantém altura), forcer (empurra à distância), gimbal

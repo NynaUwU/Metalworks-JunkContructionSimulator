@@ -493,6 +493,8 @@ func _spawn_logic_depot() -> void:
 		["balanca", "balanca", "receptor", "receptor", "ranger", "buscador"],
 		["fpga", "fpga", "fpga", "memoria", "memoria", "rom"],
 		["rom", "hd", "hd", "radio", "radio", "radio"],
+		["console", "tela_pixels", "osciloscopio", "hud_indicador", "hud_indicador", "camera"],
+		["camera", "marcador", "marcador", "marcador_lista", "pintor", "pintor"],
 	]
 	for r in rows.size():
 		for c in rows[r].size():

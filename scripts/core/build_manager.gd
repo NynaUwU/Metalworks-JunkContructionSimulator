@@ -313,6 +313,8 @@ func cut_part(part: Part, cut_local: Plane) -> Array:
 		np.apply_geometry(g, part.material_id)
 		asm.add_child(np)
 		np.transform = part.transform
+		if part.paint.a > 0.0:
+			np.set_paint(part.paint)
 		pieces.append(np)
 
 	# As soldas vão para o pedaço do lado em que estão.

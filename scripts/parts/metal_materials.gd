@@ -127,6 +127,24 @@ static func get_material(id: String) -> StandardMaterial3D:
 
 
 ## Material das arestas desenhadas sobre as peças (ajuda a ler a forma).
+## Tinta (Pintor): material liso da cor pedida (cache por cor, 8 bits por canal).
+static var _paint_cache: Dictionary = {}
+
+
+static func paint_material(c: Color) -> StandardMaterial3D:
+	var key := c.to_rgba32() | 0xff
+	if _paint_cache.has(key):
+		return _paint_cache[key]
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(c.r, c.g, c.b)
+	m.metallic = 0.15
+	m.roughness = 0.45
+	if _paint_cache.size() > 512:
+		_paint_cache.clear()
+	_paint_cache[key] = m
+	return m
+
+
 static func edge_material() -> StandardMaterial3D:
 	if _edge_material:
 		return _edge_material

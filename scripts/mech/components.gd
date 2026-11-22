@@ -35,6 +35,14 @@ const INFO := {
 	"memoria": {"nome": "Memória (RAM)", "preco": 10, "desc": "Guarda números em posições (8 a 1024). Gravar escreve Dado no Endereço; Lido mostra o que tem lá."},
 	"rom": {"nome": "Memória só de leitura (ROM)", "preco": 8, "desc": "Uma tabela de números escrita nos ajustes. Endereço escolhe qual sai em Lido."},
 	"hd": {"nome": "Disco rígido (HD)", "preco": 25, "desc": "Como a RAM (1024 posições), mas guarda num arquivo: os valores ficam mesmo depois de sair do jogo."},
+	"console": {"nome": "Console de letras", "preco": 15, "desc": "Grade de 32 × 12 letras: escreve Texto na Linha e Coluna (pulso em Escrever). Limpar apaga."},
+	"tela_pixels": {"nome": "Tela de pixels", "preco": 15, "desc": "32 × 32 pixels: com Desenhar ligado pinta o pixel X, Y com a Cor (0 a 255). Preencher e Limpar."},
+	"osciloscopio": {"nome": "Osciloscópio", "preco": 12, "desc": "Desenha A (verde) e B (amarelo) ao longo do tempo. Escala e Tempo ajustáveis."},
+	"hud_indicador": {"nome": "Indicador no HUD", "preco": 8, "desc": "Mostra um valor no canto da tela de quem está sentado na máquina: número, barra ou texto."},
+	"camera": {"nome": "Câmera", "preco": 20, "desc": "Com Ligar ligado, quem está sentado na máquina vê pela câmera (frente da peça). Zoom em graus."},
+	"marcador": {"nome": "Marcador de peça", "preco": 6, "desc": "Guarda uma peça (Fiação: botão direito → Marcar peças). Saídas: Peça, Posição, Distância, Massa."},
+	"marcador_lista": {"nome": "Marcador de peças (lista)", "preco": 10, "desc": "Guarda várias peças (até 64). Saídas: Lista, Quantidade e a primeira peça."},
+	"pintor": {"nome": "Pintor", "preco": 12, "desc": "Pinta com a Cor (0 a 255) a peça da entrada Peça, as da Lista ou a que estiver na frente do bico."},
 	"radio": {"nome": "Rádio", "preco": 15, "desc": "Manda e recebe sinais sem fio entre máquinas no mesmo canal (A, B, C, D, Vetor e Texto)."},
 	"chip": {"nome": "Chip lógico", "preco": 6, "desc": "E, OU, somar, comparar, memória, temporizador... (86 modos). Escolha o modo no botão direito da Fiação."},
 	"constante": {"nome": "Valor constante", "preco": 3, "desc": "Sai sempre o mesmo número, vetor ou texto."},
@@ -214,7 +222,7 @@ static func bounds(kind: String, size := Vector3.ZERO) -> AABB:
 			return AABB(Vector3(-0.09, -0.0125, -0.03), Vector3(0.18, 0.09, 0.06))
 	if SIGNAL_SIZES.has(kind):
 		var s: Vector3 = SIGNAL_SIZES[kind]
-		return AABB(-s * 0.5, s + Vector3(0, {"indicador": 0.06, "radio": 0.22}.get(kind, 0.0), 0))
+		return AABB(-s * 0.5, s + Vector3(0, {"indicador": 0.06, "radio": 0.22, "pintor": 0.05}.get(kind, 0.0), 0))
 	if SENSOR_SIZES.has(kind):
 		var ss: Vector3 = SENSOR_SIZES[kind]
 		return AABB(-ss * 0.5, ss + Vector3(0, 0.03 if kind == "ranger" else 0.0, 0))
@@ -283,7 +291,7 @@ static func _spawn_kind(kind: String, xform: Transform3D, size: Vector3) -> Arra
 			return [_spawn_insulator(xform)]
 		"puxador":
 			return [_spawn_handle(xform)]
-		"chip", "constante", "teclas", "teclado", "indicador", "pixel", "mostrador", "tela", "tela_texto", "fpga", "memoria", "rom", "hd", "radio":
+		"chip", "constante", "teclas", "teclado", "indicador", "pixel", "mostrador", "tela", "tela_texto", "fpga", "memoria", "rom", "hd", "radio", "console", "tela_pixels", "osciloscopio", "hud_indicador", "camera", "marcador", "marcador_lista", "pintor":
 			return [_spawn_signal(kind, xform)]
 		"bateria", "solar", "recarga", "luz", "holofote", "rele", "chave", "medidor":
 			return [_spawn_power(kind, xform, scale_of(kind, size))]
@@ -846,13 +854,40 @@ const SIGNAL_SIZES := {
 	"tela_texto": Vector3(0.7, 0.04, 0.45),
 	"fpga": Vector3(0.3, 0.05, 0.3), "memoria": Vector3(0.22, 0.04, 0.14), "rom": Vector3(0.22, 0.04, 0.14),
 	"hd": Vector3(0.2, 0.06, 0.26), "radio": Vector3(0.14, 0.06, 0.14),
+	"console": Vector3(0.7, 0.04, 0.5), "tela_pixels": Vector3(0.4, 0.04, 0.4), "osciloscopio": Vector3(0.5, 0.06, 0.3),
+	"hud_indicador": Vector3(0.14, 0.04, 0.1), "camera": Vector3(0.12, 0.1, 0.16), "marcador": Vector3(0.12, 0.04, 0.12),
+	"marcador_lista": Vector3(0.16, 0.04, 0.12), "pintor": Vector3(0.12, 0.08, 0.12),
 }
 const SIGNAL_LABELS := {
 	"chip": "Chip lógico", "constante": "Valor constante", "teclas": "Teclas", "teclado": "Teclado de senha",
 	"indicador": "Indicador", "pixel": "Pixel", "mostrador": "Mostrador numérico", "tela": "Tela de valores",
 	"tela_texto": "Tela de texto", "fpga": "FPGA", "memoria": "Memória (RAM)", "rom": "Memória (ROM)",
-	"hd": "Disco rígido (HD)", "radio": "Rádio",
+	"hd": "Disco rígido (HD)", "radio": "Rádio", "console": "Console de letras", "tela_pixels": "Tela de pixels",
+	"osciloscopio": "Osciloscópio", "hud_indicador": "Indicador no HUD", "camera": "Câmera", "marcador": "Marcador de peça",
+	"marcador_lista": "Marcador de peças (lista)", "pintor": "Pintor",
 }
+const MARKER_COLOR := Color(0.8, 0.45, 1.0)
+static var _mono: SystemFont
+
+
+static func mono_font() -> SystemFont:
+	if _mono == null:
+		_mono = SystemFont.new()
+		_mono.font_names = PackedStringArray(["Consolas", "DejaVu Sans Mono", "Liberation Mono", "Courier New", "monospace"])
+	return _mono
+
+
+## Quadrado em cima da peça para telas desenhadas por imagem.
+static func _screen_quad(parent: Node3D, w: float, d: float, top: float) -> MeshInstance3D:
+	var qm := QuadMesh.new()
+	qm.size = Vector2(w, d)
+	var mi := MeshInstance3D.new()
+	mi.mesh = qm
+	mi.position = Vector3(0, top + 0.003, 0)
+	mi.rotation.x = -PI * 0.5
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(mi)
+	return mi
 const BOARD_DARK := Color(0.07, 0.08, 0.09)
 const SCREEN_DARK := Color(0.02, 0.04, 0.06)
 
@@ -946,6 +981,47 @@ static func _spawn_signal(kind: String, xform: Transform3D) -> Part:
 			r.light = _deco_box(p, Vector3(0.03, 0.01, 0.03), Vector3(-0.035, top + 0.004, -0.035), Color(0.35, 0.08, 0.06))
 			r.label = _label3d(p, "CANAL 1", top + 0.002, 30, Color(0.9, 0.95, 1.0), Vector3(0, 0, 0.035))
 			node = r
+		"console", "tela_pixels", "osciloscopio":
+			var sc := ScreenNode.new()
+			sc.part = p
+			_deco_box(p, Vector3(size.x - 0.03, 0.004, size.z - 0.03), Vector3(0, top, 0), SCREEN_DARK)
+			sc.setup(kind)
+			if kind == "console":
+				var cl := _label3d(p, "", top + 0.004, 28, sc.text_color)
+				cl.font = mono_font()
+				cl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+				cl.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+				cl.position = Vector3(-size.x * 0.5 + 0.03, top + 0.006, -size.z * 0.5 + 0.03)
+				sc.label = cl
+			else:
+				var inset := 0.04 if kind == "tela_pixels" else 0.05
+				sc.attach_quad(_screen_quad(p, size.x - inset, size.z - inset, top + 0.002))
+			node = sc
+		"hud_indicador", "camera", "marcador", "marcador_lista", "pintor":
+			var g := GadgetNode.new()
+			g.part = p
+			g.kind = kind
+			match kind:
+				"hud_indicador":
+					_deco_box(p, Vector3(size.x - 0.02, 0.004, size.z - 0.02), Vector3(0, top, 0), SCREEN_DARK)
+					g.label = _label3d(p, "HUD", top + 0.003, 40, Color(0.4, 0.9, 1.0))
+				"camera":
+					_deco_cyl(p, 0.035, 0.03, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(0, 0, -size.z * 0.5 - 0.012)), Color(0.1, 0.1, 0.11), 0.7, 16)
+					_deco_cyl(p, 0.025, 0.004, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(0, 0, -size.z * 0.5 - 0.028)), Color(0.15, 0.25, 0.45), 0.9, 16)
+					g.lamp = _deco_box(p, Vector3(0.015, 0.008, 0.015), Vector3(0.035, top + 0.004, -0.05), Color(0.2, 0.05, 0.04))
+					var cam := Camera3D.new()
+					cam.position = Vector3(0, 0, -size.z * 0.5 - 0.035)
+					cam.near = 0.03
+					cam.fov = g.fov
+					p.add_child(cam)
+					g.cam = cam
+				"marcador", "marcador_lista":
+					_deco_box(p, Vector3(size.x - 0.02, 0.004, size.z - 0.02), Vector3(0, top, 0), MARKER_COLOR.darkened(0.55))
+					g.label = _label3d(p, "MARCADOR\n0 peças" if kind == "marcador" else "LISTA\n0 peças", top + 0.003, 22, MARKER_COLOR)
+				"pintor":
+					_deco_cyl(p, 0.018, 0.05, Transform3D(Basis(), Vector3(0, top + 0.025, 0)), Color(0.25, 0.25, 0.27), 0.6)
+					g.lamp = _deco_box(p, Vector3(size.x - 0.03, 0.006, 0.03), Vector3(0, top + 0.002, size.z * 0.5 - 0.025), Color.WHITE)
+			node = g
 	Build.add_node(node)
 	return p
 
@@ -1467,7 +1543,7 @@ static func build_visual(kind: String, size := Vector3.ZERO) -> Node3D:
 				"medidor":
 					_deco_box(root, Vector3(rs.x - 0.03, 0.004, rs.z - 0.03), Vector3(0, rs.y * 0.5, 0), SCREEN_DARK)
 					_label3d(root, "75%", rs.y * 0.5 + 0.003, 48, Color(0.5, 1.0, 0.6))
-		"chip", "constante", "teclas", "teclado", "indicador", "pixel", "mostrador", "tela", "tela_texto", "fpga", "memoria", "rom", "hd", "radio":
+		"chip", "constante", "teclas", "teclado", "indicador", "pixel", "mostrador", "tela", "tela_texto", "fpga", "memoria", "rom", "hd", "radio", "console", "tela_pixels", "osciloscopio", "hud_indicador", "camera", "marcador", "marcador_lista", "pintor":
 			var ssz: Vector3 = SIGNAL_SIZES[kind]
 			_deco_box(root, ssz, Vector3.ZERO, BOARD_DARK)
 			var top := ssz.y * 0.5
@@ -1504,6 +1580,28 @@ static func build_visual(kind: String, size := Vector3.ZERO) -> Node3D:
 				"hd":
 					_deco_cyl(root, 0.07, 0.004, Transform3D(Basis(), Vector3(0, top + 0.002, -0.03)), Color(0.75, 0.78, 0.82), 0.9, 16)
 					_label3d(root, "HD", top + 0.008, 30, Color(0.55, 1.0, 0.6), Vector3(0, 0, 0.09))
+				"console":
+					_deco_box(root, Vector3(ssz.x - 0.03, 0.004, ssz.z - 0.03), Vector3(0, top, 0), SCREEN_DARK)
+					var cl := _label3d(root, "> OLÁ_\n> 42", top + 0.003, 40, Color(0.55, 1.0, 0.6))
+					cl.font = mono_font()
+				"tela_pixels":
+					_deco_box(root, Vector3(ssz.x - 0.03, 0.004, ssz.z - 0.03), Vector3(0, top, 0), SCREEN_DARK)
+					for i in 6:
+						_deco_box(root, Vector3(0.05, 0.004, 0.05), Vector3(-0.12 + i * 0.05, top + 0.002, -0.06 + (i % 3) * 0.05), Color.from_hsv(i / 6.0, 0.8, 1.0), 1.5)
+				"osciloscopio":
+					_deco_box(root, Vector3(ssz.x - 0.04, 0.004, ssz.z - 0.04), Vector3(0, top, 0), SCREEN_DARK)
+					for i in 8:
+						_deco_box(root, Vector3(0.05, 0.004, 0.008), Vector3(-0.18 + i * 0.05, top + 0.002, sin(i * 0.9) * 0.06), Color(0.35, 1.0, 0.45), 2.0)
+				"hud_indicador":
+					_label3d(root, "HUD", top + 0.003, 40, Color(0.4, 0.9, 1.0))
+				"camera":
+					_deco_cyl(root, 0.035, 0.03, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(0, 0, -ssz.z * 0.5 - 0.012)), Color(0.1, 0.1, 0.11), 0.7, 16)
+				"marcador", "marcador_lista":
+					_deco_box(root, Vector3(ssz.x - 0.02, 0.004, ssz.z - 0.02), Vector3(0, top, 0), MARKER_COLOR.darkened(0.55))
+					_label3d(root, "MARCADOR" if kind == "marcador" else "LISTA", top + 0.003, 22, MARKER_COLOR)
+				"pintor":
+					_deco_cyl(root, 0.018, 0.05, Transform3D(Basis(), Vector3(0, top + 0.025, 0)), Color(0.25, 0.25, 0.27), 0.6)
+					_deco_box(root, Vector3(ssz.x - 0.03, 0.006, 0.03), Vector3(0, top + 0.002, ssz.z * 0.5 - 0.025), Color(1.0, 0.3, 0.6), 1.5)
 				"radio":
 					_deco_cyl(root, 0.006, 0.22, Transform3D(Basis(), Vector3(0.045, top + 0.11, -0.045)), Color(0.15, 0.15, 0.16), 0.4)
 					_deco_box(root, Vector3(0.03, 0.01, 0.03), Vector3(-0.035, top + 0.004, -0.035), Color(0.3, 1.0, 0.4), 2.0)

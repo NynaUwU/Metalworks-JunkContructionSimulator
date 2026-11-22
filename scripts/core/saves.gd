@@ -400,6 +400,8 @@ static func serialize(assemblies: Array, origin: Transform3D) -> Dictionary:
 		var pd := {"id": ids[p], "x": _xf(inv * p.global_transform)}
 		if not p.marks.is_empty():
 			pd["mk"] = p.marks.map(func(m: Array) -> Array: return _v(m[0]) + _v(m[1]))
+		if p.paint.a > 0.0:
+			pd["pc"] = [snappedf(p.paint.r, 0.001), snappedf(p.paint.g, 0.001), snappedf(p.paint.b, 0.001)]
 		if group_index.has(p.comp_group) and p.comp_kind != "":
 			pd["g"] = group_index[p.comp_group]
 			pd["gi"] = p.comp_index
@@ -436,6 +438,13 @@ static func serialize(assemblies: Array, origin: Transform3D) -> Dictionary:
 				var st := sn.save_state()
 				if sn.node_name != "":
 					st["name"] = sn.node_name
+				if sn is GadgetNode and (sn as GadgetNode).is_marker():
+					var mk: Array = []
+					for mp in (sn as GadgetNode).marked:
+						if ids.has(mp):
+							mk.append(ids[mp])
+					if not mk.is_empty():
+						st["marked"] = mk
 				if not st.is_empty():
 					groups[gi]["sn"] = st
 
@@ -611,6 +620,8 @@ func restore(data: Dictionary, origin: Transform3D) -> Array:
 			p.cuttable = pd.get("cut", p.cuttable)
 		for m: Array in pd.get("mk", []):
 			p.add_mark(Vector3(m[0], m[1], m[2]), Vector3(m[3], m[4], m[5]))
+		if pd.get("pc") is Array and (pd["pc"] as Array).size() == 3:
+			p.set_paint(Color(float(pd["pc"][0]), float(pd["pc"][1]), float(pd["pc"][2])))
 		by_id[int(pd["id"])] = p
 		created.append(p)
 
@@ -662,6 +673,10 @@ func restore(data: Dictionary, origin: Transform3D) -> Array:
 		if sn:
 			sn.node_name = str(gd["sn"].get("name", ""))
 			sn.load_state(gd["sn"])
+			if sn is GadgetNode:
+				for mid in gd["sn"].get("marked", []):
+					if by_id.has(int(mid)):
+						(sn as GadgetNode).marked.append(by_id[int(mid)])
 	for wd: Dictionary in data.get("wires", []):
 		var farr: Array = group_parts[int(wd["f"])]
 		var tarr: Array = group_parts[int(wd["t"])]

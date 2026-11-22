@@ -123,6 +123,14 @@ const ITEMS := [
 	{"id": "mostrador", "nome": "Mostrador numérico", "cat": "Mostradores", "component": "mostrador"},
 	{"id": "tela", "nome": "Tela de valores", "cat": "Mostradores", "component": "tela"},
 	{"id": "tela_texto", "nome": "Tela de texto", "cat": "Mostradores", "component": "tela_texto"},
+	{"id": "console", "nome": "Console de letras", "cat": "Mostradores", "component": "console"},
+	{"id": "tela_pixels", "nome": "Tela de pixels", "cat": "Mostradores", "component": "tela_pixels"},
+	{"id": "osciloscopio", "nome": "Osciloscópio", "cat": "Mostradores", "component": "osciloscopio"},
+	{"id": "hud_indicador", "nome": "Indicador no HUD", "cat": "Mostradores", "component": "hud_indicador"},
+	{"id": "camera", "nome": "Câmera", "cat": "Mostradores", "component": "camera"},
+	{"id": "marcador", "nome": "Marcador de peça", "cat": "Sensores", "component": "marcador"},
+	{"id": "marcador_lista", "nome": "Marcador de peças (lista)", "cat": "Sensores", "component": "marcador_lista"},
+	{"id": "pintor", "nome": "Pintor", "cat": "Atuadores", "component": "pintor"},
 ]
 
 static var _geo_cache := {}

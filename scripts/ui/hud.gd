@@ -104,6 +104,8 @@ Chip lógico: botão direito com a Fiação escolhe
 FPGA: botão direito com a Fiação abre o editor
   (arraste portas e ligue as bolinhas)
 Rádio: mesmo canal = sinais sem fio
+Marcador: botão direito com a Fiação →
+  Marcar peças (clique nelas)
 Depurador: mira mostra entradas e saídas ao vivo;
   botão direito: nome e ajustes
 Pistão no modo amortecedor = suspensão
@@ -148,6 +150,9 @@ var keypad_ui: KeypadUI
 var fpga_editor: FpgaEditor
 var _debug_panel: PanelContainer
 var _debug_text: Label
+var _ind_box: VBoxContainer          ## indicadores no HUD (Marco 4E)
+var _ind_rows: Array = []            ## [título, valor, barra]
+var _ind_t := 0.0
 var _aimed_on_pause: Part = null
 var _bar: HBoxContainer
 var _cross: Crosshair
@@ -333,6 +338,15 @@ func _build_ui() -> void:
 	_debug_text = _label(14, Color(0.6, 1.0, 0.7))
 	_debug_panel.add_child(_debug_text)
 	add_child(_debug_panel)
+	# Indicadores no HUD (à direita, no meio da altura)
+	_ind_box = VBoxContainer.new()
+	_ind_box.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+	_ind_box.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_ind_box.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_ind_box.offset_right = -24
+	_ind_box.add_theme_constant_override("separation", 6)
+	_ind_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_ind_box)
 	save_menu = SaveMenu.new()
 	save_menu.world = player.get_parent()
 	add_child(save_menu)
@@ -447,6 +461,60 @@ func _button(text: String, cb: Callable) -> Button:
 	return b
 
 
+## Câmera (Marco 4E): sentado numa máquina com uma câmera ligada, vê por ela.
+func _update_view_camera() -> void:
+	var cam := GadgetNode.view_camera(player)
+	if cam:
+		if not cam.current:
+			cam.current = true
+	elif player.camera and not player.camera.current:
+		player.camera.current = true
+
+
+## Indicadores no HUD (Marco 4E): título, valor e barra de cada indicador ativo.
+func _update_indicators() -> void:
+	var items := GadgetNode.hud_items(player)
+	while _ind_rows.size() < items.size():
+		var panel := PanelContainer.new()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.03, 0.05, 0.07, 0.72)
+		sb.set_corner_radius_all(6)
+		sb.set_content_margin_all(8)
+		panel.add_theme_stylebox_override("panel", sb)
+		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		panel.custom_minimum_size = Vector2(190, 0)
+		var v := VBoxContainer.new()
+		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		panel.add_child(v)
+		var t := _label(13, Color(1, 1, 1, 0.75))
+		var val := _label(22, Color.WHITE)
+		var bar := ProgressBar.new()
+		bar.show_percentage = false
+		bar.custom_minimum_size = Vector2(0, 8)
+		bar.max_value = 1.0
+		bar.step = 0.001
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(t)
+		v.add_child(val)
+		v.add_child(bar)
+		_ind_box.add_child(panel)
+		_ind_rows.append([t, val, bar, panel])
+	for i in _ind_rows.size():
+		var row: Array = _ind_rows[i]
+		var panel: PanelContainer = row[3]
+		panel.visible = i < items.size()
+		if i >= items.size():
+			continue
+		var it: Array = items[i]
+		(row[0] as Label).text = str(it[0])
+		(row[1] as Label).text = str(it[1])
+		(row[1] as Label).add_theme_color_override("font_color", it[3])
+		var bar: ProgressBar = row[2]
+		bar.visible = float(it[2]) >= 0.0
+		bar.value = maxf(float(it[2]), 0.0)
+		bar.modulate = it[3]
+
+
 func _label(size: int, color: Color) -> Label:
 	var l := Label.new()
 	l.add_theme_font_size_override("font_size", size)
@@ -492,6 +560,11 @@ func _on_tool_select_preview(index: int) -> void:
 func _process(delta: float) -> void:
 	if player == null:
 		return
+	_update_view_camera()
+	_ind_t -= delta
+	if _ind_t <= 0.0:
+		_ind_t = 0.1
+		_update_indicators()
 	_bar.visible = not player.is_seated()
 	var dbg := ""
 	if player.current() is DebugTool and not player.is_seated() and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:

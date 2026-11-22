@@ -27,6 +27,9 @@ var comp_group := 0                      ## igual para todas as peças do mesmo 
 var comp_offset := Transform3D.IDENTITY  ## pose ao nascer, em relação à origem do componente
 var comp_size := Vector3.ZERO            ## medidas pedidas (rodas) ou tamanho (peças mecânicas)
 
+## Pintura (Pintor): alfa 0 = cor do metal.
+var paint := Color(0, 0, 0, 0)
+
 ## Marcas da Trena (para guiar cortes): [posição local, normal local] de cada uma.
 var marks: Array = []
 var _mark_nodes: Array = []
@@ -91,6 +94,18 @@ func setup_cylinder(radius: float, height: float, p_material: String) -> void:
 	cm.rings = 1
 	mesh_instance.mesh = cm
 	mesh_instance.material_override = MetalMaterials.get_material(material_id)
+
+
+## Pinta a peça (alfa 0 = volta à cor do metal). Só a malha principal muda.
+func set_paint(c: Color) -> void:
+	paint = c if c.a > 0.0 else Color(0, 0, 0, 0)
+	if mesh_instance == null:
+		return
+	var m: Material = MetalMaterials.paint_material(c) if paint.a > 0.0 else null
+	if not planes.is_empty() or (mesh_instance.mesh is ArrayMesh and mesh_instance.material_override == null):
+		mesh_instance.set_surface_override_material(0, m)
+	else:
+		mesh_instance.material_override = m if m else MetalMaterials.get_material(material_id)
 
 
 ## Malha extra só visual, presa à peça (detalhes de componentes).

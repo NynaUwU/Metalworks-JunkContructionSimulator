@@ -16,6 +16,7 @@ extends GameTool
 ##   componente, chip, tela... → abre os ajustes
 
 var _src: SignalNode = null
+var marking: GadgetNode = null   ## marcando peças para um marcador (Marco 4E)
 var power_mode := false          ## G: fio de energia em vez de lógica
 var _psrc: PowerNode = null      ## fio de energia em andamento
 ## Pontas do fio: [peça, ponto local] de onde o jogador clicou (o fio fica preso ali).
@@ -66,6 +67,7 @@ func _build_viewmodel() -> void:
 
 func unequip() -> void:
 	_cancel()
+	marking = null
 	_imesh.clear_surfaces()
 	super()
 
@@ -91,10 +93,42 @@ static func has_config(n: SignalNode) -> bool:
 	if n is DriveNode:
 		return true
 	return n is ChipNode or n is ConstNode or n is KeysNode or n is KeypadNode or n is DisplayNode \
-		or n is FpgaNode or n is MemoryNode or n is RadioNode
+		or n is FpgaNode or n is MemoryNode or n is RadioNode or n is ScreenNode or n is GadgetNode
+
+
+## Começa a marcar peças para um marcador (vem dos ajustes dele).
+func start_marking(g: GadgetNode) -> void:
+	_cancel()
+	power_mode = false
+	marking = g
+	player.toast("Marcando peças: clique numa peça para marcar ou desmarcar · botão direito termina")
+
+
+func _marking_input(event: InputEvent) -> bool:
+	if marking == null or not marking.is_alive():
+		marking = null
+		return false
+	if event.is_action_pressed("secondary"):
+		player.toast("%s: %d peça%s marcada%s" % [marking.title(), marking.marked.size(), "" if marking.marked.size() == 1 else "s", "" if marking.marked.size() == 1 else "s"])
+		marking = null
+		return true
+	if event.is_action_pressed("primary"):
+		var part := player.aim_part()
+		if part == null:
+			return true
+		if part == marking.part:
+			player.toast("Esse é o próprio marcador")
+			return true
+		var now := marking.toggle_mark(part)
+		player.toast("%s %s (%d)" % ["Marcada:" if now else "Desmarcada:", part.display_name(), marking.marked.size()])
+		spawn_sparks(player.aim["position"], player.aim["normal"], 6, Color(0.8, 0.45, 1.0))
+		return true
+	return false
 
 
 func handle_input(event: InputEvent) -> bool:
+	if marking != null and _marking_input(event):
+		return true
 	if event.is_action_pressed("toggle_grid"):     # G
 		power_mode = not power_mode
 		_cancel()
@@ -275,6 +309,20 @@ func _power_click() -> void:
 
 func physics_update(_delta: float) -> void:
 	_imesh.clear_surfaces()
+	if marking != null and marking.is_alive():
+		_line_mat.albedo_color = Color(0.8, 0.45, 1.0)
+		var from := marking.part.global_position
+		var any := false
+		for p in marking.marked:
+			if is_instance_valid(p) and (p as Part).is_inside_tree():
+				if not any:
+					_imesh.surface_begin(Mesh.PRIMITIVE_LINES, _line_mat)
+					any = true
+				_imesh.surface_add_vertex(from)
+				_imesh.surface_add_vertex((p as Part).global_position)
+		if any:
+			_imesh.surface_end()
+		return
 	if _psrc != null:
 		if not _psrc.is_alive():
 			_cancel()
@@ -316,6 +364,11 @@ func _draw_preview(start: Vector3, color: Color) -> void:
 
 func hint_text() -> String:
 	var part := player.aim_part()
+	if marking != null and marking.is_alive():
+		var tag := ""
+		if part and part != marking.part:
+			tag = "Clique: %s %s   ·   " % ["desmarcar" if marking.marked.has(part) else "marcar", part.display_name()]
+		return "MARCANDO para %s (%d)   ·   %sBotão direito: terminar" % [marking.title(), marking.marked.size(), tag]
 	if power_mode:
 		var pn := Power.node_of(part)
 		if _psrc:

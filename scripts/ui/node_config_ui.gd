@@ -92,6 +92,10 @@ func _rebuild() -> void:
 		_memory_section(node as MemoryNode)
 	elif node is RadioNode:
 		_radio_section(node as RadioNode)
+	elif node is ScreenNode:
+		_screen_section(node as ScreenNode)
+	elif node is GadgetNode:
+		_gadget_section(node as GadgetNode)
 	_content.add_child(_ports_text())
 	var close_b := Button.new()
 	close_b.text = "Fechar"
@@ -336,6 +340,88 @@ func _radio_section(r: RadioNode) -> void:
 			r.label.text = "CANAL %d" % r.channel))
 	_content.add_child(_slider("Alcance (0 = sem limite)", 0, 1000, 10, r.range_m, "%d m", func(x: float) -> void: r.range_m = x))
 	_content.add_child(_label("Manda o que chega nas entradas com fio e recebe dos outros rádios do mesmo canal (vale o mais perto em cada porta). A entrada Canal, com fio, troca o canal.", 12, Color(1, 1, 1, 0.55)))
+
+
+# --- Telas, indicador, câmera, marcador e pintor (Marco 4E) --------------------------------
+
+func _screen_section(sc: ScreenNode) -> void:
+	match sc.kind:
+		"console":
+			_content.add_child(_row("Cor das letras", _color_btn(sc.text_color, func(c: Color) -> void:
+				sc.text_color = c
+				if sc.label:
+					sc.label.modulate = c)))
+			var clr := Button.new()
+			clr.text = "Limpar a tela"
+			clr.pressed.connect(func() -> void:
+				sc.clear_console()
+				if sc.label:
+					sc.label.text = sc.console_text())
+			_content.add_child(clr)
+			_content.add_child(_label("32 × 12 letras. Escrever (pulso) põe o Texto na Linha (0 a 11) e Coluna (0 a 31); sem fio em Escrever, escreve todo tick. \\n no texto pula de linha.", 12, Color(1, 1, 1, 0.55)))
+		"tela_pixels":
+			var clr2 := Button.new()
+			clr2.text = "Limpar a tela"
+			clr2.pressed.connect(func() -> void:
+				sc.image.fill(Color.BLACK)
+				sc._dirty = true
+				sc._upload())
+			_content.add_child(clr2)
+			_content.add_child(_label("32 × 32 pixels; (0, 0) é o canto de cima, à esquerda. Desenhar ligado pinta X, Y com a Cor (0 a 255). Os pixels vão junto no save.", 12, Color(1, 1, 1, 0.55)))
+		"osciloscopio":
+			_content.add_child(_row("Escala (sem fio)", _num_edit(sc.osc_scale, func(x: float) -> void: sc.osc_scale = maxf(absf(x), 1e-6))))
+			_content.add_child(_slider("Tempo (sem fio)", 0.5, 30, 0.5, sc.osc_time, "%.1f s", func(x: float) -> void: sc.osc_time = x))
+			_content.add_child(_label("A em verde e B em amarelo. O valor igual à Escala encosta no topo; −Escala, embaixo.", 12, Color(1, 1, 1, 0.55)))
+
+
+func _gadget_section(g: GadgetNode) -> void:
+	match g.kind:
+		"hud_indicador":
+			_content.add_child(_row("Título", _text_edit(g.hud_title, func(t: String) -> void: g.hud_title = t)))
+			var ob := OptionButton.new()
+			for s: String in GadgetNode.STYLES:
+				ob.add_item(s)
+			ob.selected = g.style
+			ob.item_selected.connect(func(i: int) -> void: g.style = i)
+			_content.add_child(_row("Mostrar como", ob))
+			_content.add_child(_row("Máx (barra)", _num_edit(g.bar_max, func(x: float) -> void: g.bar_max = x)))
+			_content.add_child(_slider("Casas decimais", 0, 4, 1, g.decimals, "%d", func(x: float) -> void: g.decimals = int(x)))
+			_content.add_child(_row("Cor", _color_btn(g.hud_color, func(c: Color) -> void: g.hud_color = c)))
+			_content.add_child(_check("Mostrar sempre (mesmo sem estar sentado na máquina)", g.always, func(on: bool) -> void: g.always = on))
+			_content.add_child(_label("Aparece à direita da tela de quem está sentado na máquina. Barra: Valor ÷ Máx (entrada Máx com fio vale mais).", 12, Color(1, 1, 1, 0.55)))
+		"camera":
+			_content.add_child(_slider("Campo de visão", 20, 110, 1, g.fov, "%d°", func(x: float) -> void:
+				g.fov = x
+				if g.cam:
+					g.cam.fov = x))
+			_content.add_child(_label("Ligue um botão ou tecla na entrada Ligar. Sentado na máquina, com Ligar ligado, você vê pela câmera (ela olha para o lado da lente).", 12, Color(1, 1, 1, 0.55)))
+		"marcador", "marcador_lista":
+			var names: Array[String] = []
+			for p in g.marked:
+				if is_instance_valid(p):
+					names.append((p as Part).display_name())
+			_content.add_child(_label("Marcadas (%d): %s" % [names.size(), ", ".join(names) if not names.is_empty() else "nenhuma"], 13, Color(0.85, 0.7, 1.0)))
+			var mark := Button.new()
+			mark.text = "Marcar peças (clique nelas com a Fiação)"
+			mark.custom_minimum_size = Vector2(0, 34)
+			mark.pressed.connect(func() -> void:
+				close()
+				for i in player.tools.size():
+					if player.tools[i] is WireTool:
+						player.select_tool(i)
+						(player.tools[i] as WireTool).start_marking(g)
+						break)
+			_content.add_child(mark)
+			var clr := Button.new()
+			clr.text = "Desmarcar todas"
+			clr.pressed.connect(func() -> void:
+				g.marked.clear()
+				_rebuild())
+			_content.add_child(clr)
+			_content.add_child(_label("Marcador simples: uma peça (marcar outra troca). Lista: até %d peças." % GadgetNode.MAX_MARKED, 12, Color(1, 1, 1, 0.55)))
+		"pintor":
+			_content.add_child(_slider("Alcance do bico", 0.5, 10, 0.5, g.paint_range, "%.1f m", func(x: float) -> void: g.paint_range = x))
+			_content.add_child(_label("Sem fio em Peça e Lista, pinta a peça na frente do bico (face de cima). Pintar sem fio = sempre. Limpar (pulso) volta a cor do metal. A pintura vai junto no save.", 12, Color(1, 1, 1, 0.55)))
 
 
 # --- Trem de força -----------------------------------------------------------------------

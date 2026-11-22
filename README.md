@@ -237,6 +237,18 @@ Nome, mapa, visual e código são próprios.
 - **Rádio:** sinais sem fio entre máquinas. Manda o que chega em A, B, C, D, Vetor e Texto (com fio) e recebe dos
   outros rádios do **mesmo canal** (vale o mais perto em cada porta). Canal e alcance nos ajustes; a entrada Canal
   troca o canal por sinal. Saída Rádios = quantos estão ouvindo.
+- **Console de letras:** 32 × 12 letras. **Escrever** (pulso) põe o **Texto** na **Linha** e **Coluna** (sem fio em
+  Escrever, escreve todo tick); `\n` pula de linha; **Limpar** apaga; **Cor** muda a cor das letras.
+- **Tela de pixels:** 32 × 32. Com **Desenhar** ligado, pinta o pixel **X, Y** com a **Cor** (0 a 255). **Preencher** e
+  **Limpar**. Os pixels vão junto no save.
+- **Osciloscópio:** desenha **A** (verde) e **B** (amarelo) ao longo do tempo; **Escala** e **Tempo** ajustáveis.
+- **Indicador no HUD:** mostra um valor à direita da tela de quem está **sentado na máquina** (ou sempre): número,
+  barra (Valor ÷ Máx) ou texto, com título e cor.
+- **Câmera:** com **Ligar** ligado, quem está sentado na máquina vê pela câmera (olha para o lado da lente). Zoom em graus.
+- **Marcador de peça** (uma) e **marcador de lista** (até 64): botão direito com a Fiação → **Marcar peças** e clique
+  nelas (clicar de novo desmarca; botão direito termina). Saídas: Peça, Lista, Quantidade, Posição, Distância, Massa.
+- **Pintor:** pinta com a **Cor** (0 a 255) a peça da entrada **Peça**, as da **Lista** ou, sem fio nelas, a que está
+  na frente do bico. **Limpar** volta a cor do metal. A pintura vai junto no save e nos pedaços cortados.
 
 **Salvar e carregar** (Esc → **Salvar / Carregar**)
 - **Mundos:** salve o mundo inteiro com um nome (peças, soldas, componentes com seus ajustes e teclas,

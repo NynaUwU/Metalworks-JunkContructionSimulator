@@ -817,6 +817,82 @@ func _fpga() -> void:
 	await _shot("f3_deposito")
 
 
+func _telas() -> void:
+	# Console, tela de pixels, osciloscópio, indicador no HUD, pintor e câmera.
+	var o := Vector3(6, 0.02, -2)
+	var sp := func(kind: String, at: Vector3) -> Part:
+		var b := Components.bounds(kind)
+		var p: Part = Components.spawn(kind, Transform3D(Basis(), o + at + Vector3(0, -b.position.y, 0)))[0]
+		p.assembly().set_frozen(true)
+		return p
+	var con: Part = sp.call("console", Vector3(-0.8, 0, 0))
+	var cn := con.node as ScreenNode
+	cn.write("JUNK OS v0.12\n> velocidade: 12 m/s\n> carga: 87%\n> pronto_", 0, 0)
+	var px: Part = sp.call("tela_pixels", Vector3(0, 0, 0))
+	var pn := px.node as ScreenNode
+	for yy in 32:
+		for xx in 32:
+			var d := Vector2(xx - 15.5, yy - 15.5).length()
+			if d < 13.0:
+				pn.set_pixel(xx, yy, Color.from_hsv(atan2(yy - 15.5, xx - 15.5) / TAU + 0.5, 0.9, 1.0 if d > 4 else 0.0))
+	pn._upload()
+	var osc: Part = sp.call("osciloscopio", Vector3(0.75, 0, 0))
+	var tmr: Part = sp.call("chip", Vector3(0.6, 0, 0.5))
+	(tmr.node as ChipNode).set_mode("temporizador")
+	var mul: Part = sp.call("chip", Vector3(0.9, 0, 0.5))
+	(mul.node as ChipNode).set_mode("multiplica")
+	var k: Part = sp.call("constante", Vector3(1.2, 0, 0.5))
+	(k.node as ConstNode).set_value(SignalNode.NUM, 360.0)
+	var sn: Part = sp.call("chip", Vector3(1.5, 0, 0.5))
+	(sn.node as ChipNode).set_mode("sen")
+	var sq: Part = sp.call("chip", Vector3(0.3, 0, 0.5))
+	(sq.node as ChipNode).set_mode("onda")
+	Signals.connect_ports(tmr.node, "Tempo", mul.node, "A")
+	Signals.connect_ports(k.node, "Valor", mul.node, "B")
+	Signals.connect_ports(mul.node, "Saída", sn.node, "Graus")
+	Signals.connect_ports(sn.node, "Saída", osc.node, "A")
+	Signals.connect_ports(sq.node, "Saída", osc.node, "B")
+	var ind: Part = sp.call("hud_indicador", Vector3(-0.2, 0, 0.5))
+	var g := ind.node as GadgetNode
+	g.always = true
+	g.hud_title = "Velocidade"
+	g.style = 1
+	Signals.connect_ports(k.node, "Valor", g, "Valor")
+	g.bar_max = 500.0
+	var ind2: Part = sp.call("hud_indicador", Vector3(-0.45, 0, 0.5))
+	(ind2.node as GadgetNode).always = true
+	(ind2.node as GadgetNode).hud_title = "Ângulo"
+	Signals.connect_ports(sn.node, "Saída", ind2.node, "Valor")
+	(ind2.node as GadgetNode).decimals = 2
+	var pin: Part = sp.call("pintor", Vector3(1.35, 0, -0.1))
+	var box := Build.spawn_box(Vector3(0.3, 0.2, 0.3), "aco", Transform3D(Basis(), o + Vector3(1.35, 0.35, -0.1)))
+	box.assembly().set_frozen(true)
+	var col: Part = sp.call("constante", Vector3(1.65, 0, -0.1))
+	(col.node as ConstNode).set_value(SignalNode.VEC, Vector3(255, 60, 160))
+	Signals.connect_ports(col.node, "Valor", pin.node, "Cor")
+	await _frames(150)
+	player.teleport(o + Vector3(0.2, 0.03, 1.5))
+	_look_from_eye(o + Vector3(0.25, 0.05, -0.05))
+	await _frames(10)
+	await _shot("t1_telas")
+	# Câmera: sentado numa máquina com a câmera ligada
+	var base := Build.spawn_box(Vector3(1.2, 0.1, 1.2), "aco", Transform3D(Basis(), o + Vector3(0, 0.05, 4)))
+	var seat: Part = Components.spawn("assento", Transform3D(Basis(), o + Vector3(0, 0.16, 4.2)))[0]
+	Build.make_weld(seat, base, o + Vector3(0, 0.1, 4.2))
+	var cb := Components.bounds("camera")
+	var cam: Part = Components.spawn("camera", Transform3D(Basis(), o + Vector3(0.4, 0.1 - cb.position.y, 3.6)))[0]
+	Build.make_weld(cam, base, o + Vector3(0.4, 0.1, 3.6))
+	var on: Part = sp.call("constante", Vector3(-0.4, 0.1, 3.6))
+	Build.make_weld(on, base, o + Vector3(-0.4, 0.1, 3.6))
+	Signals.connect_ports(on.node, "Valor", cam.node, "Ligar")
+	base.assembly().set_frozen(true)
+	await _frames(10)
+	player.sit(seat)
+	await _frames(20)
+	await _shot("t2_camera")
+	player.stand_up()
+
+
 func _drive() -> void:
 	# Carro de exemplo novo (motor + câmbio + cubos) com a Transmissão na mão.
 	await _frames(60)

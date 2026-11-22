@@ -577,6 +577,14 @@ func balance_masses() -> void:
 	_no_ccd = jointed.keys()
 	for asm: Assembly in _no_ccd:
 		asm.continuous_cd = false
+	# Prato da balança: massa de inércia mínima (o peso continua o mesmo), para a mola
+	# dela poder ser bem amortecida sem "passar do ponto" a cada tick.
+	for j in joints:
+		if j.type == "balanca" and j.is_valid():
+			var plate := j.part_b.assembly()
+			if plate and not plate.freeze:
+				var need := MechJoint.SCALE_PLATE_MASS * pow(j.size_scale, 3.0) / maxf(plate.real_mass(), 0.01)
+				boost[plate] = clampf(maxf(boost.get(plate, 1.0), need), 1.0, MAX_MASS_BOOST)
 	for old in _boosted:
 		if is_instance_valid(old) and not boost.has(old):
 			(old as Assembly).set_mass_boost(1.0)

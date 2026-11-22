@@ -35,7 +35,7 @@ const HINGE_LIMIT := deg_to_rad(170.0)
 const NAMES := {
 	"motor": "Motor", "servo": "Servo", "pistao": "Pistão", "servo_linear": "Servo linear",
 	"dobradica": "Dobradiça", "pino": "Dobradiça de pino", "esferica": "Junta esférica",
-	"trava": "Dobradiça com trava", "torcao": "Dobradiça de torção", "mola": "Mola",
+	"trava": "Dobradiça com trava", "torcao": "Dobradiça de torção", "mola": "Mola", "balanca": "Balança",
 	"guincho": "Guincho", "propulsor": "Propulsor", "ima": "Eletroímã", "engate": "Engate rápido",
 }
 ## Recebem sinal (teclas do assento / fios).
@@ -43,7 +43,10 @@ const ACTUATORS := ["motor", "servo", "pistao", "servo_linear", "trava", "guinch
 ## Não recebem sinal, mas têm ajustes (botão direito da Fiação).
 const CONFIG_ONLY := ["torcao", "mola", "dobradica", "pino", "esferica"]
 const ROTARY := ["motor", "servo", "dobradica", "pino", "trava", "torcao"]
-const LINEAR := ["pistao", "servo_linear", "mola"]
+const LINEAR := ["pistao", "servo_linear", "mola", "balanca"]
+const SCALE_TRAVEL := 0.04         ## balança: curso (m, × tamanho) — é uma mola bem dura
+const SCALE_DAMPING := 2500.0      ## balança: amortecimento (N·s/m, × tamanho²)
+const SCALE_PLATE_MASS := 60.0     ## balança: massa de inércia mínima do prato (kg, × tamanho³)
 ## Componentes de uma peça só (part_b == part_a), sem junta física.
 const SINGLE := ["propulsor", "ima", "engate"]
 const MAGNETIC := ["aco", "ferro", "carcaca", "carcaca_azul"]
@@ -178,6 +181,8 @@ func outputs() -> Array:
 			return [["Extensão", NUM]]
 		"mola":
 			return [["Compressão", NUM]]
+		"balanca":
+			return [["Peso", NUM], ["Força", NUM]]
 		"guincho":
 			return [["Cabo", NUM]]
 		"ima", "engate":
@@ -196,6 +201,9 @@ func spin() -> float:
 
 
 ## Saídas: ângulo em graus, giro em rad/s, distâncias em metros.
+var _scale_avg := 0.0            ## balança: força média (N)
+
+
 func update_outputs(_dt: float) -> void:
 	match type:
 		"motor":
@@ -207,6 +215,15 @@ func update_outputs(_dt: float) -> void:
 			out["Extensão"] = extension()
 		"mola":
 			out["Compressão"] = -extension()
+		"balanca":
+			# Média suave: o solver oscila um pouco em deslocamentos de décimos de milímetro.
+			var f_now := strength * clampf(-extension(), 0.0, SCALE_TRAVEL * size_scale)
+			_scale_avg = lerpf(_scale_avg, f_now, 1.0 - exp(-_dt / 0.2))
+			var f := _scale_avg
+			out["Força"] = f
+			out["Peso"] = f / 9.8
+			if coil and coil is Label3D:
+				(coil as Label3D).text = "%.1f kg" % (f / 9.8)
 		"guincho":
 			out["Cabo"] = rope_len
 		"ima", "engate":
@@ -256,11 +273,13 @@ func rebuild(root: Node) -> void:
 	if a == null or b == null or a == b:
 		return   # soldadas uma na outra: o componente fica travado
 	var xf: Transform3D
-	if type == "mola":
+	if type == "mola" or type == "balanca":
 		var gm := Generic6DOFJoint3D.new()
 		var e := extension()
-		gm.set("linear_limit_y/lower_distance", -0.2 * size_scale - e)
-		gm.set("linear_limit_y/upper_distance", 0.12 * size_scale - e)
+		var lo := -SCALE_TRAVEL if type == "balanca" else -0.2
+		var hi := 0.0 if type == "balanca" else 0.12
+		gm.set("linear_limit_y/lower_distance", lo * size_scale - e)
+		gm.set("linear_limit_y/upper_distance", hi * size_scale - e)
 		# A "mola" é o motor linear com força = rigidez × compressão (estável em qualquer rigidez).
 		gm.set("linear_motor_y/enabled", true)
 		gm.set("linear_motor_y/force_limit", 0.0)
@@ -461,6 +480,9 @@ func update(delta: float) -> void:
 			return
 		"mola":
 			_update_spring()
+			return
+		"balanca":
+			_update_scale()
 			return
 	if joint == null or not is_instance_valid(joint):
 		return
@@ -753,12 +775,13 @@ func _set_indicator(level: int) -> void:
 ## Parada com peso em cima, força e peso se equilibram (compressão = peso / rigidez).
 func _update_spring() -> void:
 	var ext := extension()
-	if coil and is_instance_valid(coil):
+	if coil and is_instance_valid(coil) and type == "mola":
 		coil.scale.y = maxf((coil_gap + ext) / coil_gap, 0.1)
 	if joint == null or not is_instance_valid(joint):
 		return
 	# Força limitada ao curso da mola: puxada além do fim (ex.: num tranco), não "explode".
-	joint.set("linear_motor_y/force_limit", strength * minf(absf(ext), 0.2 * size_scale))
+	var travel := (SCALE_TRAVEL if type == "balanca" else 0.2) * size_scale
+	joint.set("linear_motor_y/force_limit", strength * minf(absf(ext), travel))
 	joint.set("linear_motor_y/target_velocity", clampf(-ext * SPRING_GAIN, -2.0, 2.0) * PISTON_SIGN)
 	_spring_wake(absf(ext) > 0.01)
 
@@ -773,11 +796,40 @@ func _update_damper(v: float) -> void:
 	var ax := (part_a.global_basis.orthonormalized() * axis).normalized()
 	var p := part_a.global_transform * pivot
 	var vel := (_point_velocity(part_b.assembly(), p) - _point_velocity(part_a.assembly(), p)).dot(ax)
-	var c := maxf(damping, 1.0)
+	# Amortecimento acima de ~m/dt faz o motor passar do ponto a cada tick: limita pela
+	# massa (de inércia) do lado mais leve que se mexe.
+	var m := INF
+	for asm: Assembly in [part_a.assembly(), part_b.assembly()]:
+		if asm and not asm.freeze:
+			m = minf(m, asm.mass)
+	var c := clampf(damping, 1.0, 0.8 * m * float(Engine.physics_ticks_per_second))
 	var target := clampf(-stiffness * e / c, -DAMPER_MAX_SPEED, DAMPER_MAX_SPEED)
 	joint.set("linear_motor_y/force_limit", minf(c * absf(target - vel), strength))
 	joint.set("linear_motor_y/target_velocity", target * PISTON_SIGN)
 	_spring_wake(absf(e) > 0.005)
+
+
+## Balança: mola + amortecedor forte (mesma conta do amortecedor do pistão), para a
+## leitura não ficar balançando. O curso é curto (4 cm × tamanho).
+func _update_scale() -> void:
+	if joint == null or not is_instance_valid(joint):
+		return
+	var e := extension()
+	var ax := (part_a.global_basis.orthonormalized() * axis).normalized()
+	var p := part_a.global_transform * pivot
+	var vel := (_point_velocity(part_b.assembly(), p) - _point_velocity(part_a.assembly(), p)).dot(ax)
+	# Amortecimento limitado pela massa (de inércia) do prato: acima de ~m/dt o motor passa do
+	# ponto a cada tick e a leitura fica errada.
+	var m := part_b.assembly().mass
+	var c := minf(SCALE_DAMPING * size_scale * size_scale, 0.8 * m * float(Engine.physics_ticks_per_second))
+	var target := clampf(-strength * e / c, -DAMPER_MAX_SPEED, DAMPER_MAX_SPEED)
+	joint.set("linear_motor_y/force_limit", minf(c * absf(target - vel), strength * SCALE_TRAVEL * size_scale))
+	joint.set("linear_motor_y/target_velocity", target * PISTON_SIGN)
+	# O prato se mexe devagar perto do equilíbrio (menos que o limite para "dormir" do Jolt):
+	# fica acordado, senão a leitura trava no meio do caminho.
+	var plate := part_b.assembly()
+	if plate and not plate.freeze and plate.sleeping:
+		plate.sleeping = false
 
 
 ## Mola/torção paradas (dormindo): a cada meio segundo acordam para ver se a carga

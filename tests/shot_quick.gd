@@ -721,3 +721,43 @@ func _wheelsel() -> void:
 	_mouse(MOUSE_BUTTON_WHEEL_DOWN, false)
 	await get_tree().create_timer(3.4).timeout
 	print("WHEEL depois de 3,4 s parado: escolha=%d atual=%d" % [player.tool_select, player.current_tool])
+
+
+func _sensors() -> void:
+	var o := Vector3(6, 0.02, -2)
+	var sp := func(kind: String, at: Vector3, frozen := true) -> Part:
+		var b := Components.bounds(kind)
+		var p: Part = Components.spawn(kind, Transform3D(Basis(), o + at + Vector3(0, -b.position.y, 0)))[0]
+		if frozen:
+			p.assembly().set_frozen(true)
+		return p
+	sp.call("ranger", Vector3(-1.2, 0, -0.6))
+	var rec: Part = sp.call("receptor", Vector3(-1.2, 1.6, -0.6))
+	assert(rec != null)
+	var z: Part = sp.call("zona", Vector3(0.6, 0, -1.2))
+	(z.node as SensorNode).zone_size = Vector3(1.2, 1.0, 1.2)
+	Build.spawn_box(Vector3(0.3, 0.3, 0.3), "aco", Transform3D(Basis(), o + Vector3(0.6, 0.5, -1.2)))
+	var sc := Components.spawn("balanca", Transform3D(Basis(), o + Vector3(-0.2, 0.035, 0.6)))
+	sc[0].assembly().set_anchored(true)
+	Build.spawn_box(Vector3(0.25, 0.25, 0.25), "aco", Transform3D(Basis(), o + Vector3(-0.2, 0.3, 0.6)))
+	var loc: Part = sp.call("localizador", Vector3(1.4, 0, 0.4))
+	(loc.node as SensorNode).channel = 5
+	(loc.node as SensorNode).update_label()
+	sp.call("gps", Vector3(0.6, 0, 0.5))
+	sp.call("velocimetro", Vector3(1.0, 0, 1.0))
+	sp.call("buscador", Vector3(-1.0, 0, 1.1))
+	sp.call("impacto", Vector3(1.6, 0, -0.4))
+	var rec2: Part = sp.call("receptor", Vector3(1.8, 0, 1.2))
+	await _frames(40)
+	player.teleport(o + Vector3(0.3, 0.03, 3.4))
+	player.select_tool(7)
+	_look_from_eye(rec2.global_position)
+	await _frames(3)
+	(player.tools[7] as LaserTool).firing = true
+	await _frames(6)
+	_look_from_eye(o + Vector3(0.2, 0.4, -0.3))
+	await _frames(2)
+	_look_from_eye(rec2.global_position + Vector3(-0.6, 0.35, -0.6))
+	await _frames(4)
+	await _shot("s1_sensores")
+	(player.tools[7] as LaserTool).firing = false

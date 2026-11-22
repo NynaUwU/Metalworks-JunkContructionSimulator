@@ -140,24 +140,16 @@ Inspirado no Wiremod e no ACF do Garry's Mod (sem nada de NPCs nem geradores de 
   simples (que não gasta nada) ele seria energia infinita.
 - Junto: dobradiça de pino octogonal; fios mais grossos e retos em distâncias curtas
 
-### v0.10 — 4C: Sensores
-- [ ] Ranger:
-  - laser que mede a distância;
-  - opcional: posição, normal, velocidade, cor, material e peça atingida;
-  - lista de ignorados.
-- [ ] Velocímetro: total, km/h, X/Y/Z local e velocidade angular
-- [ ] Giroscópio: pitch, yaw, roll
-- [ ] GPS: X/Y/Z e memória de pontos
-- [ ] Marcador de peça (simples e avançado, com lista)
-- [ ] Localizador (beacon) + sensor de beacon (distância e direção até um localizador)
-- [ ] Target Finder:
-  - procura num raio, com quantidade máxima;
-  - filtros: jogador, material, cor, nome, tipo de componente, localizadores.
-- [ ] Zona: detecta quando algo entra num volume
-- [ ] Detector de impacto: força da batida e quem bateu
-- [ ] Receptor de laser + ferramenta laser (ponteiro)
-- [ ] Balança: peso apoiado em cima
-- [ ] Testes de cada sensor
+### ✅ v0.10 — 4C: Sensores
+- Medidor laser (ranger): distância, posição, normal, peça, velocidade, material; ignora a própria máquina
+- Velocímetro (m/s, km/h, local, giro) e giroscópio (pitch, yaw, roll)
+- GPS com ponto marcado e distância até ele
+- Localizador (canais) + sensor de localizador (distância e direção)
+- Buscador de alvos: raio e filtros (jogador, peças, componentes, localizadores)
+- Zona (caixa ajustável), detector de impacto (força e quem bateu), balança (peso de verdade, pela força na junta)
+- Receptor de laser + ferramenta Laser (8)
+- Troca de ferramenta pela roda do mouse (v0.9.1)
+- **Marcador de peça** ficou para a 4E (junto com o FPGA e a memória), que precisa de ferramenta de seleção
 
 ### v0.11 — 4D: Trem de força estilo ACF
 - [ ] Gerador (vindo da 4B): ligado ao motor pela transmissão, carrega as baterias
@@ -188,6 +180,7 @@ Inspirado no Wiremod e no ACF do Garry's Mod (sem nada de NPCs nem geradores de 
 - [ ] Testes: aceleração, troca de marcha, esterçamento de tanque, falta de combustível, ligação quebrando
 
 ### v0.12 — 4E: Avançado
+- [ ] Marcador de peça (vindo da 4C): simples e avançado, com lista
 - [ ] FPGA: chip com editor visual
   - dentro dele, arrasta e liga portas lógicas;
   - entradas e saídas configuráveis;

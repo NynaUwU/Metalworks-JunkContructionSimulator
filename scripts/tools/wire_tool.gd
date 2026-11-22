@@ -79,6 +79,8 @@ static func has_config(n: SignalNode) -> bool:
 		return (n as MechJoint).is_configurable()
 	if n is PowerNode:
 		return (n as PowerNode).kind in ["luz", "holofote", "bateria"]
+	if n is SensorNode:
+		return (n as SensorNode).kind in ["ranger", "localizador", "sensor_loc", "buscador", "zona"]
 	return n is ChipNode or n is ConstNode or n is KeysNode or n is KeypadNode or n is DisplayNode
 
 

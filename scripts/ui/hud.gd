@@ -22,6 +22,7 @@ Roda do mouse — escolher a ferramenta, clique
 5 — Depurador (ver os sinais de uma peça)
 6 — Trena (medir e marcar)
 7 — Alinhador (encaixar um ponto em outro)
+8 — Laser (acende receptores de laser)
 
 [b]Gravitador[/b]
 Clique segurado — pegar · soltar — cai (dá pra jogar)
@@ -88,6 +89,9 @@ Fiação: clique na peça de origem (escolha a
   (isoladores) e no destino (escolha a entrada)
 Fiação, G: fio de ENERGIA (bateria, painel,
   posto, luz, holofote, relé, chave, medidor)
+Sensores (laser, velocímetro, giroscópio, GPS,
+  buscador, zona, impacto, balança...): saídas
+  de sinal; ajustes no botão direito da Fiação
 Fiação, botão direito: remove isolador, ajustes
   (componente, chip, tela...) ou faixa da alavanca
 Chip lógico: botão direito com a Fiação escolhe

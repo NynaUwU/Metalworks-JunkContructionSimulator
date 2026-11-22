@@ -85,9 +85,10 @@ func _init() -> void:
 
 
 func _ready() -> void:
+	add_to_group("player")      # sensores (buscador, zona) procuram o jogador
 	hand = HandTool.new(self)
 	tools = [hand, WeldTool.new(self), GrinderTool.new(self), WireTool.new(self), DebugTool.new(self),
-		MeasureTool.new(self), AlignTool.new(self)]
+		MeasureTool.new(self), AlignTool.new(self), LaserTool.new(self)]
 	for t in tools:
 		camera.add_child(t)
 	select_tool(0)

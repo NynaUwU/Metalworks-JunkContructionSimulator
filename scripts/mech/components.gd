@@ -48,6 +48,34 @@ const INFO := {
 	"rele": {"nome": "Relé de potência", "preco": 8, "desc": "Um sinal de lógica (Liga) liga e desliga a passagem de energia."},
 	"chave": {"nome": "Chave de energia", "preco": 5, "desc": "E liga e desliga a passagem de energia."},
 	"medidor": {"nome": "Medidor de energia", "preco": 10, "desc": "Mostra a carga e o consumo da rede e manda como sinal."},
+	"ranger": {"nome": "Medidor laser", "preco": 12, "desc": "O laser sai pela face de cima: distância, posição, normal, peça, material e velocidade do que acertar."},
+	"velocimetro": {"nome": "Velocímetro", "preco": 8, "desc": "Velocidade (m/s e km/h), velocidade nos eixos dele e giro."},
+	"giroscopio": {"nome": "Giroscópio", "preco": 8, "desc": "Inclinação: pitch, yaw e roll em graus (frente = -Z, como o assento)."},
+	"gps": {"nome": "GPS", "preco": 8, "desc": "Posição no mundo. Entrada Marcar guarda um ponto e mede a distância até ele."},
+	"localizador": {"nome": "Localizador", "preco": 6, "desc": "Um farol que o sensor de localizador encontra (canal nos ajustes)."},
+	"sensor_loc": {"nome": "Sensor de localizador", "preco": 12, "desc": "Distância e direção até o localizador mais perto do mesmo canal."},
+	"buscador": {"nome": "Buscador de alvos", "preco": 15, "desc": "Procura num raio: jogador, peças, componentes ou localizadores. Dá o mais perto e a lista."},
+	"zona": {"nome": "Zona", "preco": 10, "desc": "Detecta o que entra na caixa em cima dele (tamanho nos ajustes): peças, massa e o jogador."},
+	"impacto": {"nome": "Detector de impacto", "preco": 8, "desc": "Força da batida (N) e o que bateu."},
+	"receptor": {"nome": "Receptor de laser", "preco": 5, "desc": "Acende quando um laser (medidor laser ou a ferramenta Laser) acerta nele."},
+	"balanca": {"nome": "Balança", "preco": 15, "desc": "Pesa o que está em cima do prato (média até ~200 kg, grande até ~830 kg). Saídas: Peso (kg) e Força (N)."},
+}
+
+## Sensores (Marco 4C): tamanho da caixa principal.
+const SENSOR_SIZES := {
+	"ranger": Vector3(0.12, 0.08, 0.12), "velocimetro": Vector3(0.16, 0.05, 0.12), "giroscopio": Vector3(0.14, 0.05, 0.14),
+	"gps": Vector3(0.14, 0.05, 0.1), "localizador": Vector3(0.12, 0.12, 0.12), "sensor_loc": Vector3(0.14, 0.05, 0.14),
+	"buscador": Vector3(0.16, 0.08, 0.16), "zona": Vector3(0.2, 0.04, 0.2), "impacto": Vector3(0.14, 0.06, 0.14),
+	"receptor": Vector3(0.16, 0.04, 0.16),
+}
+const SENSOR_COLORS := {
+	"ranger": Color(0.85, 0.15, 0.1), "velocimetro": Color(0.2, 0.7, 1.0), "giroscopio": Color(0.6, 0.4, 1.0),
+	"gps": Color(0.3, 0.9, 0.4), "localizador": Color(1.0, 0.75, 0.1), "sensor_loc": Color(1.0, 0.75, 0.1),
+	"buscador": Color(1.0, 0.35, 0.2), "zona": Color(0.3, 1.0, 0.5), "impacto": Color(1.0, 0.55, 0.1),
+	"receptor": Color(1.0, 0.2, 0.15),
+}
+const SENSOR_TEXT := {
+	"velocimetro": "km/h", "giroscopio": "GIRO", "gps": "GPS", "sensor_loc": "→ LOC", "buscador": "ALVO", "impacto": "IMPACTO",
 }
 
 ## Peças de energia (Marco 4B): tamanho da caixa principal.
@@ -71,7 +99,7 @@ static func wire_anchor(insulator: Part) -> Vector3:
 
 ## Peças mecânicas que vêm em tamanhos (pequeno / médio / grande). O tamanho vai em
 ## size.x (0 = médio, o padrão de sempre).
-const SCALED := ["motor", "servo", "pistao", "servo_linear", "dobradica", "pino", "pino_oct", "esferica", "trava", "torcao", "mola", "guincho", "bateria"]
+const SCALED := ["motor", "servo", "pistao", "servo_linear", "dobradica", "pino", "pino_oct", "esferica", "trava", "torcao", "mola", "guincho", "bateria", "balanca"]
 const SIZE_SMALL := 0.6
 const SIZE_LARGE := 1.6
 
@@ -150,6 +178,11 @@ static func bounds(kind: String, size := Vector3.ZERO) -> AABB:
 	if SIGNAL_SIZES.has(kind):
 		var s: Vector3 = SIGNAL_SIZES[kind]
 		return AABB(-s * 0.5, s + Vector3(0, 0.06 if kind == "indicador" else 0.0, 0))
+	if SENSOR_SIZES.has(kind):
+		var ss: Vector3 = SENSOR_SIZES[kind]
+		return AABB(-ss * 0.5, ss + Vector3(0, 0.03 if kind == "ranger" else 0.0, 0))
+	if kind == "balanca":
+		return AABB(Vector3(-0.2, -0.03, -0.2), Vector3(0.4, 0.135, 0.4))
 	if POWER_SIZES.has(kind):
 		var ps: Vector3 = POWER_SIZES[kind]
 		var extra := {"luz": 0.07, "holofote": 0.16, "chave": 0.14, "bateria": 0.03}.get(kind, 0.0) as float
@@ -212,6 +245,10 @@ static func _spawn_kind(kind: String, xform: Transform3D, size: Vector3) -> Arra
 			return [_spawn_signal(kind, xform)]
 		"bateria", "solar", "recarga", "luz", "holofote", "rele", "chave", "medidor":
 			return [_spawn_power(kind, xform, scale_of(kind, size))]
+		"ranger", "velocimetro", "giroscopio", "gps", "localizador", "sensor_loc", "buscador", "zona", "impacto", "receptor":
+			return [_spawn_sensor(kind, xform)]
+		"balanca":
+			return _spawn_scale(xform, scale_of(kind, size))
 	return []
 
 
@@ -920,6 +957,96 @@ static func _spawn_power(kind: String, xform: Transform3D, k := 1.0) -> Part:
 	return p
 
 
+# --- Sensores (Marco 4C) ---------------------------------------------------------
+
+static func _spawn_sensor(kind: String, xform: Transform3D) -> Part:
+	var size: Vector3 = SENSOR_SIZES[kind]
+	var top := size.y * 0.5
+	var c: Color = SENSOR_COLORS[kind]
+	var p: Part
+	if kind == "localizador":
+		p = Build.spawn_planes(octagon_planes(size.x * 0.5, top), "plastico", xform)
+		_component(p, INFO[kind]["nome"], kind)
+	else:
+		p = _box(size, "plastico", xform, INFO[kind]["nome"], kind)
+	var n := SensorNode.new()
+	n.part = p
+	n.kind = kind
+	_deco_box(p, Vector3(size.x - 0.02, 0.004, size.z - 0.02), Vector3(0, top, 0), BOARD_DARK)
+	if SENSOR_TEXT.has(kind):
+		n.label = _label3d(p, SENSOR_TEXT[kind], top + 0.003, 40, c)
+	match kind:
+		"ranger":
+			_deco_cyl(p, 0.03, 0.03, Transform3D(Basis(), Vector3(0, top + 0.015, 0)), Color(0.2, 0.2, 0.22), 0.6)
+			n.glow = _deco_cyl(p, 0.018, 0.006, Transform3D(Basis(), Vector3(0, top + 0.031, 0)), c, 0.0)
+			var b := MeshInstance3D.new()
+			var cm := CylinderMesh.new()
+			cm.top_radius = 0.003
+			cm.bottom_radius = 0.003
+			cm.height = 1.0
+			cm.radial_segments = 6
+			b.mesh = cm
+			b.material_override = GameTool.glow_material(Color(1.0, 0.15, 0.1), 3.0)
+			b.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			p.add_child(b)
+			n.beam = b
+		"localizador":
+			n.glow = _deco_sphere(p, 0.03, Vector3(0, top + 0.02, 0), c)
+			n.label = _label3d(p, "", top + 0.05, 28, c)
+			n.label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			n.update_label()
+		"sensor_loc":
+			n.update_label()
+		"buscador":
+			_deco_cyl(p, 0.06, 0.012, Transform3D(Basis(Vector3.RIGHT, 0.5), Vector3(0, top + 0.03, 0)), Color(0.75, 0.77, 0.8), 0.8)
+		"zona":
+			n.glow = _deco_box(p, Vector3(0.04, 0.01, 0.04), Vector3(0.06, top + 0.004, -0.06), c)
+			var z := MeshInstance3D.new()
+			z.mesh = BoxMesh.new()
+			var zm := StandardMaterial3D.new()
+			zm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			zm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			zm.albedo_color = Color(0.3, 1.0, 0.5, 0.12)
+			zm.cull_mode = BaseMaterial3D.CULL_DISABLED
+			z.material_override = zm
+			z.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			p.add_child(z)
+			n.zone_box = z
+		"impacto":
+			n.glow = _deco_box(p, Vector3(0.05, 0.01, 0.05), Vector3(0, top + 0.004, -0.04), c)
+		"receptor":
+			for r in 3:
+				_deco_cyl(p, 0.07 - r * 0.022, 0.004 + r * 0.002, Transform3D(Basis(), Vector3(0, top + 0.003 + r * 0.002, 0)),
+					Color(0.9, 0.9, 0.9) if r % 2 == 0 else Color(0.85, 0.15, 0.1), 0.1)
+			n.glow = _deco_sphere(p, 0.018, Vector3(0, top + 0.012, 0), c)
+	Build.add_node(n)
+	return p
+
+
+## Balança: base e prato numa mola dura (curso de 4 cm, folga de 4,5 cm). Pesa o que está
+## em cima: 100 kg afundam o prato 2 cm (média).
+static func _spawn_scale(xform: Transform3D, k := 1.0) -> Array[Part]:
+	var base := _box(Vector3(0.4, 0.06, 0.4) * k, "carcaca", xform, "Balança (base)", "balanca")
+	var plate := _box(Vector3(0.4, 0.03, 0.4) * k, "aco", xform * Transform3D(Basis(), Vector3(0, 0.09 * k, 0)), "Balança (prato)", "balanca")
+	_deco_cyl(plate, 0.05 * k, 0.09 * k, Transform3D(Basis(), Vector3(0, -0.06 * k, 0)), Color(0.3, 0.32, 0.35), 0.7)   # coluna (entra na base)
+	_deco_box(base, Vector3(0.14, 0.04, 0.005) * k, Vector3(0, 0, -0.201 * k), SCREEN_DARK)
+	var l := Label3D.new()
+	l.text = "0.0 kg"
+	l.font_size = 24
+	l.pixel_size = 0.0014 * k
+	l.modulate = Color(0.5, 1.0, 0.6)
+	l.position = Vector3(0, 0, -0.205 * k)
+	l.rotation.y = PI
+	base.add_child(l)
+	var j := _joint("balanca", base, plate, Vector3.ZERO, Vector3.UP)
+	j.size_scale = k
+	j.strength = 50000.0 * k * k       # rigidez (N/m): 100 kg afundam 2 cm (média)
+	j.coil = l                          # mostrador do peso
+	j.capture_rest()
+	Build.add_joint(j)
+	return [base, plate]
+
+
 ## Texto deitado em cima da peça (lido de quem está na frente, olhando para -Z).
 static func _label3d(parent: Node3D, text: String, top_y: float, font_size: int, color: Color, offset := Vector3.ZERO, width := 0.0) -> Label3D:
 	var l := Label3D.new()
@@ -1065,6 +1192,28 @@ static func build_visual(kind: String, size := Vector3.ZERO) -> Node3D:
 			_deco_box(root, Vector3(0.03, 0.06, 0.03), Vector3(0, 0.05, 0), Color(0.3, 0.3, 0.32))
 			_deco_cyl(root, 0.075, 0.14, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(0, 0.11, 0)), Color(0.2, 0.2, 0.22), 0.6)
 			_deco_box(root, Vector3(0.1, 0.1, 0.01), Vector3(0, 0.11, -0.075), Color(1.0, 0.95, 0.7), 3.0)
+		"ranger", "velocimetro", "giroscopio", "gps", "localizador", "sensor_loc", "buscador", "zona", "impacto", "receptor":
+			var ss: Vector3 = SENSOR_SIZES[kind]
+			var sc: Color = SENSOR_COLORS[kind]
+			_deco_box(root, ss, Vector3.ZERO, BOARD_DARK)
+			if SENSOR_TEXT.has(kind):
+				_label3d(root, SENSOR_TEXT[kind], ss.y * 0.5 + 0.003, 40, sc)
+			match kind:
+				"ranger":
+					_deco_cyl(root, 0.03, 0.03, Transform3D(Basis(), Vector3(0, ss.y * 0.5 + 0.015, 0)), Color(0.2, 0.2, 0.22))
+					_deco_box(root, Vector3(0.006, 0.4, 0.006), Vector3(0, ss.y * 0.5 + 0.23, 0), sc, 3.0)
+				"localizador":
+					_deco_sphere(root, 0.03, Vector3(0, ss.y * 0.5 + 0.02, 0), sc)
+				"zona":
+					_deco_box(root, Vector3(0.2, 0.2, 0.2), Vector3(0, 0.12, 0), Color(0.3, 1.0, 0.5), 0.5)
+				"receptor":
+					_deco_cyl(root, 0.07, 0.006, Transform3D(Basis(), Vector3(0, ss.y * 0.5 + 0.003, 0)), Color(0.9, 0.9, 0.9))
+					_deco_cyl(root, 0.035, 0.008, Transform3D(Basis(), Vector3(0, ss.y * 0.5 + 0.004, 0)), sc)
+		"balanca":
+			_deco_box(root, Vector3(0.4, 0.06, 0.4), Vector3.ZERO, Color(0.85, 0.6, 0.12))
+			_deco_box(root, Vector3(0.4, 0.03, 0.4), Vector3(0, 0.09, 0), Color(0.6, 0.62, 0.66))
+			_deco_cyl(root, 0.05, 0.06, Transform3D(Basis(), Vector3(0, 0.045, 0)), Color(0.3, 0.32, 0.35))
+			_deco_box(root, Vector3(0.14, 0.04, 0.005), Vector3(0, 0, -0.201), SCREEN_DARK)
 		"rele", "chave", "medidor":
 			var rs: Vector3 = POWER_SIZES[kind]
 			_deco_box(root, rs, Vector3.ZERO, BOARD_DARK)

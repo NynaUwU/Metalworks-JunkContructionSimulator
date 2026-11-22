@@ -84,6 +84,8 @@ func _rebuild() -> void:
 		_display_section(node as DisplayNode)
 	elif node is PowerNode:
 		_power_section(node as PowerNode)
+	elif node is SensorNode:
+		_sensor_section(node as SensorNode)
 	_content.add_child(_ports_text())
 	var close_b := Button.new()
 	close_b.text = "Fechar"
@@ -254,6 +256,39 @@ func _power_section(pn: PowerNode) -> void:
 		"bateria":
 			_content.add_child(_label("Capacidade: %s · carga: %s" % [PowerNode._wh(pn.capacity()), PowerNode._wh(pn.charge)], 14, Color(0.6, 1.0, 0.7)))
 			_content.add_child(_label("Baterias ligadas pelo mesmo fio de energia dividem a carga.", 12, Color(1, 1, 1, 0.55)))
+
+
+# --- Sensores ---------------------------------------------------------------------------
+
+func _sensor_section(sn: SensorNode) -> void:
+	match sn.kind:
+		"ranger":
+			_content.add_child(_slider("Alcance", 1, 200, 1, sn.range_m, "%d m", func(x: float) -> void: sn.range_m = x))
+			_content.add_child(_check("Mostrar o laser", sn.show_beam, func(on: bool) -> void: sn.show_beam = on))
+			_content.add_child(_check("Ignorar a própria máquina", sn.ignore_own, func(on: bool) -> void: sn.ignore_own = on))
+			_content.add_child(_label("O laser sai pela face de cima. Acertando um receptor de laser, ele acende.", 12, Color(1, 1, 1, 0.55)))
+		"localizador", "sensor_loc":
+			_content.add_child(_slider("Canal", 1, 99, 1, sn.channel, "%d", func(x: float) -> void:
+				sn.channel = int(x)
+				sn.update_label()))
+			if sn.kind == "sensor_loc":
+				_content.add_child(_slider("Alcance", 5, 500, 5, sn.range_m, "%d m", func(x: float) -> void: sn.range_m = x))
+				_content.add_child(_label("Acha o localizador mais perto do mesmo canal. Direção: nos eixos do sensor (frente = -Z).", 12, Color(1, 1, 1, 0.55)))
+		"buscador":
+			_content.add_child(_slider("Raio", 1, 100, 1, sn.range_m, "%d m", func(x: float) -> void: sn.range_m = x))
+			var ob := OptionButton.new()
+			for f: String in SensorNode.FILTERS:
+				ob.add_item(f)
+			ob.selected = sn.filter
+			ob.item_selected.connect(func(i: int) -> void: sn.filter = i)
+			_content.add_child(_row("Procurar", ob))
+			_content.add_child(_check("Ignorar a própria máquina", sn.ignore_own, func(on: bool) -> void: sn.ignore_own = on))
+		"zona":
+			for i in 3:
+				var axis := i
+				_content.add_child(_slider("Tamanho " + "XYZ"[i], 0.5, 10, 0.5, sn.zone_size[i], "%.1f m", func(x: float) -> void: sn.zone_size[axis] = x))
+			_content.add_child(_check("Mostrar a caixa", sn.show_zone, func(on: bool) -> void: sn.show_zone = on))
+			_content.add_child(_check("Ignorar a própria máquina", sn.ignore_own, func(on: bool) -> void: sn.ignore_own = on))
 
 
 # --- Captura de teclas ---------------------------------------------------------------------

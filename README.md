@@ -25,7 +25,7 @@ Nome, mapa, visual e código são próprios.
 | Andar / pular | W A S D / Espaço |
 | Correr | toque duplo numa tecla de andar (ou Shift), também segurando algo com o Gravitador |
 | Agachar (mais devagar, alcança mais baixo) | Ctrl |
-| Trocar ferramenta | 1 Gravitador · 2 Solda · 3 Esmerilhadeira · 4 Fiação · 5 Depurador · 6 Trena · 7 Alinhador |
+| Trocar ferramenta | 1 Gravitador · 2 Solda · 3 Esmerilhadeira · 4 Fiação · 5 Depurador · 6 Trena · 7 Alinhador · 8 Laser |
 | Trocar ferramenta (estilo Garry's Mod) | roda do mouse escolhe, clique confirma, botão direito cancela |
 | Usar (loja, assento, botão, alavanca, engate rápido) | E |
 | Puxar um puxador (portas, tampas...) | E segurado |
@@ -174,6 +174,22 @@ Nome, mapa, visual e código são próprios.
   as luzes ficam mais fracas na proporção. Sobrando, as baterias carregam.
 - Lógica continua de graça. Os componentes simples (motor, servo, pistão...) não gastam energia.
 
+**Sensores** (Marco 4C, depósito ELETRÔNICA e loja, categoria Sensores)
+- Todos mandam o que medem como sinal (ligue com a Fiação). Ajustes: botão direito com a Fiação.
+  - **Medidor laser:** o laser sai pela face de cima; Distância, Acertou, Posição, Normal, Peça, Velocidade e Material do
+    que acertar. Alcance até 200 m, laser visível ou não, ignora a própria máquina.
+  - **Velocímetro:** Velocidade (m/s), km/h, Local (X/Y/Z nos eixos dele) e Giro.
+  - **Giroscópio:** Pitch, Yaw e Roll em graus (frente = -Z).
+  - **GPS:** Posição e X/Y/Z; a entrada **Marcar** guarda o ponto e a saída Distância mede até ele.
+  - **Localizador** + **sensor de localizador:** distância e direção até o localizador mais perto do mesmo canal.
+  - **Buscador de alvos:** procura num raio (jogador, peças, componentes ou localizadores): Quantidade, Alvo,
+    Posição, Distância e a lista.
+  - **Zona:** caixa em cima dele (tamanho ajustável): quantas peças estão dentro, a massa e se o jogador está dentro.
+  - **Detector de impacto:** Força da batida (N), Bateu e a Peça em que bateu.
+  - **Balança:** pesa o que está no prato (média até ~200 kg, grande até ~830 kg): Peso (kg) e Força (N).
+  - **Receptor de laser:** acende (Atingido) quando um laser acerta nele: o do medidor laser ou o da ferramenta
+    **Laser (8)**, um ponteiro (segure o clique).
+
 **Salvar e carregar** (Esc → **Salvar / Carregar**)
 - **Mundos:** salve o mundo inteiro com um nome (peças, soldas, componentes com seus ajustes e teclas,
   fios, pontos e onde você está). Carregue, apague ou comece um **mundo novo**.
@@ -208,6 +224,8 @@ scripts/
   signals/*_node.gd       chip, constante, teclas, teclado de senha, mostradores, assento
   power/power.gd          fios de energia e redes elétricas (autoload "Power")
   power/power_node.gd     bateria, painel solar, posto de recarga, luz, holofote, relé, chave, medidor
+  sensors/sensor_node.gd  sensores: laser, velocímetro, giroscópio, GPS, localizador, buscador, zona, impacto, receptor
+  tools/laser_tool.gd     ferramenta Laser (ponteiro)
   tools/debug_tool.gd     Depurador
   tools/snap.gd           ponto mirado encaixado na grade de 5 cm da peça (ou numa marca)
   tools/measure_tool.gd   Trena (medir e marcar)
@@ -272,6 +290,10 @@ godot --headless --path . res://tests/test_vehicle.tscn
 
 ```bash
 godot --headless --path . res://tests/test_power.tscn
+```
+
+```bash
+godot --headless --path . res://tests/test_sensors.tscn
 ```
 
 **Publicar uma versão:** mude `config/version` no `project.godot` e crie

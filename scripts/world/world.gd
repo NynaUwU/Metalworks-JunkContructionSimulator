@@ -484,6 +484,9 @@ func _spawn_logic_depot() -> void:
 		["puxador", "puxador", "puxador", "puxador", "puxador", "puxador"],
 		["bateria", "bateria", "solar", "solar", "luz", "luz"],
 		["holofote", "holofote", "rele", "chave", "medidor", "medidor"],
+		["ranger", "ranger", "velocimetro", "giroscopio", "gps", "gps"],
+		["localizador", "localizador", "sensor_loc", "buscador", "zona", "impacto"],
+		["balanca", "balanca", "receptor", "receptor", "ranger", "buscador"],
 	]
 	for r in rows.size():
 		for c in rows[r].size():

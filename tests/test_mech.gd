@@ -310,7 +310,7 @@ func _player_test() -> void:
 	# Esmerilhadeira: segurar no isolador arranca ele; o fio continua, só sem passar por ali
 	player.select_tool(2)
 	var grinder: GrinderTool = player.tools[2]
-	_aim(player, o + Vector3(0.8, 0, 0.6), ins.global_position + Vector3(0, 0.07, 0))
+	_aim(player, o + Vector3(0.8, 0, 0.6), ins.global_position + Vector3(0, 0.03, 0))   # isolador menor (metade)
 	await _frames(3)
 	grinder.begin_use()
 	check(grinder.mode == GrinderTool.Mode.REMOVING, "esmerilhadeira mirando o isolador: modo arrancar")

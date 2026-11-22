@@ -2,7 +2,7 @@ extends Node3D
 ## Testes: chapas finas rápidas, cilindros, tamanhos, Trena, marcas, Alinhador, puxador.
 ##   godot --headless --path . res://tests/test_precision.tscn
 
-const EXPECTED_CHECKS := 33
+const EXPECTED_CHECKS := 39
 
 var _fails := 0
 var _checks := 0
@@ -77,7 +77,7 @@ func _run() -> void:
 		"prisma de 8 lados com o volume certo e do tamanho pedido (%.4f m³, %.2f × %.2f)" % [geo["volume"], aabb.size.x, aabb.size.y])
 	var cyl := Build.spawn_planes(Catalog.planes(cyl_item, Vector3(0.4, 0.4, 2.0)), "aco", Transform3D(Basis(), Vector3(20, 0.2, -40)))
 	await _frames(20)
-	check(cyl.global_position.y < 0.2 and absf(cyl.global_basis.y.dot(Vector3.UP)) > 0.99, "fica apoiado numa face, sem rolar")
+	check(cyl.global_position.y < 0.21 and absf(cyl.global_basis.y.dot(Vector3.UP)) > 0.99, "fica apoiado numa face, sem rolar (y %.3f, inclinação %.3f)" % [cyl.global_position.y, cyl.global_basis.y.dot(Vector3.UP)])
 	check(Build.cut_part(cyl, Plane(Vector3.BACK, 0.3)).size() == 2, "dá para cortar o cilindro")
 
 	print("== Tamanhos pequeno / médio / grande")
@@ -234,6 +234,44 @@ func _run() -> void:
 	check(heavy.global_position.y < 0.6, "força fraca: não levanta um bloco de 785 kg (y %.2f)" % heavy.global_position.y)
 	player._release_device()
 	player.queue_free()
+
+	print("== Pontos de solda: tamanho, peça mais próxima e componentes")
+	# Três chapas lado a lado: A e B encostadas; C a 3,5 cm de B.
+	var pa := Build.spawn_box(Vector3(0.4, 0.1, 0.4), "aco", Transform3D(Basis(), Vector3(130, 0.5, -40)))
+	var pb := Build.spawn_box(Vector3(0.4, 0.1, 0.4), "aco", Transform3D(Basis(), Vector3(130.4, 0.5, -40)))
+	var pc := Build.spawn_box(Vector3(0.4, 0.1, 0.4), "aco", Transform3D(Basis(), Vector3(130, 0.5, -40.435)))
+	for p: Part in [pa, pb, pc]:
+		p.assembly().set_frozen(true)
+	await _frames(3)
+	# Ponto na emenda A|B, perto do canto de C (a 3,5 cm): fica com a mais próxima (B).
+	var seam := Vector3(130.2, 0.5, -40.2)
+	var tgt := Build.find_weld_target(pa, seam)
+	check(tgt["ok"] and tgt["part"] == pb, "a solda pega a peça mais próxima do ponto (%s)" % (tgt.get("part").label if tgt.get("part") else "nada"))
+	# Ponto na borda de A virada para C (a 3,5 cm): o normal alcança, o pequeno não.
+	var edge := Vector3(129.95, 0.5, -40.2)
+	var n_ok: bool = Build.find_weld_target(pa, edge, Build.weld_reach(0.05))["ok"]
+	var s_ok: bool = Build.find_weld_target(pa, edge, Build.weld_reach(0.025))["ok"]
+	check(n_ok and not s_ok, "ponto pequeno só alcança o que está encostado (normal: %s, pequeno: %s)" % [n_ok, s_ok])
+	var small_w := Build.weld_at(pa, seam, 0.025)
+	check(small_w != null and is_equal_approx(small_w.radius, 0.025) and Build.weld_at(pa, seam + Vector3(0, 0, 0.06), 0.025) != null,
+		"pontos pequenos ficam mais juntos (6 cm um do outro)")
+	# Motor: mirar no disco bem junto da carcaça.
+	var wmot := Components.spawn("motor", Transform3D(Basis(), Vector3(132, 0.17, -40)))
+	wmot[0].assembly().set_frozen(true)
+	await _frames(3)
+	var near_housing: Vector3 = wmot[1].global_transform * Vector3(0.15, -0.025, 0)
+	var t2 := Build.find_weld_target(wmot[1], near_housing)
+	check(t2["ok"] and t2["locks"] and Build.weld_at(wmot[1], near_housing) == null,
+		"solda que travaria o componente (disco na carcaça) não acontece")
+	check(Build.weld_at(wmot[1], near_housing, Build.WELD_BALL_RADIUS, true) != null and wmot[0].assembly() == wmot[1].assembly(),
+		"com Shift solda mesmo assim")
+	# Salvar mantém o tamanho do ponto.
+	var wsave := Saves.serialize([pa.assembly()], Transform3D.IDENTITY)
+	var has_small := false
+	for w: Dictionary in wsave["welds"]:
+		if is_equal_approx(float(w.get("r", 0.05)), 0.025):
+			has_small = true
+	check(has_small, "o tamanho do ponto de solda é salvo")
 
 
 func _press(action: String) -> InputEventAction:

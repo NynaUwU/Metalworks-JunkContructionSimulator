@@ -44,6 +44,10 @@ Nome, mapa, visual e código são próprios.
 **Solda**
 - Segure o clique bem na emenda entre duas peças: cria um **ponto de solda** (bolinha).
   A solda só alcança o que está dentro da bolinha. Arraste segurando para fazer vários pontos.
+- **R** troca o tamanho do ponto: **pequeno** (5 cm, só alcança o que está encostado; ex.: roda no disco do motor
+  sem pegar a carcaça), **normal** (10 cm) e **grande** (16 cm).
+- A solda pega a peça **mais próxima** do ponto. Se ela uniria os dois lados de um componente (travando ele, ex.: disco
+  na carcaça do motor), não solda e avisa; **Shift + clique** solda mesmo assim.
 - Peças soldadas viram um corpo só.
 - Soldar uma peça no chão ou numa estrutura do mapa **ancora** a montagem (ela fica parada).
 
@@ -111,6 +115,8 @@ Nome, mapa, visual e código são próprios.
 - Peças soltas usam detecção contínua de colisão: chapas finas (5 cm) não atravessam umas às outras mesmo
   arremessadas. Exceção: duas chapas finas vindo rápido **uma contra a outra** (mais de ~30 m/s somadas) ainda
   podem passar; por isso o arremesso do Gravitador vai até 40 m/s.
+- A física resolve as juntas com mais precisão (96 iterações de velocidade / 24 de posição por tick): suspensões
+  com várias dobradiças em cadeia (ex.: dianteira estilo Model-T) não dobram ao acelerar e frear.
 - Peças muito leves ligadas por juntas a peças muito pesadas (roda de 15 kg num carro de 2 t) ganham "massa de
   inércia" só para a física, com o peso igual. Assim as juntas não cedem sob carga.
 - **Assento:** E para sentar. Ele controla todos os componentes ligados à mesma máquina.

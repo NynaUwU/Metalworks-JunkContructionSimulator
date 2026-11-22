@@ -2,7 +2,7 @@ extends Node3D
 ## Veículos: aderência das rodas (arrancada/freada) e pistão no modo amortecedor.
 ##   godot --headless --path . res://tests/test_vehicle.tscn
 
-const EXPECTED_CHECKS := 10
+const EXPECTED_CHECKS := 12
 
 var _fails := 0
 var _checks := 0
@@ -144,3 +144,49 @@ func _run() -> void:
 		if j.type == "pistao" and j.damper:
 			found += 1
 	check(found == 2, "salvar e carregar mantém o modo amortecedor (%d de 2)" % found)
+
+	print("== Model-T de um jogador: suspensão dianteira com pinos e amortecedores (em linha reta)")
+	Saves.clear_world()
+	await _frames(5)
+	var mt := Saves.restore(Saves.read("res://tests/data/model_t.json"), Transform3D(Basis(), Vector3(30, 0.3, 30)))
+	await _frames(120)
+	var drive: Array = []
+	for j in Build.joints:
+		for b: Dictionary in j.bind_pos:
+			if b.get("key", 0) == KEY_W:
+				drive.append(j)
+	var go: Part = Components.spawn("botao", Transform3D(Basis(), Vector3(40, 0.04, 40)))[0]
+	for j: MechJoint in drive:
+		Build.toggle_link(go.device, j)
+	var seat_mt: Part = null
+	for p: Part in mt:
+		if p.kind == "assento":
+			seat_mt = p
+	var start := seat_mt.global_position
+	go.device.press()
+	var worst := Vector2.ZERO
+	for i in 480:
+		await get_tree().physics_frame
+		if i == 360:
+			go.device.release()          # freia
+		for j in Build.joints:
+			worst = worst.max(_play(j))
+	var moved := Vector2(seat_mt.global_position.x - start.x, seat_mt.global_position.z - start.z).length()
+	check(moved > 5.0, "o Model-T anda (%.1f m)" % moved)
+	check(worst.x < 2.0 and worst.y < 0.015, "acelerando e freando, nenhuma junta da suspensão dobra (%.2f°, %.1f cm)" % [worst.x, worst.y * 100.0])
+
+
+## Folga de uma junta: inclinação fora do eixo (graus) e separação do pivô (m).
+static func _play(j: MechJoint) -> Vector2:
+	if not j.is_valid() or j.type in MechJoint.SINGLE or j.type == "guincho":
+		return Vector2.ZERO
+	var cur := j.part_a.global_transform.affine_inverse() * j.part_b.global_transform
+	var d := cur * j.rest.affine_inverse()
+	var ax := j.axis.normalized()
+	var swing := rad_to_deg((d.basis.orthonormalized() * ax).angle_to(ax))
+	var sep := d * j.pivot - j.pivot
+	if j.type in MechJoint.LINEAR:
+		sep -= ax * sep.dot(ax)
+	if j.type == "esferica":
+		swing = 0.0
+	return Vector2(swing, sep.length())

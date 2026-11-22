@@ -232,6 +232,7 @@ func _update_targets() -> void:
 	if _target_weld:
 		_weld_marker.visible = true
 		_weld_marker.global_position = _target_weld.world_pos()
+		_weld_marker.scale = Vector3.ONE * (_target_weld.radius / Build.WELD_BALL_RADIUS)
 		return
 
 	var part := player.aim_part()

@@ -6,6 +6,10 @@ extends GameTool
 ## - A solda só alcança o que está dentro da bolinha: mire bem na emenda.
 ## - Segurando e arrastando, novos pontos nascem onde ainda não há bolinha.
 ## - Enquanto solda, a tela escurece como numa máscara de solda (ver Hud).
+## - R troca o tamanho do ponto (pequeno / normal / grande): o pequeno só alcança o que
+##   está bem encostado (ex.: soldar a roda no disco do motor sem pegar a carcaça).
+## - A solda pega a peça mais próxima do ponto. Se ela uniria os dois lados de um
+##   componente (travando ele), não solda; Shift + clique solda mesmo assim.
 
 const FIRST_DELAY := 0.18     ## tempo segurando até o primeiro ponto
 const INTERVAL := 0.08        ## intervalo mínimo entre pontos
@@ -22,7 +26,8 @@ var _marker: MeshInstance3D
 var _ok_mat: StandardMaterial3D
 var _bad_mat: StandardMaterial3D
 var _taken_mat: StandardMaterial3D
-var _state := ""              ## "ok", "taken", "none" ou "" (sem peça)
+var _state := ""              ## "ok", "taken", "none", "lock" ou "" (sem peça)
+var size_index := 1           ## Build.WELD_SIZES: 0 pequeno · 1 normal · 2 grande
 var _light: OmniLight3D
 var _sparks: CPUParticles3D
 var _core: MeshInstance3D
@@ -127,7 +132,15 @@ func unequip() -> void:
 	super()
 
 
+func radius() -> float:
+	return Build.WELD_SIZES[size_index][1]
+
+
 func handle_input(event: InputEvent) -> bool:
+	if event.is_action_pressed("rotate_cut"):     # R
+		size_index = (size_index + 1) % Build.WELD_SIZES.size()
+		player.toast("Ponto de solda: %s (%s)" % [Build.WELD_SIZES[size_index][0], Snap.length_text(radius() * 2.0)])
+		return true
 	if event.is_action_pressed("primary"):
 		begin_use()
 		return true
@@ -166,15 +179,19 @@ func physics_update(delta: float) -> void:
 	_state = ""
 	if part:
 		var point: Vector3 = player.aim["position"]
-		if Build.weld_spot_taken(point):
+		var target := Build.find_weld_target(part, point, Build.weld_reach(radius()))
+		if Build.weld_spot_taken(point, radius()):
 			_state = "taken"
-		elif Build.find_weld_target(part, point)["ok"]:
+		elif target["ok"] and target["locks"] and not Input.is_action_pressed("modifier"):
+			_state = "lock"
+		elif target["ok"]:
 			_state = "ok"
 		else:
 			_state = "none"
 		_marker.visible = not active
 		_marker.global_position = point
-		_marker.material_override = {"ok": _ok_mat, "taken": _taken_mat, "none": _bad_mat}[_state]
+		_marker.scale = Vector3.ONE * (radius() / Build.WELD_BALL_RADIUS)
+		_marker.material_override = {"ok": _ok_mat, "taken": _taken_mat, "none": _bad_mat, "lock": _bad_mat}[_state]
 	else:
 		_marker.visible = false
 
@@ -185,7 +202,7 @@ func physics_update(delta: float) -> void:
 		_held += delta
 		_since_last += delta
 		if _state == "ok" and _held >= FIRST_DELAY and _since_last >= INTERVAL:
-			if Build.weld_at(part, _arc_point):
+			if Build.weld_at(part, _arc_point, radius(), Input.is_action_pressed("modifier")):
 				_since_last = 0.0
 				_count += 1
 
@@ -207,11 +224,14 @@ func _process(_delta: float) -> void:
 
 
 func hint_text() -> String:
+	var size_txt := "   ·   R: ponto %s" % Build.WELD_SIZES[size_index][0]
 	match _state:
 		"ok":
-			return "Segure o clique para soldar · arraste pela emenda para fazer vários pontos"
+			return "Segure o clique para soldar · arraste pela emenda para fazer vários pontos" + size_txt
 		"taken":
-			return "Já tem solda neste ponto: mova a mira para fazer outro"
+			return "Já tem solda neste ponto: mova a mira para fazer outro" + size_txt
 		"none":
-			return "Mire bem na emenda: a solda só alcança o que estiver dentro da bolinha"
-	return "Mire na emenda entre duas peças (ou entre a peça e o chão)"
+			return "Mire bem na emenda: a solda só alcança o que estiver dentro da bolinha" + size_txt
+		"lock":
+			return "Aqui a solda travaria o componente (pegaria os dois lados dele): use o ponto pequeno ou Shift para soldar mesmo assim" + size_txt
+	return "Mire na emenda entre duas peças (ou entre a peça e o chão)" + size_txt

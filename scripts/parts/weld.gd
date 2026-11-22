@@ -7,6 +7,7 @@ var part_a: Part
 var part_b: Part              ## null = soldado no chão/estrutura fixa do mapa
 var local_pos := Vector3.ZERO ## posição na part_a (coordenadas locais)
 var ball: MeshInstance3D
+var radius := 0.05             ## raio da bolinha (pequeno 0,025 · normal 0,05 · grande 0,08)
 var internal := false         ## faz parte do próprio componente (ex.: assento + encosto): não é salva
 
 

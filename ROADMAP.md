@@ -123,6 +123,10 @@ Inspirado no Wiremod e no ACF do Garry's Mod (sem nada de NPCs nem geradores de 
 - Pistão com modo amortecedor (suspensão)
 - Correr segurando algo com o Gravitador; prévia do Alinhador
 
+### ✅ v0.8.3 — Juntas firmes em suspensões e solda de precisão
+- Solver do Jolt com 96/24 iterações: suspensões com dobradiças em cadeia não dobram (Model-T de teste)
+- Ponto de solda pequeno/normal/grande (R); solda pega a peça mais próxima; não trava componentes sem querer
+
 ### v0.9 — 4B: Energia elétrica
 - [ ] Rede elétrica:
   - tudo o que está ligado por **fio de energia** (visível e diferente do fio de lógica) divide a mesma carga;

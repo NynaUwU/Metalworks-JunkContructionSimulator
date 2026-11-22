@@ -15,6 +15,9 @@ const WELD_BALL_RADIUS := 0.05
 const WELD_REACH := 0.045
 ## Distância mínima entre bolinhas: um ponto novo só nasce onde não há outra bolinha.
 const WELD_MIN_SPACING := 0.09
+## Tamanhos do ponto de solda (Solda, tecla R): [nome, raio da bolinha].
+## O alcance é 90% do raio: o ponto pequeno não pega o que está ao lado.
+const WELD_SIZES := [["pequeno", 0.025], ["normal", 0.05], ["grande", 0.08]]
 const MIN_PIECE_VOLUME := 0.0004
 const MIN_PIECE_THICKNESS := 0.02
 
@@ -28,6 +31,7 @@ var seat_player: Node = null      ## jogador sentado (para a "Mira" do assento)
 var seat_keys_enabled := true
 
 var _ball_mesh: SphereMesh
+var _ball_meshes := {}            ## raio -> malha da bolinha
 var _ball_material: StandardMaterial3D
 
 
@@ -112,45 +116,71 @@ func is_ground(collider: Object) -> bool:
 # Solda
 # ---------------------------------------------------------------------------
 
-## Procura algo para soldar perto de `point` (dentro da bolinha de solda).
-## Retorna {"ok", "part", "ground"}. Peças têm preferência sobre o chão.
-func find_weld_target(part: Part, point: Vector3) -> Dictionary:
+## Alcance de uma bolinha de raio `radius`.
+static func weld_reach(radius: float) -> float:
+	return radius * 0.9
+
+
+## Procura algo para soldar perto de `point` (dentro da bolinha de solda), começando bem
+## perto do ponto e crescendo até o alcance: fica com a peça MAIS PRÓXIMA (antes pegava a
+## primeira que achasse, e a roda podia soldar na carcaça do motor em vez do disco).
+## Retorna {"ok", "part", "ground", "locks"}. Peças têm preferência sobre o chão.
+## `locks`: a solda uniria os dois lados de um componente (travaria ele).
+func find_weld_target(part: Part, point: Vector3, reach := WELD_REACH) -> Dictionary:
 	var space := part.get_world_3d().direct_space_state
 	var sphere := SphereShape3D.new()
-	sphere.radius = WELD_REACH
 	var params := PhysicsShapeQueryParameters3D.new()
 	params.shape = sphere
 	params.collision_mask = Layers.AIM
 	params.transform = Transform3D(Basis(), point)
 	var found_ground := false
-	for res: Dictionary in space.intersect_shape(params, 32):
-		var other := part_from_collision(res["collider"], res["shape"])
-		if other != null and other != part:
-			return {"ok": true, "part": other, "ground": false}
-		if other == null and is_ground(res["collider"]):
-			found_ground = true
+	for frac: float in [0.25, 0.5, 0.75, 1.0]:
+		sphere.radius = reach * frac
+		for res: Dictionary in space.intersect_shape(params, 32):
+			var other := part_from_collision(res["collider"], res["shape"])
+			if other != null and other != part:
+				return {"ok": true, "part": other, "ground": false, "locks": crosses_joint(part, other)}
+			if other == null and is_ground(res["collider"]):
+				found_ground = true
 	if found_ground:
-		return {"ok": true, "part": null, "ground": true}
+		return {"ok": true, "part": null, "ground": true, "locks": false}
 	return {"ok": false}
 
 
-## Já existe uma bolinha de solda neste ponto?
-func weld_spot_taken(point: Vector3) -> bool:
-	for w in welds:
-		if w.world_pos().distance_to(point) < WELD_MIN_SPACING:
+## `a` e `b` estão nos dois lados de um mesmo componente (soldá-las trava o componente)?
+func crosses_joint(a: Part, b: Part) -> bool:
+	var aa := a.assembly()
+	var bb := b.assembly()
+	if aa == null or bb == null or aa == bb:
+		return false
+	for j in joints:
+		if not j.is_valid() or j.type in MechJoint.SINGLE or j.type == "guincho":
+			continue
+		var ja := j.part_a.assembly()
+		var jb := j.part_b.assembly()
+		if (ja == aa and jb == bb) or (ja == bb and jb == aa):
 			return true
 	return false
 
 
-## Tenta soldar `part` no ponto `point` (na superfície dela).
-## Retorna a solda criada, ou null se não havia nada para soldar ou o ponto já tem solda.
-func weld_at(part: Part, point: Vector3) -> Weld:
-	if weld_spot_taken(point):
+## Já existe uma bolinha de solda neste ponto (encostando na bolinha nova)?
+func weld_spot_taken(point: Vector3, radius := WELD_BALL_RADIUS) -> bool:
+	for w in welds:
+		if w.world_pos().distance_to(point) < (radius + w.radius) * 0.9:
+			return true
+	return false
+
+
+## Tenta soldar `part` no ponto `point` (na superfície dela), com uma bolinha de `radius`.
+## Retorna a solda criada, ou null se não havia nada para soldar, o ponto já tem solda ou
+## a solda travaria um componente (a não ser com `force`).
+func weld_at(part: Part, point: Vector3, radius := WELD_BALL_RADIUS, force := false) -> Weld:
+	if weld_spot_taken(point, radius):
 		return null
-	var target := find_weld_target(part, point)
-	if not target["ok"]:
+	var target := find_weld_target(part, point, weld_reach(radius))
+	if not target["ok"] or (target["locks"] and not force):
 		return null
-	return _create_weld(part, target["part"], point)
+	return _create_weld(part, target["part"], point, true, radius)
 
 
 const INSULATOR_MIN_SPACING := 0.15
@@ -174,17 +204,30 @@ func place_insulator(on: Part, point: Vector3, normal: Vector3) -> Part:
 
 ## Solda direta entre duas peças (sem procurar vizinhos): usada para montar componentes
 ## e ao carregar um save (`hot` = false: a bolinha já nasce fria).
-func make_weld(part: Part, other: Part, point: Vector3, hot := true) -> Weld:
-	return _create_weld(part, other, point, hot)
+func make_weld(part: Part, other: Part, point: Vector3, hot := true, radius := WELD_BALL_RADIUS) -> Weld:
+	return _create_weld(part, other, point, hot, radius)
 
 
-func _create_weld(part: Part, other: Part, point: Vector3, hot := true) -> Weld:
+func _ball_mesh_for(radius: float) -> SphereMesh:
+	if is_equal_approx(radius, WELD_BALL_RADIUS):
+		return _ball_mesh
+	var key := snappedf(radius, 0.001)
+	if not _ball_meshes.has(key):
+		var m := _ball_mesh.duplicate() as SphereMesh
+		m.radius = radius
+		m.height = radius * 2.0
+		_ball_meshes[key] = m
+	return _ball_meshes[key]
+
+
+func _create_weld(part: Part, other: Part, point: Vector3, hot := true, radius := WELD_BALL_RADIUS) -> Weld:
 	var w := Weld.new()
 	w.part_a = part
 	w.part_b = other
+	w.radius = radius
 	w.local_pos = part.global_transform.affine_inverse() * point
 	w.ball = MeshInstance3D.new()
-	w.ball.mesh = _ball_mesh
+	w.ball.mesh = _ball_mesh_for(radius)
 	part.add_child(w.ball)
 	w.ball.position = w.local_pos
 	if hot:

@@ -31,6 +31,9 @@ R mirando — descongelar · R R — descongelar tudo
 Segure o clique bem na emenda entre duas peças
 (ou entre a peça e o chão = ancorar)
 Arraste segurando para fazer vários pontos
+R — tamanho do ponto (pequeno/normal/grande)
+Pega a peça mais próxima; não trava componentes
+  (Shift + clique: soldar mesmo assim)
 
 [col]
 [b]Esmerilhadeira[/b]

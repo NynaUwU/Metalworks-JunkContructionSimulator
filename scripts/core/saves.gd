@@ -421,7 +421,10 @@ static func serialize(assemblies: Array, origin: Transform3D) -> Dictionary:
 	for w in Build.welds:
 		if w.internal or not ids.has(w.part_a) or (w.part_b != null and not ids.has(w.part_b)):
 			continue
-		welds.append({"a": ids[w.part_a], "b": ids[w.part_b] if w.part_b else -1, "p": _v(w.local_pos)})
+		var wd := {"a": ids[w.part_a], "b": ids[w.part_b] if w.part_b else -1, "p": _v(w.local_pos)}
+		if not is_equal_approx(w.radius, Build.WELD_BALL_RADIUS):
+			wd["r"] = w.radius
+		welds.append(wd)
 
 	var bodies: Array = []
 	for asm: Assembly in assemblies:
@@ -544,7 +547,7 @@ func restore(data: Dictionary, origin: Transform3D) -> Array:
 		var b: Part = by_id.get(int(wd["b"])) if int(wd["b"]) >= 0 else null
 		if a == null or (int(wd["b"]) >= 0 and b == null):
 			continue
-		Build.make_weld(a, b, a.global_transform * _to_v(wd["p"]), false)
+		Build.make_weld(a, b, a.global_transform * _to_v(wd["p"]), false, float(wd.get("r", Build.WELD_BALL_RADIUS)))
 
 	# 4) Montagens: congeladas e velocidades.
 	for bd: Dictionary in data.get("bodies", []):

@@ -474,8 +474,15 @@ static func serialize(assemblies: Array, origin: Transform3D) -> Dictionary:
 		for ins in w.via:
 			if is_instance_valid(ins) and ids.has(ins):
 				via.append(ids[ins])
-		wires.append({"f": group_index[fp.comp_group], "fp": w.from_port,
-			"t": group_index[tp.comp_group], "tp": w.to_port, "via": via})
+		var wd := {"f": group_index[fp.comp_group], "fp": w.from_port,
+			"t": group_index[tp.comp_group], "tp": w.to_port, "via": via}
+		var pa := _pin_data(w.a_part, w.a_local, fp)
+		if not pa.is_empty():
+			wd["fa"] = pa
+		var pb := _pin_data(w.b_part, w.b_local, tp)
+		if not pb.is_empty():
+			wd["ta"] = pb
+		wires.append(wd)
 
 	var pwires: Array = []
 	for pw in Power.wires:
@@ -489,7 +496,14 @@ static func serialize(assemblies: Array, origin: Transform3D) -> Dictionary:
 		for ins in pw.via:
 			if is_instance_valid(ins) and ids.has(ins):
 				pvia.append(ids[ins])
-		pwires.append({"a": group_index[ap.comp_group], "b": group_index[bp.comp_group], "via": pvia})
+		var pwd := {"a": group_index[ap.comp_group], "b": group_index[bp.comp_group], "via": pvia}
+		var ppa := _pin_data(pw.a_part, pw.a_local, ap)
+		if not ppa.is_empty():
+			pwd["pa"] = ppa
+		var ppb := _pin_data(pw.b_part, pw.b_local, bp)
+		if not ppb.is_empty():
+			pwd["pb"] = ppb
+		pwires.append(pwd)
 
 	var dlinks: Array = []
 	for dl in Drive.links:
@@ -508,6 +522,22 @@ static func serialize(assemblies: Array, origin: Transform3D) -> Dictionary:
 		"parts": part_list, "groups": groups, "welds": welds, "bodies": bodies, "wires": wires, "pwires": pwires,
 		"dlinks": dlinks,
 	}
+
+
+## Ponta de fio presa num ponto: [índice da peça no componente, x, y, z] (ou [] se não tiver).
+static func _pin_data(pin_part: Part, pin_local: Vector3, owner: Part) -> Array:
+	if pin_part == null or not is_instance_valid(pin_part) or pin_part.comp_group != owner.comp_group or pin_part.comp_kind == "":
+		return []
+	return [pin_part.comp_index, _r(pin_local.x), _r(pin_local.y), _r(pin_local.z)]
+
+
+static func _pin_from(arr: Array, d: Variant) -> Array:
+	if not d is Array or (d as Array).size() != 4:
+		return []
+	var idx := int(d[0])
+	if idx < 0 or idx >= arr.size() or not is_instance_valid(arr[idx]):
+		return []
+	return [arr[idx], Vector3(d[1], d[2], d[3])]
 
 
 static func _joint_state(j: MechJoint, ids: Dictionary) -> Dictionary:
@@ -645,7 +675,7 @@ func restore(data: Dictionary, origin: Transform3D) -> Array:
 		for id in wd.get("via", []):
 			if by_id.has(int(id)):
 				via.append(by_id[int(id)])
-		Signals.connect_ports(from, str(wd["fp"]), to, str(wd["tp"]), via)
+		Signals.connect_ports(from, str(wd["fp"]), to, str(wd["tp"]), via, _pin_from(farr, wd.get("fa")), _pin_from(tarr, wd.get("ta")))
 	for pd: Dictionary in data.get("pwires", []):
 		var aarr: Array = group_parts[int(pd["a"])]
 		var barr: Array = group_parts[int(pd["b"])]
@@ -659,7 +689,7 @@ func restore(data: Dictionary, origin: Transform3D) -> Array:
 		for id in pd.get("via", []):
 			if by_id.has(int(id)):
 				pvia.append(by_id[int(id)])
-		Power.connect_nodes(pa, pb, pvia)
+		Power.connect_nodes(pa, pb, pvia, _pin_from(aarr, pd.get("pa")), _pin_from(barr, pd.get("pb")))
 	for ld: Dictionary in data.get("dlinks", []):
 		var la_arr: Array = group_parts[int(ld["a"])]
 		var lb_arr: Array = group_parts[int(ld["b"])]

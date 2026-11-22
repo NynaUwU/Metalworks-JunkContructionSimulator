@@ -102,7 +102,7 @@ const POWER_SIZES := {
 }
 const POWER_KINDS := ["bateria", "solar", "recarga", "luz", "holofote", "rele", "chave", "medidor"]
 
-const INSULATOR_ANCHOR := Vector3(0, 0.055, 0)   ## onde o fio encosta no isolador (no "pescoço")
+const INSULATOR_ANCHOR := Vector3(0, 0.0275, 0)  ## onde o fio encosta no isolador (no "pescoço")
 const MOTOR_APOTHEM := 0.17
 const MOTOR_HALF_H := 0.15
 const SERVO_SIZE := Vector3(0.26, 0.28, 0.4)
@@ -201,7 +201,7 @@ static func bounds(kind: String, size := Vector3.ZERO) -> AABB:
 		"potenciometro":
 			return AABB(Vector3(-0.1, -0.04, -0.2), Vector3(0.2, 0.14, 0.4))
 		"isolador":
-			return AABB(Vector3(-0.07, -0.08, -0.07), Vector3(0.14, 0.18, 0.14))
+			return AABB(Vector3(-0.035, -0.04, -0.035), Vector3(0.07, 0.09, 0.07))
 		"puxador":
 			return AABB(Vector3(-0.09, -0.0125, -0.03), Vector3(0.18, 0.09, 0.06))
 	if SIGNAL_SIZES.has(kind):
@@ -811,7 +811,7 @@ static func _handle_visual(parent: Node3D) -> void:
 
 ## Isolador (como os de cerca elétrica): base, "pescoço" onde o fio passa e a tampa.
 static func _spawn_insulator(xform: Transform3D) -> Part:
-	var p := _oct(0.07, 0.16, "plastico", xform, "Isolador", "isolador")
+	var p := _oct(0.035, 0.08, "plastico", xform, "Isolador", "isolador")
 	p.mesh_instance.visible = false   # a aparência vem das peças abaixo
 	_insulator_visual(p)
 	p.assembly().recompute()
@@ -820,11 +820,12 @@ static func _spawn_insulator(xform: Transform3D) -> Part:
 
 static func _insulator_visual(parent: Node3D) -> void:
 	var black := Color(0.06, 0.06, 0.065)
-	_deco_cyl(parent, 0.07, 0.08, Transform3D(Basis(), Vector3(0, -0.04, 0)), black, 0.0)
-	_deco_cyl(parent, 0.04, 0.06, Transform3D(Basis(), Vector3(0, 0.03, 0)), black, 0.0)
-	_deco_cyl(parent, 0.072, 0.02, Transform3D(Basis(), Vector3(0, 0.07, 0)), black, 0.0)
-	_deco_cyl(parent, 0.012, 0.004, Transform3D(Basis(), Vector3(0, 0.081, 0)), Color(0.7, 0.72, 0.75), 0.9)
-	_deco_cyl(parent, 0.006, 0.08, Transform3D(Basis(), Vector3(0, -0.12, 0)), Color(0.6, 0.62, 0.66), 0.9)
+	# (metade do tamanho antigo: o isolador era grande demais)
+	_deco_cyl(parent, 0.035, 0.04, Transform3D(Basis(), Vector3(0, -0.02, 0)), black, 0.0)
+	_deco_cyl(parent, 0.02, 0.03, Transform3D(Basis(), Vector3(0, 0.015, 0)), black, 0.0)
+	_deco_cyl(parent, 0.036, 0.01, Transform3D(Basis(), Vector3(0, 0.035, 0)), black, 0.0)
+	_deco_cyl(parent, 0.006, 0.002, Transform3D(Basis(), Vector3(0, 0.0405, 0)), Color(0.7, 0.72, 0.75), 0.9)
+	_deco_cyl(parent, 0.003, 0.04, Transform3D(Basis(), Vector3(0, -0.06, 0)), Color(0.6, 0.62, 0.66), 0.9)
 
 
 # --- Lógica e mostradores ----------------------------------------------------------

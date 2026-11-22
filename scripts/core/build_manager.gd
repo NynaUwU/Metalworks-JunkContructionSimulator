@@ -185,7 +185,7 @@ func weld_at(part: Part, point: Vector3, radius := WELD_BALL_RADIUS, force := fa
 	return _create_weld(part, target["part"], point, true, radius)
 
 
-const INSULATOR_MIN_SPACING := 0.15
+const INSULATOR_MIN_SPACING := 0.08
 
 
 ## Coloca um isolador (guia de fio) soldado na superfície em `point`, de pé na direção
@@ -199,7 +199,7 @@ func place_insulator(on: Part, point: Vector3, normal: Vector3) -> Part:
 	var y := normal.normalized()
 	var x := y.cross(Vector3.FORWARD if absf(y.dot(Vector3.FORWARD)) < 0.9 else Vector3.RIGHT).normalized()
 	var basis := Basis(x, y, x.cross(y))
-	var ins: Part = Components.spawn("isolador", Transform3D(basis, point + y * 0.081))[0]
+	var ins: Part = Components.spawn("isolador", Transform3D(basis, point + y * 0.0405))[0]
 	_create_weld(ins, on, point)
 	return ins
 

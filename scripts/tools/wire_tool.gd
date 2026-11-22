@@ -18,6 +18,10 @@ extends GameTool
 var _src: SignalNode = null
 var power_mode := false          ## G: fio de energia em vez de lógica
 var _psrc: PowerNode = null      ## fio de energia em andamento
+## Pontas do fio: [peça, ponto local] de onde o jogador clicou (o fio fica preso ali).
+var _src_pin: Array = []
+var _pending_src_pin: Array = []
+var _pending_dst_pin: Array = []
 var _src_port := ""
 var _via: Array[Part] = []
 var _preview: MeshInstance3D
@@ -70,6 +74,9 @@ func _cancel() -> void:
 	_src = null
 	_src_port = ""
 	_psrc = null
+	_src_pin = []
+	_pending_src_pin = []
+	_pending_dst_pin = []
 	_via.clear()
 
 
@@ -141,9 +148,11 @@ func handle_input(event: InputEvent) -> bool:
 		elif n.outputs().is_empty():
 			player.toast("%s não tem saídas de sinal" % n.title())
 		else:
+			_pending_src_pin = aim_pin(player)
 			_pick_output(n)
 		return true
 	if n and not _compatible_inputs(n).is_empty():
+		_pending_dst_pin = aim_pin(player)
 		_pick_input(n)
 		return true
 	if n and not n.inputs().is_empty():
@@ -177,6 +186,7 @@ func _pick_output(n: SignalNode) -> void:
 func _start(n: SignalNode, port: String) -> void:
 	_src = n
 	_src_port = port
+	_src_pin = _pending_src_pin
 	_via.clear()
 	player.toast("%s · %s: clique nos isoladores (opcional) e depois no destino" % [n.title(), port])
 
@@ -198,7 +208,7 @@ func _link(n: SignalNode, port: String) -> void:
 	if _src == null or not _src.is_alive():
 		_cancel()
 		return
-	var linked := Signals.toggle(_src, _src_port, n, port, _via)
+	var linked := Signals.toggle(_src, _src_port, n, port, _via, _src_pin, _pending_dst_pin)
 	player.toast(("Fio: %s · %s → %s · %s" % [_src.title(), _src_port, n.title(), port]) if linked else "Fio removido")
 	if not player.aim.is_empty():
 		spawn_sparks(player.aim["position"], player.aim["normal"], 12, Color(1.0, 0.85, 0.3))
@@ -252,10 +262,11 @@ func _power_click() -> void:
 		return
 	if _psrc == null or pn == _psrc:
 		_psrc = pn
+		_src_pin = aim_pin(player)
 		_via.clear()
 		player.toast("Fio de energia de %s: clique nos isoladores (opcional) e na outra peça" % pn.title())
 		return
-	var linked := Power.toggle(_psrc, pn, _via)
+	var linked := Power.toggle(_psrc, pn, _via, _src_pin, aim_pin(player))
 	player.toast(("Fio de energia: %s ↔ %s" % [_psrc.title(), pn.title()]) if linked else "Fio de energia removido")
 	spawn_sparks(player.aim["position"], player.aim["normal"], 12, Color(1.0, 0.45, 0.15))
 	_cancel()
@@ -267,12 +278,25 @@ func physics_update(_delta: float) -> void:
 		if not _psrc.is_alive():
 			_cancel()
 			return
-		_draw_preview(Signals.anchor(_psrc.signal_part()), WireRenderer.POWER_ON)
+		_draw_preview(_src_start(_psrc.signal_part()), WireRenderer.POWER_ON)
 		return
 	if _src == null or not _src.is_alive():
 		_cancel()
 		return
-	_draw_preview(Signals.anchor(_src.signal_part()), SignalNode.TYPE_COLORS.get(_src_type(), Color(1.0, 0.8, 0.2)))
+	_draw_preview(_src_start(_src.signal_part()), SignalNode.TYPE_COLORS.get(_src_type(), Color(1.0, 0.8, 0.2)))
+
+
+func _src_start(fallback: Part) -> Vector3:
+	return Signals.end_point(_src_pin[0] if _src_pin.size() == 2 else null, _src_pin[1] if _src_pin.size() == 2 else Vector3.ZERO, fallback)
+
+
+## Ponto mirado, um pouco para fora da superfície (o fio encosta nele): [peça, ponto local].
+static func aim_pin(p: Player) -> Array:
+	var part := p.aim_part()
+	if part == null or p.aim.is_empty():
+		return []
+	var world: Vector3 = (p.aim["position"] as Vector3) + (p.aim["normal"] as Vector3) * 0.008
+	return [part, part.global_transform.affine_inverse() * world]
 
 
 func _draw_preview(start: Vector3, color: Color) -> void:

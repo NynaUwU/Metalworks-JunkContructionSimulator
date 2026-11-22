@@ -265,6 +265,8 @@ func _player_test() -> void:
 
 	player.select_tool(3)
 	var wire: WireTool = player.tools[3]
+	if not player.port_menu_requested.is_connected(_auto_pick):
+		player.port_menu_requested.connect(_auto_pick)   # o menu de portas aparece sempre: escolhe a 1ª
 	_aim(player, o + Vector3(0, 0, 2.2), lever.global_position)
 	await _frames(3)
 	wire.handle_input(_press("primary", true))
@@ -502,6 +504,8 @@ func _v05_test() -> void:
 	print("== Fiação: ajustes pelo botão direito")
 	player.select_tool(3)
 	var wire: WireTool = player.tools[3]
+	if not player.port_menu_requested.is_connected(_auto_pick):
+		player.port_menu_requested.connect(_auto_pick)   # o menu de portas aparece sempre: escolhe a 1ª
 	var got: Array = []
 	player.config_requested.connect(func(j: MechJoint) -> void: got.append(j))
 	_aim(player, o + Vector3(12, 0, 2.6), sl[0].global_position)
@@ -715,3 +719,8 @@ func _v06_test() -> void:
 			all_ok = false
 	check(all_ok, "os 7 componentes novos estão na loja, com preço e ícone")
 	check(spj.is_configurable() and not spj.is_actuator() and twj.is_configurable(), "mola e torção: sem teclas, mas com ajustes")
+
+
+## Responde o menu de portas da Fiação escolhendo a primeira opção.
+func _auto_pick(_title: String, _items: Array, cb: Callable) -> void:
+	cb.call(0)

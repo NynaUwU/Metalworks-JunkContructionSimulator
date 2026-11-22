@@ -2,7 +2,7 @@ extends Node3D
 ## Testes da lógica (Marco 4A): chip lógico, fios porta a porta, entradas e mostradores.
 ##   godot --headless --path . res://tests/test_logic.tscn
 
-const EXPECTED_CHECKS := 92
+const EXPECTED_CHECKS := 94
 
 var _fails := 0
 var _checks := 0
@@ -442,14 +442,32 @@ func _tools() -> void:
 	await _frames(3)
 	var before := menus.size()
 	pick[0] = 0
-	_aim(player, o + Vector3(0, 0, 4.0), lev.global_position)
+	_aim(player, o + Vector3(0, 0, 4.0), lev.global_position + Vector3(0.07, 0.0, 0.1))   # perto do canto da alavanca
 	await _frames(3)
+	var click_a: Vector3 = player.aim["position"]
 	wire.handle_input(_press("primary"))
 	_aim(player, o + Vector3(1.2, 0, 4.0), ind.global_position)
 	await _frames(3)
+	var click_b: Vector3 = player.aim["position"]
 	wire.handle_input(_press("primary"))
 	check(menus.size() == before + 2 and menus[before][1] == 1 and menus[before + 1][1] == 1 and Signals.is_linked(lev.device, "Saída", ind.node, "Valor"),
 		"com uma saída e uma entrada só, o menu aparece mesmo assim (e liga)")
+	var pw := Signals.find_wire(lev.device, "Saída", ind.node, "Valor")
+	var wp := Signals.wire_points(pw)
+	var centro := Signals.anchor(lev)
+	check(wp[0].distance_to(click_a) < 0.02 and wp[wp.size() - 1].distance_to(click_b) < 0.02 and wp[0].distance_to(centro) > 0.05,
+		"o fio fica preso onde foi clicado (não no centro da peça)")
+	lev.assembly().global_position += Vector3(0, 0, 0.5)
+	await _frames(2)
+	var moved_ok := Signals.wire_points(pw)[0].distance_to(click_a + Vector3(0, 0, 0.5)) < 0.03
+	var sdata: Dictionary = JSON.parse_string(JSON.stringify(Saves.serialize([lev.assembly(), ind.assembly()], Transform3D.IDENTITY)))
+	var made := Saves.restore(sdata, Transform3D(Basis(), Vector3(0, 0, 3)))
+	await _frames(2)
+	var copy_ok := false
+	for cw in Signals.wires:
+		if cw != pw and cw.from_port == "Saída" and cw.a_part != null and made.has(cw.a_part):
+			copy_ok = Signals.wire_points(cw)[0].distance_to(click_a + Vector3(0, 0, 3.5)) < 0.03
+	check(moved_ok and copy_ok, "a ponta acompanha a peça e fica salva no mesmo ponto")
 
 	print("== Depurador")
 	player.select_tool(4)

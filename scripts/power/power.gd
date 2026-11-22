@@ -18,6 +18,10 @@ class PWire:
 	var b: PowerNode
 	var via: Array = []          ## isoladores (Part) por onde o fio passa
 	var amps := 0.0              ## |potência| passando (W), para o desenho do fio
+	var a_part: Part = null      ## pontas: peça e ponto (local) clicados
+	var a_local := Vector3.ZERO
+	var b_part: Part = null
+	var b_local := Vector3.ZERO
 
 	func is_valid() -> bool:
 		return a != null and b != null and a.is_alive() and b.is_alive()
@@ -63,7 +67,7 @@ func find_wire(a: PowerNode, b: PowerNode) -> PWire:
 	return null
 
 
-func connect_nodes(a: PowerNode, b: PowerNode, via: Array = []) -> PWire:
+func connect_nodes(a: PowerNode, b: PowerNode, via: Array = [], pin_a: Array = [], pin_b: Array = []) -> PWire:
 	if a == null or b == null or a == b:
 		return null
 	var existing := find_wire(a, b)
@@ -73,17 +77,23 @@ func connect_nodes(a: PowerNode, b: PowerNode, via: Array = []) -> PWire:
 	w.a = a
 	w.b = b
 	w.via = via.duplicate()
+	if pin_a.size() == 2:
+		w.a_part = pin_a[0]
+		w.a_local = pin_a[1]
+	if pin_b.size() == 2:
+		w.b_part = pin_b[0]
+		w.b_local = pin_b[1]
 	wires.append(w)
 	return w
 
 
 ## Liga, ou desliga se já estava ligado. Retorna true se ficou ligado.
-func toggle(a: PowerNode, b: PowerNode, via: Array = []) -> bool:
+func toggle(a: PowerNode, b: PowerNode, via: Array = [], pin_a: Array = [], pin_b: Array = []) -> bool:
 	var w := find_wire(a, b)
 	if w:
 		wires.erase(w)
 		return false
-	return connect_nodes(a, b, via) != null
+	return connect_nodes(a, b, via, pin_a, pin_b) != null
 
 
 func wires_of(n: PowerNode) -> Array:
@@ -96,11 +106,11 @@ func remove_via(ins: Part) -> void:
 
 
 func wire_points(w: PWire) -> PackedVector3Array:
-	var pts := PackedVector3Array([Signals.anchor(w.a.signal_part())])
+	var pts := PackedVector3Array([Signals.end_point(w.a_part, w.a_local, w.a.signal_part())])
 	for ins in w.via:
 		if is_instance_valid(ins) and (ins as Part).is_inside_tree():
 			pts.append(Components.wire_anchor(ins))
-	pts.append(Signals.anchor(w.b.signal_part()))
+	pts.append(Signals.end_point(w.b_part, w.b_local, w.b.signal_part()))
 	return pts
 
 

@@ -13,6 +13,11 @@ class Wire:
 	var to_node: SignalNode
 	var to_port := ""
 	var via: Array = []          ## isoladores (Part) por onde o fio passa
+	## Onde o fio encosta: a peça e o ponto (local) clicados. Sem isso, no meio da peça.
+	var a_part: Part = null
+	var a_local := Vector3.ZERO
+	var b_part: Part = null
+	var b_local := Vector3.ZERO
 
 	func type() -> String:
 		return from_node.port_type(from_port, true)
@@ -84,7 +89,7 @@ func is_linked(from: SignalNode, fp: String, to: SignalNode, tp: String) -> bool
 
 ## Liga a saída `fp` de `from` à entrada `tp` de `to`. Retorna o fio (ou null se os
 ## tipos não combinam / é o mesmo nó).
-func connect_ports(from: SignalNode, fp: String, to: SignalNode, tp: String, via: Array = []) -> Wire:
+func connect_ports(from: SignalNode, fp: String, to: SignalNode, tp: String, via: Array = [], pin_a: Array = [], pin_b: Array = []) -> Wire:
 	if from == null or to == null or from == to:
 		return null
 	var t := from.port_type(fp, true)
@@ -99,6 +104,12 @@ func connect_ports(from: SignalNode, fp: String, to: SignalNode, tp: String, via
 	w.to_node = to
 	w.to_port = tp
 	w.via = via.duplicate()
+	if pin_a.size() == 2:
+		w.a_part = pin_a[0]
+		w.a_local = pin_a[1]
+	if pin_b.size() == 2:
+		w.b_part = pin_b[0]
+		w.b_local = pin_b[1]
 	wires.append(w)
 	_dirty = true
 	return w
@@ -110,12 +121,12 @@ func disconnect_wire(w: Wire) -> void:
 
 
 ## Liga, ou desliga se já estava ligado. Retorna true se ficou ligado.
-func toggle(from: SignalNode, fp: String, to: SignalNode, tp: String, via: Array = []) -> bool:
+func toggle(from: SignalNode, fp: String, to: SignalNode, tp: String, via: Array = [], pin_a: Array = [], pin_b: Array = []) -> bool:
 	var w := find_wire(from, fp, to, tp)
 	if w:
 		disconnect_wire(w)
 		return false
-	return connect_ports(from, fp, to, tp, via) != null
+	return connect_ports(from, fp, to, tp, via, pin_a, pin_b) != null
 
 
 func wires_into(n: SignalNode, port := "") -> Array:
@@ -134,12 +145,19 @@ func remove_via(ins: Part) -> void:
 
 ## Pontos do fio: saída → isoladores → entrada (o fio encosta no topo das peças).
 func wire_points(w: Wire) -> PackedVector3Array:
-	var pts := PackedVector3Array([anchor(w.from_node.signal_part())])
+	var pts := PackedVector3Array([end_point(w.a_part, w.a_local, w.from_node.signal_part())])
 	for ins in w.via:
 		if is_instance_valid(ins) and (ins as Part).is_inside_tree():
 			pts.append(Components.wire_anchor(ins))
-	pts.append(anchor(w.to_node.signal_part()))
+	pts.append(end_point(w.b_part, w.b_local, w.to_node.signal_part()))
 	return pts
+
+
+## Ponta do fio: no ponto clicado da peça (se houver), senão no meio da face de cima.
+static func end_point(pin_part: Part, pin_local: Vector3, fallback: Part) -> Vector3:
+	if pin_part != null and is_instance_valid(pin_part) and pin_part.is_inside_tree():
+		return pin_part.global_transform * pin_local
+	return anchor(fallback)
 
 
 ## Onde o fio encosta numa peça: no meio da face de cima (Y local).

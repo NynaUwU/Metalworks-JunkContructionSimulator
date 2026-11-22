@@ -142,7 +142,8 @@ Nome, mapa, visual e código são próprios.
   Controles, componentes (o motor dá Ângulo e Giro, o pistão dá Extensão...), chips, teclas, assento e telas.
   Lógica é de graça: sinais não gastam energia.
 - **Fiação (4):** clique na peça de origem e escolha a saída, passe pelos isoladores (opcional) e clique no destino
-  escolhendo a entrada (só aparecem as do mesmo tipo). O menu aparece sempre, mesmo com uma porta só. Escolher a mesma ligação de novo desliga o fio.
+  escolhendo a entrada (só aparecem as do mesmo tipo). O menu aparece sempre, mesmo com uma porta só.
+  As pontas do fio ficam presas onde você clicou na peça. Escolher a mesma ligação de novo desliga o fio.
   Vários fios numa entrada de número somam. Cor do fio = tipo; aceso quando tem sinal.
 - **Chip lógico:** uma peça só com 86 modos (botão direito com a Fiação para escolher):
   - lógica (E, OU, NÃO, XOU...) e comparação;

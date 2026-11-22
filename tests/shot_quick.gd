@@ -776,3 +776,27 @@ func _drive() -> void:
 	_look_from_eye(Vector3(-40, 0.2, 23))
 	await _frames(30)
 	await _shot("d2_deposito_motores")
+
+
+func _pins() -> void:
+	var o := Vector3(6, 0.02, -2)
+	var plate := Build.spawn_box(Vector3(1.6, 0.05, 0.8), "aco", Transform3D(Basis(), o + Vector3(0, 0.025, 0)))
+	plate.assembly().set_frozen(true)
+	var lev: Part = Components.spawn("alavanca", Transform3D(Basis(), o + Vector3(-0.6, 0.09, 0.1)))[0]
+	var lamp: Part = Components.spawn("indicador", Transform3D(Basis(), o + Vector3(0.6, 0.075, 0.1)))[0]
+	lev.assembly().set_frozen(true)
+	lamp.assembly().set_frozen(true)
+	var i1 := Build.place_insulator(plate, o + Vector3(-0.2, 0.05, -0.2), Vector3.UP)
+	var i2 := Build.place_insulator(plate, o + Vector3(0.2, 0.05, -0.2), Vector3.UP)
+	var pa := [lev, lev.global_transform.affine_inverse() * (o + Vector3(-0.52, 0.09, 0.1))]       # lateral da alavanca
+	var pb := [lamp, lamp.global_transform.affine_inverse() * (o + Vector3(0.6, 0.11, 0.1))]
+	Signals.connect_ports(lev.device, "Saída", lamp.node, "Valor", [i1, i2], pa, pb)
+	lev.device.press()
+	var bat: Part = Components.spawn("bateria", Transform3D(Basis(), o + Vector3(-0.4, 0.16, 0.9)))[0]
+	var lz: Part = Components.spawn("luz", Transform3D(Basis(), o + Vector3(0.5, 0.05, 0.9)))[0]
+	Power.connect_nodes(bat.node, lz.node, [], [bat, bat.global_transform.affine_inverse() * (o + Vector3(-0.25, 0.2, 0.9))], [lz, lz.global_transform.affine_inverse() * (o + Vector3(0.43, 0.05, 0.9))])
+	await _frames(30)
+	player.teleport(o + Vector3(0, 0.03, 2.3))
+	_look_from_eye(o + Vector3(0, 0.05, 0.2))
+	await _frames(10)
+	await _shot("w1_pontas_e_isolador")

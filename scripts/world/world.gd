@@ -509,6 +509,7 @@ func _spawn_engine_depot() -> void:
 		["motor_mono", "motor_4l", "motor_v8", "motor_v12"],
 		["motor_diesel", "motor_rotativo", "motor_eletrico", "turbina"],
 		["cambio_manual", "cambio_auto", "cvt", "gerador"],
+		["embreagem_auto", "embreagem_auto", "embreagem_manual", "embreagem_manual"],
 		["cubo", "cubo", "cubo", "cubo"],
 		["tanque_gasolina", "tanque_gasolina", "tanque_diesel", "tanque_diesel"],
 	]

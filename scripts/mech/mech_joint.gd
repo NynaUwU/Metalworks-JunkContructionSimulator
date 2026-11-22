@@ -41,7 +41,7 @@ const NAMES := {
 ## Recebem sinal (teclas do assento / fios).
 const ACTUATORS := ["motor", "servo", "pistao", "servo_linear", "trava", "guincho", "propulsor", "ima", "engate"]
 ## Não recebem sinal, mas têm ajustes (botão direito da Fiação).
-const CONFIG_ONLY := ["torcao", "mola", "dobradica", "pino", "esferica"]
+const CONFIG_ONLY := ["torcao", "mola", "dobradica", "pino", "esferica", "cubo"]
 const ROTARY := ["motor", "servo", "dobradica", "pino", "trava", "torcao"]
 const LINEAR := ["pistao", "servo_linear", "mola", "balanca"]
 const SCALE_TRAVEL := 0.04         ## balança: curso (m, × tamanho) — é uma mola bem dura
@@ -98,6 +98,7 @@ var _lock: Joint3D                ## eletroímã / engate: junta temporária com
 var lock_target: Part
 var size_scale := 1.0             ## tamanho do componente (pequeno 0,6 · médio 1 · grande 1,6)
 var collide := true               ## os dois lados colidem entre si (pistões nunca)
+var hub_side := -1                ## cubo: -1 lado esquerdo, +1 direito (esterço de tanque); `invert` vira o giro
 var _sleep_ticks := 0
 static var _fx_mats := {}
 

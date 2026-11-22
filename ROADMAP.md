@@ -165,7 +165,13 @@ Inspirado no Wiremod e no ACF do Garry's Mod (sem nada de NPCs nem geradores de 
 - Motor simples limitado (800 N·m, 12 rad/s); carro de exemplo novo
 - Testes: aceleração, troca de marcha, freio, esterço de tanque, ré, falta de combustível, ligação quebrando,
   elétrico, gerador, bomba, salvar
-- **Ficou para depois:** câmbio → câmbio em cadeia, transfer (reduzida/alta) e diferencial avulso (4E)
+- **Ficou para depois:** transfer (reduzida/alta) e diferencial avulso (4E)
+
+### ✅ v0.11.1 — Transmissão livre e embreagens
+- Qualquer peça liga em qualquer outra, em qualquer ordem; a simulação acha o caminho do motor até as rodas
+  (câmbios multiplicam, embreagens limitam, tanque em qualquer ponto). Câmbio → câmbio funciona.
+- Sem seta no câmbio e sem lado automático: os cubos têm **Inverter o giro** e **Lado** (esquerdo/direito)
+- Embreagem automática e embreagem manual (entrada Pedal); saídas Engate e Patinação
 
 ### v0.12 — 4E: Avançado
 - [ ] Câmbio → câmbio em cadeia, caixa de transferência (reduzida/alta) e diferencial avulso (vindos da 4D)

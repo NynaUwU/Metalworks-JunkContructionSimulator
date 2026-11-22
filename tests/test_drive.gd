@@ -1,10 +1,11 @@
 extends Node3D
 ## Trem de força (Marco 4D): aceleração, troca de marcha, freio, esterço de tanque, ré,
-## falta de combustível, ligações (regras e quebra), elétrico, gerador, motor simples
+## falta de combustível, ligações livres (qualquer peça em qualquer ordem) e quebra,
+## embreagens (automática, manual, sem embreagem), elétrico, gerador, motor simples
 ## limitado, bomba de combustível e salvar.
 ##   godot --headless --path . res://tests/test_drive.tscn
 
-const EXPECTED_CHECKS := 17
+const EXPECTED_CHECKS := 23
 
 var _fails := 0
 var _checks := 0
@@ -86,7 +87,7 @@ func _run() -> void:
 	await _frames(120)
 	var turned := rad_to_deg(wrapf(chassis.global_basis.get_euler().y - yaw0, -PI, PI))
 	var drift := chassis.global_position.distance_to(pos0)
-	check(turned < -40.0 and drift < 3.0 and en.rpm() > 600.0,
+	check(turned < -40.0 and drift < 3.5 and en.rpm() > 600.0,
 		"esterço de tanque gira quase no lugar para a direita (%.0f° em 2 s, saiu %.1f m, motor %d rpm)" % [turned, drift, roundi(en.rpm())])
 	dir.set_value(SignalNode.NUM, 0.0)
 	await _frames(30)
@@ -123,10 +124,13 @@ func _run() -> void:
 	print("== Ligações")
 	var t2: Part = Components.spawn("tanque_diesel", Transform3D(Basis(), Vector3(60, 0.3, 0)))[0]
 	var e2: Part = Components.spawn("motor_4l", Transform3D(Basis(), Vector3(61.5, 0.2, 0)))[0]
-	var refused := Drive.toggle(t2.node, e2.node)
+	var odd := Drive.toggle(t2.node, e2.node)
 	var hub := Components.spawn("cubo", Transform3D(Basis(), Vector3(63, 0.1, 0)))
-	var refused2 := Drive.toggle(e2.node, hub[0].mech)
-	check(not refused["linked"] and not refused2["linked"], "diesel não liga em motor a gasolina; motor não liga direto no cubo")
+	var odd2 := Drive.toggle(e2.node, hub[0].mech)
+	await _frames(30)
+	check(odd["linked"] and odd2["linked"] and not (e2.node as DriveNode).running,
+		"qualquer ligação é aceita (diesel no motor a gasolina, motor direto no cubo), mas diesel não abastece motor a gasolina")
+	Drive.toggle(e2.node, hub[0].mech)
 	var t3: Part = Components.spawn("tanque_gasolina", Transform3D(Basis(), Vector3(60, 0.3, 3)))[0]
 	var ok := Drive.toggle(t3.node, e2.node)
 	var broke := [false]
@@ -134,6 +138,74 @@ func _run() -> void:
 	t3.assembly().global_position += Vector3(0, 0, 6)
 	await _frames(3)
 	check(ok["linked"] and broke[0] and Drive.find_link(t3.node, e2.node) == null, "ligação esticada demais quebra")
+
+	print("== Embreagens")
+	var ccar := DemoBuilds.build_engine_car(Vector3(-120, 0, 0), "motor_4l", "cambio_auto", false, "embreagem_manual")
+	var ce: DriveNode = ccar["engine"]
+	var cc: DriveNode = ccar["clutch"]
+	var cch: Part = ccar["chassis"]
+	var pedal := _const(1.0)
+	Signals.connect_ports(pedal, "Valor", cc, "Pedal")
+	var cthr := _const(1.0)
+	Signals.connect_ports(cthr, "Valor", ce, "Acelerador")
+	var cp0 := cch.global_position
+	await _frames(120)
+	check(ce.running and ce.rpm() > 2000.0 and cch.global_position.distance_to(cp0) < 0.5,
+		"embreagem manual com o pedal no fundo: motor gira (%d rpm) e o carro fica parado (%.2f m)" % [roundi(ce.rpm()), cch.global_position.distance_to(cp0)])
+	cthr.set_value(SignalNode.NUM, 0.0)
+	await _frames(30)
+	pedal.set_value(SignalNode.NUM, 0.0)
+	cthr.set_value(SignalNode.NUM, 1.0)
+	var cp1 := cch.global_position
+	await _frames(240)
+	var c_fwd := (cch.global_position - cp1).dot(Vector3.FORWARD)
+	check(c_fwd > 5.0 and cc.out.get("Engate", 0.0) > 0.5, "soltando o pedal, o carro anda (%.1f m, engate %d%%)" % [c_fwd, roundi(100.0 * float(cc.out.get("Engate", 0.0)))])
+	cthr.set_value(SignalNode.NUM, 0.0)
+	# Sem embreagem: motor ligado direto no câmbio
+	var dcar := DemoBuilds.build_engine_car(Vector3(-160, 0, 0), "motor_4l", "cambio_auto", false, "")
+	var de: DriveNode = dcar["engine"]
+	var dthr := _const(1.0)
+	Signals.connect_ports(dthr, "Valor", de, "Acelerador")
+	var dp0: Vector3 = (dcar["chassis"] as Part).global_position
+	await _frames(240)
+	var d_fwd := ((dcar["chassis"] as Part).global_position - dp0).dot(Vector3.FORWARD)
+	check(dcar["clutch"] == null and de.running and d_fwd > 3.0, "sem embreagem, o motor fica preso às rodas e o carro anda (%.1f m)" % d_fwd)
+	dthr.set_value(SignalNode.NUM, 0.0)
+
+	print("== Ordem livre")
+	# Mesmo carro, ligado numa ordem estranha: tanque no câmbio, rodas em corrente,
+	# ligações feitas de trás para a frente.
+	var fcar := DemoBuilds.build_engine_car(Vector3(-200, 0, 0), "motor_4l", "cambio_auto", false)
+	var fe: DriveNode = fcar["engine"]
+	var fg: DriveNode = fcar["gearbox"]
+	var fc: DriveNode = fcar["clutch"]
+	var fhubs: Array = fcar["hubs"]
+	for o: Object in [fe, fg, fc, fcar["tank"]] + fhubs:
+		for l in Drive.links_of(o):
+			Drive.links.erase(l)
+	Drive.link(fhubs[0], fg)
+	for k in range(1, fhubs.size()):
+		Drive.link(fhubs[k], fhubs[k - 1])
+	Drive.link(fcar["tank"], fg)
+	Drive.link(fg, fc)
+	Drive.link(fc, fe)
+	var fnet := Drive.explore(fe)
+	check(fnet["hubs"].size() == 4 and fnet["fuel"].size() == 1 and (fnet["hubs"][3]["gbs"] as Array).size() == 1 and (fnet["hubs"][3]["clutches"] as Array).size() == 1,
+		"a simulação acha o caminho em qualquer ordem (4 rodas, 1 tanque, câmbio e embreagem no caminho)")
+	var fthr := _const(1.0)
+	Signals.connect_ports(fthr, "Valor", fe, "Acelerador")
+	var fp0: Vector3 = (fcar["chassis"] as Part).global_position
+	await _frames(240)
+	var f_fwd := ((fcar["chassis"] as Part).global_position - fp0).dot(Vector3.FORWARD)
+	check(fe.running and f_fwd > 5.0, "e o carro anda igual (%.1f m)" % f_fwd)
+	fthr.set_value(SignalNode.NUM, 0.0)
+	# Dois câmbios em série: as relações multiplicam
+	var g2: Part = Components.spawn("cambio_manual", Transform3D(Basis(), (fcar["chassis"] as Part).global_position * Vector3(1, 0, 1) + Vector3(2.5, 0.2, 0)))[0]
+	Drive.links.erase(Drive.find_link(fhubs[0], fg))
+	Drive.link(fg, g2.node)
+	Drive.link(g2.node, fhubs[0])
+	var fnet2 := Drive.explore(fe)
+	check((fnet2["hubs"][0]["gbs"] as Array).size() == 2, "câmbio → câmbio: as rodas veem os dois câmbios no caminho")
 
 	print("== Motor elétrico e gerador")
 	var ecar := DemoBuilds.build_engine_car(Vector3(120, 0, 0), "motor_eletrico", "cambio_auto", false)

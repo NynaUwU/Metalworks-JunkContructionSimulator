@@ -545,7 +545,7 @@ static func _joint_state(j: MechJoint, ids: Dictionary) -> Dictionary:
 		"rest": _xf(j.rest), "speed": j.speed, "strength": j.strength, "max_angle": j.max_angle,
 		"stroke": j.stroke, "invert": j.invert, "toggle": j.toggle, "hold": j.hold,
 		"damper": j.damper, "stiff": j.stiffness, "damp": j.damping, "ride": j.ride,
-		"free_idle": j.free_idle, "ramp": j.ramp, "lock_idle": j.lock_idle, "manual": j.manual, "collide": j.collide,
+		"free_idle": j.free_idle, "ramp": j.ramp, "side": j.hub_side, "lock_idle": j.lock_idle, "manual": j.manual, "collide": j.collide,
 		"rope_len": j.rope_len, "max_rope": j.max_rope, "latch": j._latched,
 		"pos": _binds(j.bind_pos), "neg": _binds(j.bind_neg),
 	}
@@ -729,6 +729,7 @@ func _apply_joint_state(j: MechJoint, s: Dictionary, by_id: Dictionary) -> void:
 	j.ride = float(s.get("ride", j.ride))
 	j.free_idle = bool(s.get("free_idle", false))
 	j.ramp = float(s.get("ramp", 1.0))
+	j.hub_side = int(s.get("side", -1))
 	j.collide = bool(s.get("collide", true))
 	j.lock_idle = bool(s.get("lock_idle", false))
 	j.manual = bool(s.get("manual", false))

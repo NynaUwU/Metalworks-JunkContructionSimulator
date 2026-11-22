@@ -23,6 +23,7 @@ const GEARBOXES := {
 	"cambio_manual": "Câmbio manual", "cambio_auto": "Câmbio automático", "cvt": "Câmbio CVT",
 }
 const TANKS := {"tanque_gasolina": "Tanque de gasolina", "tanque_diesel": "Tanque de diesel"}
+const CLUTCHES := {"embreagem_auto": "Embreagem automática", "embreagem_manual": "Embreagem manual"}
 const TANK_L := 40.0              ## tanque médio (pequeno/grande: × tamanho³)
 const LITERS_PER_KWH := 3.0       ## consumo (escala do jogo)
 const GEN_W := 400.0              ## gerador: potência máxima (W)
@@ -61,6 +62,10 @@ var wheel_speed := 0.0            ## giro médio das rodas, para a frente (rad/s
 # --- Tanque
 var fuel := 0.0                   ## litros
 
+# --- Embreagem
+var pedal := 0.0                  ## manual: 1 = pedal no fundo (desengatada)
+var engage_shown := 0.0           ## quanto está engatada (para a luz)
+
 # Aparência e som
 var label: Label3D
 var glow: MeshInstance3D
@@ -86,6 +91,10 @@ func is_tank() -> bool:
 	return TANKS.has(kind)
 
 
+func is_clutch() -> bool:
+	return CLUTCHES.has(kind)
+
+
 func spec() -> Dictionary:
 	return ENGINES.get(kind, {})
 
@@ -97,6 +106,8 @@ func kind_label() -> String:
 		return GEARBOXES[kind] + (" (tanque)" if tank_steer else "")
 	if is_tank():
 		return "%s %s" % [TANKS[kind], ["pequeno", "médio", "grande"][1 if is_equal_approx(size_scale, 1.0) else (0 if size_scale < 1.0 else 2)]]
+	if is_clutch():
+		return CLUTCHES[kind]
 	return kind
 
 
@@ -118,8 +129,10 @@ func inputs() -> Array:
 	if is_engine():
 		return [["Acelerador", NUM], ["Ligado", NUM]]
 	if is_gearbox():
-		return [["Marcha", NUM], ["Sobe", NUM], ["Desce", NUM], ["Ré", NUM], ["Embreagem", NUM], ["Freio", NUM],
+		return [["Marcha", NUM], ["Sobe", NUM], ["Desce", NUM], ["Ré", NUM], ["Freio", NUM],
 			["Esq", NUM], ["Dir", NUM], ["Esterço", NUM]]
+	if kind == "embreagem_manual":
+		return [["Pedal", NUM]]
 	return []
 
 
@@ -130,12 +143,14 @@ func outputs() -> Array:
 		return [["Marcha", NUM], ["Relação", NUM], ["Giro das rodas", NUM]]
 	if is_tank():
 		return [["Combustível", NUM], ["%", NUM]]
+	if is_clutch():
+		return [["Engate", NUM], ["Patinação", NUM]]
 	return []
 
 
 ## Lê as entradas (motor e câmbio); a simulação roda no Drive, depois dos sinais.
 func is_source() -> bool:
-	return is_tank()
+	return is_tank() or kind == "embreagem_auto"
 
 
 func update_outputs(_dt: float) -> void:
@@ -152,6 +167,8 @@ func evaluate(i: Dictionary, wired: Dictionary, _dt: float) -> void:
 	elif is_gearbox():
 		inp = i.duplicate()
 		inp["_marcha_wired"] = wired.has("Marcha")
+	elif kind == "embreagem_manual":
+		pedal = clampf(float(i.get("Pedal", 0.0)), 0.0, 1.0)
 
 
 ## Quer estar ligado (entrada Ligado, ou sozinho se não tiver fio).
@@ -224,6 +241,9 @@ func update_visual() -> void:
 			"R" if gear < 0 else ("N" if gear == 0 else str(gear)) if kind != "cvt" else ("R" if gear < 0 else ("N" if gear == 0 else "%.2f" % cvt_ratio))]
 	elif is_tank():
 		label.text = "%s\n%d / %d L" % [fuel_type().to_upper(), roundi(fuel), roundi(capacity())]
+	elif is_clutch():
+		label.text = "EMBREAGEM\n%s · %d%%" % ["AUTO" if kind == "embreagem_auto" else "MANUAL", roundi(engage_shown * 100.0)]
+		_set_glow(Color(0.3, 1.0, 0.4).lerp(Color(1.0, 0.6, 0.1), 1.0 - engage_shown), 0.4 + engage_shown * 2.0)
 
 
 func _set_glow(c: Color, energy: float) -> void:

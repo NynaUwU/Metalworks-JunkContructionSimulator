@@ -105,6 +105,8 @@ const ITEMS := [
 	{"id": "cambio_manual", "nome": "Câmbio manual", "cat": "Câmbios", "component": "cambio_manual"},
 	{"id": "cambio_auto", "nome": "Câmbio automático", "cat": "Câmbios", "component": "cambio_auto"},
 	{"id": "cvt", "nome": "Câmbio CVT", "cat": "Câmbios", "component": "cvt"},
+	{"id": "embreagem_auto", "nome": "Embreagem automática", "cat": "Câmbios", "component": "embreagem_auto"},
+	{"id": "embreagem_manual", "nome": "Embreagem manual", "cat": "Câmbios", "component": "embreagem_manual"},
 	{"id": "cubo", "nome": "Cubo de roda", "cat": "Câmbios", "component": "cubo", "box": Vector3(1, 0, 0), "params": [SIZE]},
 	{"id": "tanque_gasolina", "nome": "Tanque de gasolina", "cat": "Combustível", "component": "tanque_gasolina", "box": Vector3(1, 0, 0), "params": [SIZE]},
 	{"id": "tanque_diesel", "nome": "Tanque de diesel", "cat": "Combustível", "component": "tanque_diesel", "box": Vector3(1, 0, 0), "params": [SIZE]},

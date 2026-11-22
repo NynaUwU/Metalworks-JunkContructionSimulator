@@ -177,22 +177,31 @@ Nome, mapa, visual e código são próprios.
 - Lógica continua de graça. Os componentes simples (motor, servo, pistão...) não gastam energia.
 
 **Trem de força** (Marco 4D, estilo ACF; depósito MOTORES e loja: Motores, Câmbios, Combustível)
-- Monte: **tanque → motor → câmbio → cubos de roda**, ligados pela ferramenta **Transmissão (9)**: clique numa peça
-  e depois na outra. As ligações são invisíveis (só aparecem com a ferramenta na mão), têm até 8 m e **quebram se
-  esticarem 1,5×**. Botão direito numa peça desfaz as ligações dela.
-- **Cubo de roda:** eixo livre. Solde a base no chassi (com o eixo para fora) e a roda no disco.
+- Ligue as peças com a ferramenta **Transmissão (9)**: clique numa peça e depois na outra. **Qualquer peça liga em
+  qualquer outra, em qualquer ordem** (tanque, bateria, motor, embreagem, câmbio, gerador, cubo de roda). A
+  simulação acha sozinha o caminho de cada motor até as rodas: os câmbios do caminho multiplicam as relações,
+  as embreagens do caminho limitam o torque e o tanque pode estar ligado em qualquer ponto da rede. O que não faz
+  sentido (diesel num motor a gasolina, por exemplo) fica ligado, só não faz nada; a dica da ferramenta avisa.
+  As ligações são invisíveis (só aparecem com a ferramenta na mão) e **quebram se esticarem 1,5×**. Botão direito
+  numa peça desfaz as ligações dela.
+- **Cubo de roda:** eixo livre. Solde a base no chassi (com o eixo para fora) e a roda no disco. Ajustes (botão
+  direito com a Fiação): **Inverter o giro** (marque nos cubos de um dos lados, cujo eixo aponta para o outro lado)
+  e **Lado** esquerdo/direito (usado pelo esterço de tanque).
+- **Embreagens:** **automática** (sai patinando no giro de arrancada, como um carro de verdade) e **manual**
+  (entrada Pedal: 1 = pedal no fundo, solta o motor das rodas). Saídas Engate e Patinação. Sem embreagem no
+  caminho, o motor fica preso às rodas.
 - **Motores** (8): monocilíndrico, 4 em linha, V8, V12, diesel, rotativo, elétrico (usa bateria: bateria → motor)
   e turbina. RPM com volante, curva de torque, marcha lenta, corte de giro e partida; sem combustível, desliga.
   Entradas Acelerador (0 a 1) e Ligado (sem fio, liga sozinho). Saídas RPM, Torque, Potência, Consumo e Ligado.
   Som que segue o giro.
-- **Câmbios:** manual (Sobe/Desce ou Marcha), automático (troca sozinho) e CVT. **A seta em cima aponta para a
-  frente do veículo**; o lado esquerdo/direito dos cubos sai da posição. Entradas Freio, Ré (com o carro andando
-  para a frente, freia antes de engatar), Embreagem, e, com **esterço de tanque** (diferencial duplo), Esq/Dir/Esterço
-  (gira no lugar). A embreagem é automática: sai patinando no giro de arrancada.
+- **Câmbios:** manual (Sobe/Desce ou Marcha), automático (troca sozinho) e CVT. Entradas Freio, Ré (com o carro
+  andando para a frente, freia antes de engatar) e, com **esterço de tanque** (diferencial duplo), Esq/Dir/Esterço
+  (gira no lugar). Dá para ligar câmbio em câmbio: as relações multiplicam.
 - **Gerador:** motor → gerador (Transmissão) e o gerador na rede (fio de energia): até 400 W.
 - **Combustível:** tanques de gasolina e diesel (P/M/G; médio 40 L). Abasteça na **bomba de combustível** (E nela,
   1 ponto a cada 5 L; só soldada no chão). Tem uma ao lado do posto RECARGA.
-- **Carro de exemplo novo** perto do antigo: W acelera, S dá ré, A/D viram (tanque), Espaço freia.
+- **Carro de exemplo novo** perto do antigo (tanque, motor, embreagem automática, câmbio e 4 cubos): W acelera,
+  S dá ré, A/D viram (tanque), Espaço freia.
 
 **Sensores** (Marco 4C, depósito ELETRÔNICA e loja, categoria Sensores)
 - Todos mandam o que medem como sinal (ligue com a Fiação). Ajustes: botão direito com a Fiação.

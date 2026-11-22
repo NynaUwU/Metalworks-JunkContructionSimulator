@@ -2,8 +2,8 @@ class_name TransmissionTool
 extends GameTool
 ## Transmissão (estilo ACF): liga as peças do trem de força sem nada físico.
 ##   Clique numa peça e depois na outra: liga (ou desliga, se já estiver ligada).
-##     tanque → motor · bateria → motor elétrico · motor → câmbio · motor → gerador
-##     câmbio → cubo de roda (o lado esquerdo/direito sai da posição)
+##   Qualquer peça liga em qualquer outra, em qualquer ordem: a simulação acha o caminho
+##   do motor até as rodas (câmbios multiplicam, embreagens soltam) e ignora o resto.
 ##   Botão direito: cancela; mirando numa peça, desfaz todas as ligações dela.
 ## As ligações só aparecem com esta ferramenta na mão. Esticadas demais, quebram.
 
@@ -70,7 +70,7 @@ func handle_input(event: InputEvent) -> bool:
 		return false
 	var o := Drive.node_of(player.aim_part())
 	if o == null:
-		player.toast("A Transmissão liga tanques, baterias, motores, câmbios, geradores e cubos de roda")
+		player.toast("A Transmissão liga tanques, baterias, motores, embreagens, câmbios, geradores e cubos de roda")
 		return true
 	if _src == null or _src == o:
 		_src = o
@@ -85,12 +85,15 @@ func handle_input(event: InputEvent) -> bool:
 
 
 static func _kind_of(l) -> String:
-	if l.a is DriveNode and (l.a as DriveNode).is_tank() or l.a is PowerNode:
-		return "fuel"
-	if l.b is MechJoint:
-		return "hub"
-	if l.b is PowerNode:
-		return "gen"
+	for o: Object in [l.a, l.b]:
+		if o is DriveNode and (o as DriveNode).is_tank() or o is PowerNode and (o as PowerNode).kind == "bateria":
+			return "fuel"
+	for o: Object in [l.a, l.b]:
+		if o is PowerNode:
+			return "gen"
+	for o: Object in [l.a, l.b]:
+		if o is MechJoint:
+			return "hub"
 	return "engine"
 
 
@@ -106,13 +109,7 @@ func physics_update(_delta: float) -> void:
 		var c: Color = COLORS[_kind_of(l)]
 		var a := Drive.part_of(l.a).global_position
 		var b := Drive.part_of(l.b).global_position
-		_line(a, b, c)
-		# Seta no meio (sentido da ligação)
-		var mid := a.lerp(b, 0.55)
-		var d := (b - a).normalized()
-		var side := d.cross(Vector3.UP if absf(d.y) < 0.9 else Vector3.RIGHT).normalized() * 0.06
-		_line(mid, mid - d * 0.1 + side, c)
-		_line(mid, mid - d * 0.1 - side, c)
+		_line(a, b, c)                                 # sem seta: a ligação não tem sentido
 	if _src and Drive.alive(_src):
 		if not any:
 			_imesh.surface_begin(Mesh.PRIMITIVE_LINES)
@@ -136,12 +133,11 @@ func hint_text() -> String:
 	var o := Drive.node_of(player.aim_part())
 	if _src:
 		if o and o != _src:
-			var c := Drive.check_link(_src, o)
 			if Drive.find_link(_src, o):
 				return "Clique: desfazer a ligação %s ↔ %s   ·   Botão direito: cancelar" % [Drive.describe(_src), Drive.describe(o)]
-			return ("Clique: ligar %s → %s" % [Drive.describe(c["from"]), Drive.describe(c["to"])]) if c["ok"] else str(c["msg"])
+			return "Clique: ligar %s → %s  %s" % [Drive.describe(_src), Drive.describe(o), Drive.link_meaning(_src, o)]
 		return "Ligando %s: clique na outra peça   ·   Botão direito: cancelar" % Drive.describe(_src)
 	if o:
 		return "%s (%d ligaç%s)   ·   Clique: começar a ligar   ·   Botão direito: desfazer as ligações dela" % [Drive.describe(o),
 			Drive.links_of(o).size(), "ão" if Drive.links_of(o).size() == 1 else "ões"]
-	return "Clique num tanque, bateria, motor, câmbio, gerador ou cubo de roda   ·   amarelo: combustível · laranja: motor → câmbio · azul: rodas · verde: gerador"
+	return "Clique num tanque, bateria, motor, embreagem, câmbio, gerador ou cubo de roda (qualquer um em qualquer um)   ·   amarelo: combustível · laranja: motor/câmbio · azul: rodas · verde: gerador"

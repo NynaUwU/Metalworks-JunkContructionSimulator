@@ -427,6 +427,22 @@ func _section(i: int, j: MechJoint) -> Control:
 			v.add_child(_slider("Retorno máx.", 1.0, 20.0, 0.5, j.speed, "%.1f rad/s", func(x: float) -> void: j.speed = x))
 		"mola":
 			v.add_child(_slider("Rigidez", 500.0, 30000.0, 500.0, j.strength, "%d N/m", func(x: float) -> void: j.strength = x))
+		"cubo":
+			var inv_cb := _check()
+			inv_cb.text = "Inverter o giro (se a roda anda para trás quando acelera)"
+			inv_cb.button_pressed = j.invert
+			inv_cb.toggled.connect(func(on: bool) -> void: j.invert = on)
+			v.add_child(inv_cb)
+			var side_row := HBoxContainer.new()
+			side_row.add_child(_label("Lado", 13, Color(1, 1, 1, 0.85)))
+			var side_ob := OptionButton.new()
+			side_ob.add_item("Esquerdo")
+			side_ob.add_item("Direito")
+			side_ob.selected = 0 if j.hub_side < 0 else 1
+			side_ob.item_selected.connect(func(idx: int) -> void: j.hub_side = -1 if idx == 0 else 1)
+			side_row.add_child(side_ob)
+			v.add_child(side_row)
+			v.add_child(_label("O lado vale para o esterço de tanque (Esq/Dir do câmbio).", 12, Color(1, 1, 1, 0.55)))
 		"guincho":
 			v.add_child(_label("Tecla + recolhe o cabo, − solta. Sem sinal, segura.", 13, Color(1, 1, 1, 0.6)))
 			v.add_child(_slider("Velocidade", 0.2, 4.0, 0.1, j.speed, "%.1f m/s", func(x: float) -> void: j.speed = x))

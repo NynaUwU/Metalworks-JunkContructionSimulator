@@ -22,7 +22,7 @@ E na bomba de combustível — abastecer (pago)
 6 — Trena (medir e marcar)
 7 — Alinhador (encaixar um ponto em outro)
 8 — Laser (acende receptores de laser)
-9 — Transmissão (tanque → motor → câmbio → cubos)
+9 — Transmissão (liga qualquer peça do motor)
 Roda do mouse — escolher a ferramenta, clique
   confirma (segurando algo, a roda é do Gravitador)
 
@@ -91,9 +91,9 @@ Fiação: clique na peça de origem (escolha a
   (isoladores) e no destino (escolha a entrada)
 Fiação, G: fio de ENERGIA (bateria, painel,
   posto, luz, holofote, relé, chave, medidor)
-Motor de verdade: motor + câmbio + cubos de roda,
-  ligados pela Transmissão (9). Câmbio: seta para
-  a frente; entradas Acelerador, Freio, Ré, Esq/Dir
+Motor de verdade: motor, embreagem, câmbio e cubos,
+  ligados pela Transmissão (9) em qualquer ordem.
+  Cubos: Inverter o giro e Lado (botão direito)
 Sensores (laser, velocímetro, giroscópio, GPS,
   buscador, zona, impacto, balança...): saídas
   de sinal; ajustes no botão direito da Fiação

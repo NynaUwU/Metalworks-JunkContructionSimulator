@@ -66,10 +66,12 @@ const INFO := {
 	"motor_rotativo": {"nome": "Motor rotativo", "preco": 90, "desc": "Leve e gira muito alto (16 N·m). Gasolina."},
 	"motor_eletrico": {"nome": "Motor elétrico", "preco": 110, "desc": "Força cheia desde parado (30 N·m). Usa bateria: ligue bateria → motor com a Transmissão."},
 	"turbina": {"nome": "Turbina", "preco": 260, "desc": "Gira altíssimo e demora a responder (35 N·m). Diesel."},
-	"cambio_manual": {"nome": "Câmbio manual", "preco": 40, "desc": "Marchas pelas entradas Sobe/Desce ou Marcha. A seta aponta para a frente do veículo."},
-	"cambio_auto": {"nome": "Câmbio automático", "preco": 60, "desc": "Troca as marchas sozinho. Entradas: Freio, Ré, Embreagem, Esq/Dir (tanque)."},
+	"cambio_manual": {"nome": "Câmbio manual", "preco": 40, "desc": "Marchas pelas entradas Sobe/Desce ou Marcha (-1 = ré, 0 = neutro)."},
+	"cambio_auto": {"nome": "Câmbio automático", "preco": 60, "desc": "Troca as marchas sozinho. Entradas: Freio, Ré, Esq/Dir (tanque)."},
+	"embreagem_auto": {"nome": "Embreagem automática", "preco": 25, "desc": "Entre o motor e o câmbio: engata sozinha pelo giro (sai patinando na arrancada)."},
+	"embreagem_manual": {"nome": "Embreagem manual", "preco": 20, "desc": "Entre o motor e o câmbio: entrada Pedal (1 = pisada, desengata; 0 = engatada)."},
 	"cvt": {"nome": "Câmbio CVT", "preco": 70, "desc": "Relação contínua: deixa o motor no giro de mais força."},
-	"cubo": {"nome": "Cubo de roda", "preco": 12, "desc": "Eixo livre: solde a base no chassi e a roda no disco. O câmbio gira ele."},
+	"cubo": {"nome": "Cubo de roda", "preco": 12, "desc": "Eixo livre: solde a base no chassi e a roda no disco. Ajustes: Inverter o giro e Lado."},
 	"tanque_gasolina": {"nome": "Tanque de gasolina", "preco": 15, "desc": "Combustível dos motores a gasolina (médio: 40 L)."},
 	"tanque_diesel": {"nome": "Tanque de diesel", "preco": 15, "desc": "Combustível do motor diesel e da turbina (médio: 40 L)."},
 	"gerador": {"nome": "Gerador", "preco": 50, "desc": "Ligue motor → gerador com a Transmissão e o gerador na rede (fio de energia): até 400 W."},
@@ -124,11 +126,12 @@ const DRIVE_SIZES := {
 	"motor_v12": Vector3(0.55, 0.42, 0.8), "motor_diesel": Vector3(0.45, 0.5, 0.7), "motor_rotativo": Vector3(0.35, 0.3, 0.35),
 	"motor_eletrico": Vector3(0.3, 0.3, 0.4), "turbina": Vector3(0.4, 0.4, 0.8),
 	"cambio_manual": Vector3(0.3, 0.2, 0.36), "cambio_auto": Vector3(0.3, 0.2, 0.36), "cvt": Vector3(0.3, 0.2, 0.36),
+	"embreagem_auto": Vector3(0.26, 0.26, 0.12), "embreagem_manual": Vector3(0.26, 0.26, 0.12),
 	"tanque_gasolina": Vector3(0.4, 0.3, 0.5), "tanque_diesel": Vector3(0.4, 0.3, 0.5),
 	"gerador": Vector3(0.3, 0.25, 0.3), "bomba": Vector3(0.4, 1.1, 0.3),
 }
 const DRIVE_KINDS := ["motor_mono", "motor_4l", "motor_v8", "motor_v12", "motor_diesel", "motor_rotativo", "motor_eletrico", "turbina",
-	"cambio_manual", "cambio_auto", "cvt", "tanque_gasolina", "tanque_diesel"]
+	"cambio_manual", "cambio_auto", "cvt", "tanque_gasolina", "tanque_diesel", "embreagem_auto", "embreagem_manual"]
 const SIZE_SMALL := 0.6
 const SIZE_LARGE := 1.6
 
@@ -1143,17 +1146,21 @@ static func _spawn_drive(kind: String, xform: Transform3D, k := 1.0) -> Part:
 		n.sound = snd
 	elif n.is_gearbox():
 		_deco_box(p, Vector3(size.x - 0.04, 0.004, size.z - 0.04), Vector3(0, top, 0), BOARD_DARK)
-		# Seta para a frente (-Z).
-		_deco_box(p, Vector3(0.03, 0.01, 0.16), Vector3(0, top + 0.006, -0.02), Color(1.0, 0.75, 0.1))
-		var tip := _deco_box(p, Vector3(0.08, 0.01, 0.03), Vector3(0, top + 0.006, -0.11), Color(1.0, 0.75, 0.1))
-		tip.rotation.y = 0.0
-		n.label = _label3d(p, "", top + 0.012, 30, Color(0.9, 0.95, 1.0), Vector3(0, 0, 0.1))
+		_deco_cyl(p, 0.06, size.z + 0.02, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(0, -0.02, 0)), Color(0.75, 0.77, 0.8), 0.8)
+		n.label = _label3d(p, "", top + 0.006, 30, Color(0.9, 0.95, 1.0))
 		if kind == "cambio_auto":
 			n.gears = 5
 		elif kind == "cvt":
 			n.gears = 1
 			n.first_ratio = 4.0
 			n.top_ratio = 0.6
+	elif n.is_clutch():
+		var cc := Color(0.15, 0.45, 0.75) if kind == "embreagem_auto" else Color(0.85, 0.45, 0.1)
+		_deco_cyl(p, 0.11, size.z + 0.01, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3.ZERO), cc, 0.5)
+		_deco_cyl(p, 0.03, size.z + 0.06, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3.ZERO), Color(0.75, 0.77, 0.8), 0.9)
+		n.glow = _deco_box(p, Vector3(0.04, 0.01, 0.04), Vector3(0.08, top + 0.005, 0.0), Color.WHITE)
+		n.label = _label3d(p, "", top + 0.05, 24, Color(1, 1, 1))
+		n.label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	else:
 		var tc := Color(0.85, 0.15, 0.1) if kind == "tanque_gasolina" else Color(0.15, 0.2, 0.15)
 		_deco_cyl(p, size.x * 0.5 + 0.004, size.z * 0.5, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3.ZERO), tc, 0.3)
@@ -1394,8 +1401,11 @@ static func build_visual(kind: String, size := Vector3.ZERO) -> Node3D:
 		"cambio_manual", "cambio_auto", "cvt":
 			var gs: Vector3 = DRIVE_SIZES[kind]
 			_deco_box(root, gs, Vector3.ZERO, Color(0.3, 0.32, 0.35))
-			_deco_box(root, Vector3(0.03, 0.01, 0.16), Vector3(0, gs.y * 0.5 + 0.006, -0.02), Color(1.0, 0.75, 0.1))
-			_deco_box(root, Vector3(0.08, 0.01, 0.03), Vector3(0, gs.y * 0.5 + 0.006, -0.11), Color(1.0, 0.75, 0.1))
+			_deco_cyl(root, 0.06, gs.z + 0.02, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(0, -0.02, 0)), Color(0.75, 0.77, 0.8), 0.8)
+		"embreagem_auto", "embreagem_manual":
+			var cs: Vector3 = DRIVE_SIZES[kind]
+			_deco_box(root, cs, Vector3.ZERO, Color(0.3, 0.32, 0.35))
+			_deco_cyl(root, 0.11, cs.z + 0.01, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3.ZERO), Color(0.15, 0.45, 0.75) if kind == "embreagem_auto" else Color(0.85, 0.45, 0.1), 0.5)
 		"tanque_gasolina", "tanque_diesel":
 			var ts: Vector3 = DRIVE_SIZES[kind]
 			_deco_cyl(root, ts.x * 0.5, ts.z, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3.ZERO), Color(0.85, 0.15, 0.1) if kind == "tanque_gasolina" else Color(0.15, 0.2, 0.15), 0.3)

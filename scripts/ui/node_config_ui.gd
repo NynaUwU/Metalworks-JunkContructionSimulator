@@ -301,7 +301,7 @@ func _drive_section(d: DriveNode) -> void:
 		_content.add_child(_label("%d N·m · marcha lenta %d rpm · corte %d rpm · %s" % [roundi(float(s["torque"]) * d.size_scale), roundi(float(s["idle"])),
 			roundi(float(s["red"])), {"gasolina": "gasolina", "diesel": "diesel", "eletrico": "bateria"}[s["fuel"]]], 13, Color(1.0, 0.85, 0.4)))
 		_content.add_child(_check("Liga sozinho (sem fio na entrada Ligado)", d.auto_start, func(on: bool) -> void: d.auto_start = on))
-		_content.add_child(_label("Entrada Acelerador: 0 a 1. Ligue tanque → motor → câmbio com a Transmissão (9).", 12, Color(1, 1, 1, 0.55)))
+		_content.add_child(_label("Entrada Acelerador: 0 a 1. Ligue tanque, motor, embreagem, câmbio e cubos com a Transmissão (9), em qualquer ordem.", 12, Color(1, 1, 1, 0.55)))
 	elif d.is_gearbox():
 		if d.kind != "cvt":
 			_content.add_child(_slider("Marchas", 1, 10, 1, d.gears, "%d", func(x: float) -> void: d.gears = int(x)))
@@ -311,7 +311,10 @@ func _drive_section(d: DriveNode) -> void:
 		if d.kind == "cambio_auto":
 			_content.add_child(_slider("Troca a", 50, 95, 5, d.shift_up_frac * 100.0, "%d %% do corte", func(x: float) -> void: d.shift_up_frac = x / 100.0))
 		_content.add_child(_check("Esterço de tanque (diferencial duplo: Esq/Dir/Esterço)", d.tank_steer, func(on: bool) -> void: d.tank_steer = on))
-		_content.add_child(_label("A seta em cima aponta para a frente. Freio, Ré e Embreagem: 0 a 1. Manual: Sobe/Desce ou Marcha (-1 = ré, 0 = neutro).", 12, Color(1, 1, 1, 0.55)))
+		_content.add_child(_label("Freio e Ré: 0 a 1. Manual: Sobe/Desce ou Marcha (-1 = ré, 0 = neutro). A frente e o lado de cada roda se ajustam no cubo (Inverter o giro, Lado).", 12, Color(1, 1, 1, 0.55)))
+	elif d.is_clutch():
+		_content.add_child(_label("Automática: engata sozinha pelo giro do motor." if d.kind == "embreagem_auto" else "Manual: entrada Pedal (1 = pisada, desengatada; 0 = engatada).", 13, Color(1.0, 0.85, 0.4)))
+		_content.add_child(_label("Qualquer lugar no caminho entre o motor e as rodas. Sem embreagem, o motor fica preso às rodas.", 12, Color(1, 1, 1, 0.55)))
 	elif d.is_tank():
 		_content.add_child(_label("%s: %.1f de %d L. Encha na bomba de combustível (E nela)." % [d.fuel_type().capitalize(), d.fuel, roundi(d.capacity())], 13, Color(1.0, 0.85, 0.4)))
 

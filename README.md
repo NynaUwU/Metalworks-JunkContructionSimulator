@@ -219,6 +219,25 @@ Nome, mapa, visual e código são próprios.
   - **Receptor de laser:** acende (Atingido) quando um laser acerta nele: o do medidor laser ou o da ferramenta
     **Laser (8)**, um ponteiro (segure o clique).
 
+**Eletrônica avançada** (Marco 4E, depósito ELETRÔNICA e loja, categoria Lógica)
+- **FPGA:** um chip com um circuito dentro. Botão direito com a Fiação abre o **editor visual** (tela cheia):
+  - à esquerda, a lista: pinos de **Entrada** e **Saída**, **Constante** e os 86 modos do chip lógico (com busca).
+    Clique duas vezes ou arraste para o circuito;
+  - ligue arrastando da bolinha de saída (direita) até a de entrada (esquerda); a cor é o tipo e só liga tipo igual;
+    arraste a ponta de uma ligação para fora para desligar; **Delete** apaga o selecionado;
+  - os pinos de Entrada/Saída viram as portas do FPGA (de cima para baixo), com nome e tipo editáveis;
+  - as saídas mostram o valor ao vivo; tudo roda no mesmo tick. Pode ligar uma porta nela mesma (acumulador);
+  - **circuitos salvos:** dê um nome, **Salvar**, e carregue em outro FPGA (ficam em `circuitos`, na pasta do jogo).
+  - Até 300 peças por FPGA. O circuito e as memórias internas vão junto no save do mundo e das construções.
+- **Memória (RAM):** 8 a 1024 posições. **Gravar** ligado escreve **Dado** no **Endereço**; **Lido** mostra o que tem
+  lá; **Zerar** apaga tudo. Vai junto no save.
+- **ROM:** uma tabela de números escrita nos ajustes; o Endereço escolhe qual sai.
+- **Disco rígido (HD):** como a RAM (1024 posições), mas guarda num arquivo com o **nome do disco**: os valores ficam
+  mesmo depois de sair do jogo ou trocar de mundo. Dois HDs com o mesmo disco veem os mesmos dados.
+- **Rádio:** sinais sem fio entre máquinas. Manda o que chega em A, B, C, D, Vetor e Texto (com fio) e recebe dos
+  outros rádios do **mesmo canal** (vale o mais perto em cada porta). Canal e alcance nos ajustes; a entrada Canal
+  troca o canal por sinal. Saída Rádios = quantos estão ouvindo.
+
 **Salvar e carregar** (Esc → **Salvar / Carregar**)
 - **Mundos:** salve o mundo inteiro com um nome (peças, soldas, componentes com seus ajustes e teclas,
   fios, pontos e onde você está). Carregue, apague ou comece um **mundo novo**.

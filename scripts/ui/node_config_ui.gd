@@ -88,6 +88,10 @@ func _rebuild() -> void:
 		_sensor_section(node as SensorNode)
 	elif node is DriveNode:
 		_drive_section(node as DriveNode)
+	elif node is MemoryNode:
+		_memory_section(node as MemoryNode)
+	elif node is RadioNode:
+		_radio_section(node as RadioNode)
 	_content.add_child(_ports_text())
 	var close_b := Button.new()
 	close_b.text = "Fechar"
@@ -291,6 +295,47 @@ func _sensor_section(sn: SensorNode) -> void:
 				_content.add_child(_slider("Tamanho " + "XYZ"[i], 0.5, 10, 0.5, sn.zone_size[i], "%.1f m", func(x: float) -> void: sn.zone_size[axis] = x))
 			_content.add_child(_check("Mostrar a caixa", sn.show_zone, func(on: bool) -> void: sn.show_zone = on))
 			_content.add_child(_check("Ignorar a própria máquina", sn.ignore_own, func(on: bool) -> void: sn.ignore_own = on))
+
+
+# --- Memórias e rádio (Marco 4E) ----------------------------------------------------------
+
+func _memory_section(m: MemoryNode) -> void:
+	match m.kind:
+		"memoria":
+			var ob := OptionButton.new()
+			for s: int in MemoryNode.SIZES:
+				ob.add_item("%d posições" % s)
+				if s == m.size:
+					ob.select(ob.item_count - 1)
+			ob.item_selected.connect(func(i: int) -> void: m.set_size(MemoryNode.SIZES[i]))
+			_content.add_child(_row("Tamanho", ob))
+			_content.add_child(_label("Gravar ligado: escreve Dado no Endereço (0 a tamanho − 1). Lido: o que tem no Endereço. Zerar apaga tudo. Os valores vão junto no save do mundo.", 12, Color(1, 1, 1, 0.55)))
+		"rom":
+			_content.add_child(_label("Valores (separados por espaço, ponto e vírgula ou linha; posição 0 primeiro):", 13, Color(1, 1, 1, 0.8)))
+			var te := TextEdit.new()
+			te.text = m.rom_text()
+			te.custom_minimum_size = Vector2(0, 120)
+			te.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+			te.text_changed.connect(func() -> void: m.set_rom_text(te.text))
+			_content.add_child(te)
+			_content.add_child(_label("Até %d valores. Endereço escolhe qual sai em Lido." % MemoryNode.ROM_MAX, 12, Color(1, 1, 1, 0.55)))
+		"hd":
+			_content.add_child(_row("Disco", _text_edit(m.disk, func(t: String) -> void: m.set_disk(t))))
+			var used := 0
+			for v in m.data:
+				if float(v) != 0.0:
+					used += 1
+			_content.add_child(_label("%d posições. %d com valor. Os dados ficam num arquivo com o nome do disco: continuam lá depois de sair do jogo, e dois HDs com o mesmo disco veem os mesmos dados." % [MemoryNode.HD_SIZE, used], 12, Color(1, 1, 1, 0.55)))
+
+
+func _radio_section(r: RadioNode) -> void:
+	_content.add_child(_slider("Canal", 1, 99, 1, r.channel, "%d", func(x: float) -> void:
+		r.channel = int(x)
+		r.cur_channel = r.channel
+		if r.label:
+			r.label.text = "CANAL %d" % r.channel))
+	_content.add_child(_slider("Alcance (0 = sem limite)", 0, 1000, 10, r.range_m, "%d m", func(x: float) -> void: r.range_m = x))
+	_content.add_child(_label("Manda o que chega nas entradas com fio e recebe dos outros rádios do mesmo canal (vale o mais perto em cada porta). A entrada Canal, com fio, troca o canal.", 12, Color(1, 1, 1, 0.55)))
 
 
 # --- Trem de força -----------------------------------------------------------------------

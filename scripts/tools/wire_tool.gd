@@ -90,7 +90,8 @@ static func has_config(n: SignalNode) -> bool:
 		return (n as SensorNode).kind in ["ranger", "localizador", "sensor_loc", "buscador", "zona"]
 	if n is DriveNode:
 		return true
-	return n is ChipNode or n is ConstNode or n is KeysNode or n is KeypadNode or n is DisplayNode
+	return n is ChipNode or n is ConstNode or n is KeysNode or n is KeypadNode or n is DisplayNode \
+		or n is FpgaNode or n is MemoryNode or n is RadioNode
 
 
 func handle_input(event: InputEvent) -> bool:

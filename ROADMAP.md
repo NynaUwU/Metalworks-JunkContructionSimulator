@@ -173,19 +173,22 @@ Inspirado no Wiremod e no ACF do Garry's Mod (sem nada de NPCs nem geradores de 
 - Sem seta no câmbio e sem lado automático: os cubos têm **Inverter o giro** e **Lado** (esquerdo/direito)
 - Embreagem automática e embreagem manual (entrada Pedal); saídas Engate e Patinação
 
-### v0.12 — 4E: Avançado
-- [ ] Câmbio → câmbio em cadeia, caixa de transferência (reduzida/alta) e diferencial avulso (vindos da 4D)
+### ✅ v0.12.0 — 4E (parte 1): Eletrônica avançada
+- FPGA com editor visual (GraphEdit): pinos de entrada/saída com nome e tipo, constantes e os 86 modos do chip;
+  ligações por tipo, valores ao vivo, ciclos (lê o tick anterior), até 300 peças; circuitos salvos com nome
+- Memórias: RAM (8 a 1024), ROM (tabela nos ajustes) e HD (arquivo por nome de disco, fica depois de sair)
+- Rádio: canais sem fio, alcance, o mais perto vale; entrada Canal
+- Testes: 28 verificações novas (test_eletronica)
+
+### v0.12.x — 4E (parte 2): Telas, marcador e pintor
+- [ ] Telas avançadas: console de letras, tela de pixels, osciloscópio, indicador no HUD, câmera externa
 - [ ] Marcador de peça (vindo da 4C): simples e avançado, com lista
-- [ ] FPGA: chip com editor visual
-  - dentro dele, arrasta e liga portas lógicas;
-  - entradas e saídas configuráveis;
-  - circuitos salvos e carregados.
+- [ ] Pintor: muda a cor de uma peça por sinal
+
+### v0.12.x — 4E (parte 3): Atuadores e trem de força
 - [ ] Atuadores: propulsor vetorial, hoverball (mantém altura), forcer (empurra à distância), gimbal
   (aponta para um vetor), peso ajustável, congelador por sinal, "User" (aperta E sozinho)
-- [ ] Rádio: canais sem fio entre máquinas
-- [ ] Memória: guardar valores, RAM/ROM, HD (guarda mesmo depois de sair)
-- [ ] Telas avançadas: console de letras, tela de pixels, osciloscópio, indicador no HUD, câmera externa
-- [ ] Pintor: muda a cor de uma peça por sinal
+- [ ] Caixa de transferência (reduzida/alta) e diferencial avulso (câmbio → câmbio já funciona desde a 0.11.1)
 
 ## Marco 5 — Polimento
 - [ ] Sons: solda, corte, impactos, componentes

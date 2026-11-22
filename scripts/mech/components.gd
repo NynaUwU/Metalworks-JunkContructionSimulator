@@ -31,6 +31,11 @@ const INFO := {
 	"potenciometro": {"nome": "Alavanca variável", "preco": 8, "desc": "Segure E e mova o mouse para cima/baixo. Na Fiação, botão direito: só positivo ou -1 a 1."},
 	"isolador": {"nome": "Isolador", "preco": 0, "desc": "Guia os fios. Criado com a ferramenta de Fiação."},
 	"puxador": {"nome": "Puxador", "preco": 2, "desc": "Solde numa porta ou gaveta: segure E mirando nele para puxar (força fraca)."},
+	"fpga": {"nome": "FPGA", "preco": 30, "desc": "Chip programável: monte um circuito de portas lógicas dentro dele no editor visual (botão direito com a Fiação). Circuitos podem ser salvos."},
+	"memoria": {"nome": "Memória (RAM)", "preco": 10, "desc": "Guarda números em posições (8 a 1024). Gravar escreve Dado no Endereço; Lido mostra o que tem lá."},
+	"rom": {"nome": "Memória só de leitura (ROM)", "preco": 8, "desc": "Uma tabela de números escrita nos ajustes. Endereço escolhe qual sai em Lido."},
+	"hd": {"nome": "Disco rígido (HD)", "preco": 25, "desc": "Como a RAM (1024 posições), mas guarda num arquivo: os valores ficam mesmo depois de sair do jogo."},
+	"radio": {"nome": "Rádio", "preco": 15, "desc": "Manda e recebe sinais sem fio entre máquinas no mesmo canal (A, B, C, D, Vetor e Texto)."},
 	"chip": {"nome": "Chip lógico", "preco": 6, "desc": "E, OU, somar, comparar, memória, temporizador... (86 modos). Escolha o modo no botão direito da Fiação."},
 	"constante": {"nome": "Valor constante", "preco": 3, "desc": "Sai sempre o mesmo número, vetor ou texto."},
 	"teclas": {"nome": "Teclas", "preco": 5, "desc": "Teclas + e − viram um sinal (-1 a 1). Sentado na máquina, ou sempre (a pé)."},
@@ -209,7 +214,7 @@ static func bounds(kind: String, size := Vector3.ZERO) -> AABB:
 			return AABB(Vector3(-0.09, -0.0125, -0.03), Vector3(0.18, 0.09, 0.06))
 	if SIGNAL_SIZES.has(kind):
 		var s: Vector3 = SIGNAL_SIZES[kind]
-		return AABB(-s * 0.5, s + Vector3(0, 0.06 if kind == "indicador" else 0.0, 0))
+		return AABB(-s * 0.5, s + Vector3(0, {"indicador": 0.06, "radio": 0.22}.get(kind, 0.0), 0))
 	if SENSOR_SIZES.has(kind):
 		var ss: Vector3 = SENSOR_SIZES[kind]
 		return AABB(-ss * 0.5, ss + Vector3(0, 0.03 if kind == "ranger" else 0.0, 0))
@@ -278,7 +283,7 @@ static func _spawn_kind(kind: String, xform: Transform3D, size: Vector3) -> Arra
 			return [_spawn_insulator(xform)]
 		"puxador":
 			return [_spawn_handle(xform)]
-		"chip", "constante", "teclas", "teclado", "indicador", "pixel", "mostrador", "tela", "tela_texto":
+		"chip", "constante", "teclas", "teclado", "indicador", "pixel", "mostrador", "tela", "tela_texto", "fpga", "memoria", "rom", "hd", "radio":
 			return [_spawn_signal(kind, xform)]
 		"bateria", "solar", "recarga", "luz", "holofote", "rele", "chave", "medidor":
 			return [_spawn_power(kind, xform, scale_of(kind, size))]
@@ -839,11 +844,14 @@ const SIGNAL_SIZES := {
 	"indicador": Vector3(0.12, 0.05, 0.12), "pixel": Vector3(0.2, 0.04, 0.2),
 	"mostrador": Vector3(0.4, 0.05, 0.16), "tela": Vector3(0.5, 0.04, 0.32),
 	"tela_texto": Vector3(0.7, 0.04, 0.45),
+	"fpga": Vector3(0.3, 0.05, 0.3), "memoria": Vector3(0.22, 0.04, 0.14), "rom": Vector3(0.22, 0.04, 0.14),
+	"hd": Vector3(0.2, 0.06, 0.26), "radio": Vector3(0.14, 0.06, 0.14),
 }
 const SIGNAL_LABELS := {
 	"chip": "Chip lógico", "constante": "Valor constante", "teclas": "Teclas", "teclado": "Teclado de senha",
 	"indicador": "Indicador", "pixel": "Pixel", "mostrador": "Mostrador numérico", "tela": "Tela de valores",
-	"tela_texto": "Tela de texto",
+	"tela_texto": "Tela de texto", "fpga": "FPGA", "memoria": "Memória (RAM)", "rom": "Memória (ROM)",
+	"hd": "Disco rígido (HD)", "radio": "Rádio",
 }
 const BOARD_DARK := Color(0.07, 0.08, 0.09)
 const SCREEN_DARK := Color(0.02, 0.04, 0.06)
@@ -905,6 +913,39 @@ static func _spawn_signal(kind: String, xform: Transform3D) -> Part:
 					_deco_box(p, Vector3(size.x - 0.04, 0.004, size.z - 0.04), Vector3(0, top, 0), SCREEN_DARK)
 					d.label = _label3d(p, "", top + 0.003, 64, Color(0.75, 1.0, 0.8), Vector3.ZERO, size.x - 0.08)
 			node = d
+		"fpga":
+			var f := FpgaNode.new()
+			f.part = p
+			for i in 6:
+				for side: float in [-1.0, 1.0]:
+					_deco_box(p, Vector3(0.022, 0.012, 0.02), Vector3(-0.11 + i * 0.044, -0.012, side * (size.z * 0.5 + 0.008)), Color(0.85, 0.7, 0.25))
+					_deco_box(p, Vector3(0.02, 0.012, 0.022), Vector3(side * (size.x * 0.5 + 0.008), -0.012, -0.11 + i * 0.044), Color(0.85, 0.7, 0.25))
+			_deco_box(p, Vector3(size.x - 0.06, 0.004, size.z - 0.06), Vector3(0, top, 0), Color(0.16, 0.18, 0.22))
+			f.label = _label3d(p, "FPGA", top + 0.003, 56, Color(0.55, 0.9, 1.0))
+			f.update_label()
+			node = f
+		"memoria", "rom", "hd":
+			var m := MemoryNode.new()
+			m.part = p
+			if kind == "hd":
+				_deco_cyl(p, 0.07, 0.004, Transform3D(Basis(), Vector3(0, top + 0.002, -0.03)), Color(0.75, 0.78, 0.82), 0.9, 16)
+				_deco_box(p, Vector3(0.012, 0.006, 0.08), Vector3(0.05, top + 0.006, 0.01), Color(0.3, 0.3, 0.32))
+				m.label = _label3d(p, "HD", top + 0.008, 30, Color(0.55, 1.0, 0.6), Vector3(0, 0, 0.09))
+			else:
+				for i in 4:
+					_deco_box(p, Vector3(0.04, 0.012, 0.05), Vector3(-0.075 + i * 0.05, top + 0.004, -0.02), Color(0.1, 0.1, 0.11))
+				_deco_box(p, Vector3(size.x - 0.02, 0.012, 0.016), Vector3(0, -0.012, size.z * 0.5 - 0.004), Color(0.85, 0.7, 0.25))
+				m.label = _label3d(p, "RAM", top + 0.012, 26, Color(0.55, 0.9, 1.0) if kind == "memoria" else Color(1.0, 0.8, 0.4), Vector3(0, 0, 0.045))
+			m.setup(kind)
+			node = m
+		"radio":
+			var r := RadioNode.new()
+			r.part = p
+			_deco_cyl(p, 0.006, 0.22, Transform3D(Basis(), Vector3(0.045, top + 0.11, -0.045)), Color(0.15, 0.15, 0.16), 0.4)
+			_deco_sphere(p, 0.012, Vector3(0.045, top + 0.222, -0.045), Color(0.15, 0.15, 0.16))
+			r.light = _deco_box(p, Vector3(0.03, 0.01, 0.03), Vector3(-0.035, top + 0.004, -0.035), Color(0.35, 0.08, 0.06))
+			r.label = _label3d(p, "CANAL 1", top + 0.002, 30, Color(0.9, 0.95, 1.0), Vector3(0, 0, 0.035))
+			node = r
 	Build.add_node(node)
 	return p
 
@@ -1426,7 +1467,7 @@ static func build_visual(kind: String, size := Vector3.ZERO) -> Node3D:
 				"medidor":
 					_deco_box(root, Vector3(rs.x - 0.03, 0.004, rs.z - 0.03), Vector3(0, rs.y * 0.5, 0), SCREEN_DARK)
 					_label3d(root, "75%", rs.y * 0.5 + 0.003, 48, Color(0.5, 1.0, 0.6))
-		"chip", "constante", "teclas", "teclado", "indicador", "pixel", "mostrador", "tela", "tela_texto":
+		"chip", "constante", "teclas", "teclado", "indicador", "pixel", "mostrador", "tela", "tela_texto", "fpga", "memoria", "rom", "hd", "radio":
 			var ssz: Vector3 = SIGNAL_SIZES[kind]
 			_deco_box(root, ssz, Vector3.ZERO, BOARD_DARK)
 			var top := ssz.y * 0.5
@@ -1453,6 +1494,19 @@ static func build_visual(kind: String, size := Vector3.ZERO) -> Node3D:
 				"mostrador":
 					_deco_box(root, Vector3(ssz.x - 0.03, 0.004, ssz.z - 0.03), Vector3(0, top, 0), SCREEN_DARK)
 					_label3d(root, "12.5", top + 0.003, 110, Color(1.0, 0.22, 0.12))
+				"fpga":
+					_deco_box(root, Vector3(ssz.x - 0.06, 0.004, ssz.z - 0.06), Vector3(0, top, 0), Color(0.16, 0.18, 0.22))
+					_label3d(root, "FPGA", top + 0.003, 56, Color(0.55, 0.9, 1.0))
+				"memoria", "rom":
+					for i in 4:
+						_deco_box(root, Vector3(0.04, 0.012, 0.05), Vector3(-0.075 + i * 0.05, top + 0.004, -0.02), Color(0.1, 0.1, 0.11))
+					_label3d(root, "RAM" if kind == "memoria" else "ROM", top + 0.012, 26, Color(0.55, 0.9, 1.0), Vector3(0, 0, 0.045))
+				"hd":
+					_deco_cyl(root, 0.07, 0.004, Transform3D(Basis(), Vector3(0, top + 0.002, -0.03)), Color(0.75, 0.78, 0.82), 0.9, 16)
+					_label3d(root, "HD", top + 0.008, 30, Color(0.55, 1.0, 0.6), Vector3(0, 0, 0.09))
+				"radio":
+					_deco_cyl(root, 0.006, 0.22, Transform3D(Basis(), Vector3(0.045, top + 0.11, -0.045)), Color(0.15, 0.15, 0.16), 0.4)
+					_deco_box(root, Vector3(0.03, 0.01, 0.03), Vector3(-0.035, top + 0.004, -0.035), Color(0.3, 1.0, 0.4), 2.0)
 				"tela", "tela_texto":
 					_deco_box(root, Vector3(ssz.x - 0.04, 0.004, ssz.z - 0.04), Vector3(0, top, 0), SCREEN_DARK)
 					_label3d(root, "A: 1\nB: 0" if kind == "tela" else "Olá!", top + 0.003, 56, Color(0.75, 0.95, 1.0))

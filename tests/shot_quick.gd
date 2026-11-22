@@ -763,6 +763,60 @@ func _sensors() -> void:
 	(player.tools[7] as LaserTool).firing = false
 
 
+func _fpga() -> void:
+	# Peças novas da eletrônica avançada e o editor do FPGA aberto com um circuito.
+	var o := Vector3(6, 0.02, -2)
+	var sp := func(kind: String, at: Vector3) -> Part:
+		var b := Components.bounds(kind)
+		var p: Part = Components.spawn(kind, Transform3D(Basis(), o + at + Vector3(0, -b.position.y, 0)))[0]
+		p.assembly().set_frozen(true)
+		return p
+	var fp: Part = sp.call("fpga", Vector3(0, 0, 0))
+	sp.call("memoria", Vector3(0.5, 0, 0))
+	sp.call("rom", Vector3(0.5, 0, 0.3))
+	sp.call("hd", Vector3(-0.45, 0, 0.05))
+	sp.call("radio", Vector3(0.15, 0, 0.45))
+	sp.call("radio", Vector3(-0.3, 0, 0.45))
+	var f := fp.node as FpgaNode
+	var a := 1
+	var b := 2
+	var o_id := 3
+	var s := f.add_gate("soma", Vector2(380, 60))
+	var m := f.add_gate("maior", Vector2(520, 220))
+	var k := f.add_gate(FpgaNode.PIN_CONST, Vector2(40, 340), {"value": 10})
+	var l := f.add_gate("sr_latch", Vector2(720, 240))
+	var o2 := f.add_gate(FpgaNode.PIN_OUT, Vector2(960, 260), {"name": "Alarme"})
+	f.connect_gates(a, "Valor", s, "A")
+	f.connect_gates(b, "Valor", s, "B")
+	f.connect_gates(s, "Saída", o_id, "Valor")
+	f.connect_gates(s, "Saída", m, "A")
+	f.connect_gates(k, "Valor", m, "B")
+	f.connect_gates(m, "Saída", l, "Ligar")
+	f.connect_gates(l, "Saída", o2, "Valor")
+	f.move_gate(o_id, Vector2(960, 60))
+	var ka: Part = sp.call("constante", Vector3(-0.2, 0, -0.45))
+	(ka.node as ConstNode).set_value(SignalNode.NUM, 7.0)
+	var kb: Part = sp.call("constante", Vector3(0.2, 0, -0.45))
+	(kb.node as ConstNode).set_value(SignalNode.NUM, 5.0)
+	Signals.connect_ports(ka.node, "Valor", f, "A")
+	Signals.connect_ports(kb.node, "Valor", f, "B")
+	await _frames(30)
+	player.teleport(o + Vector3(0.0, 0.03, 1.4))
+	_look_from_eye(o + Vector3(0.05, 0.05, 0.15))
+	await _frames(10)
+	await _shot("f1_pecas")
+	world.hud.fpga_editor.open(player, f)
+	await _frames(8)
+	world.hud.fpga_editor._search.text = ""
+	await _frames(4)
+	await _shot("f2_editor")
+	world.hud.fpga_editor.close()
+	player.teleport(Vector3(-32, 0.05, 19.5))
+	_look_from_eye(Vector3(-32, 0.1, 12.5))
+	await _frames(20)
+	await _shot("f3_deposito")
+
+
 func _drive() -> void:
 	# Carro de exemplo novo (motor + câmbio + cubos) com a Transmissão na mão.
 	await _frames(60)

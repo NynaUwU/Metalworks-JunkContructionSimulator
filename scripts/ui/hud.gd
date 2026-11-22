@@ -101,6 +101,9 @@ Fiação, botão direito: remove isolador, ajustes
   (componente, chip, tela...) ou faixa da alavanca
 Chip lógico: botão direito com a Fiação escolhe
   o modo (E, OU, somar, memória, tempo...)
+FPGA: botão direito com a Fiação abre o editor
+  (arraste portas e ligue as bolinhas)
+Rádio: mesmo canal = sinais sem fio
 Depurador: mira mostra entradas e saídas ao vivo;
   botão direito: nome e ajustes
 Pistão no modo amortecedor = suspensão
@@ -142,6 +145,7 @@ var placer: BuildPlacer
 var port_menu: PortMenu
 var node_config: NodeConfigUI
 var keypad_ui: KeypadUI
+var fpga_editor: FpgaEditor
 var _debug_panel: PanelContainer
 var _debug_text: Label
 var _aimed_on_pause: Part = null
@@ -306,8 +310,14 @@ func _build_ui() -> void:
 	add_child(node_config)
 	keypad_ui = KeypadUI.new()
 	add_child(keypad_ui)
+	fpga_editor = FpgaEditor.new()
+	add_child(fpga_editor)
 	player.port_menu_requested.connect(func(title: String, items: Array, cb: Callable) -> void: port_menu.open(title, items, cb))
-	player.node_config_requested.connect(func(n: SignalNode) -> void: node_config.open(player, n))
+	player.node_config_requested.connect(func(n: SignalNode) -> void:
+		if n is FpgaNode:
+			fpga_editor.open(player, n as FpgaNode)
+		else:
+			node_config.open(player, n))
 	player.keypad_requested.connect(func(n: KeypadNode) -> void: keypad_ui.open(player, n))
 	# Painel do Depurador (ao lado da mira)
 	_debug_panel = PanelContainer.new()
@@ -489,7 +499,7 @@ func _process(delta: float) -> void:
 	_debug_panel.visible = dbg != ""
 	if dbg != "":
 		_debug_text.text = dbg
-	if seat_ui.visible or node_config.visible or keypad_ui.visible or port_menu.visible:
+	if seat_ui.visible or node_config.visible or keypad_ui.visible or port_menu.visible or fpga_editor.visible:
 		_hint.text = ""
 	elif placer and placer.is_active():
 		_hint.text = placer.hint_text()
@@ -542,7 +552,7 @@ func _update_weld_mask(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if seat_ui.visible or node_config.visible or keypad_ui.visible or port_menu.visible:
+	if seat_ui.visible or node_config.visible or keypad_ui.visible or port_menu.visible or fpga_editor.visible:
 		return
 	if save_menu.visible:
 		if event.is_action_pressed("pause"):

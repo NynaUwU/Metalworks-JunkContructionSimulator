@@ -232,6 +232,7 @@ func clear_world() -> void:
 	Build.joints.clear()
 	Build.devices.clear()
 	Signals.reset()
+	Power.reset()
 	Build.welds.clear()
 	Build.active_seat = null
 	for c in Build.world_root.get_children():
@@ -290,6 +291,18 @@ static func machine_of(part: Part) -> Array:
 					if is_instance_valid(ins):
 						add.append((ins as Part).assembly())
 				groups_to_add.append(add)
+		# Fios de energia também.
+		for pw in Power.wires:
+			if not pw.is_valid():
+				continue
+			var pa: Assembly = pw.a.signal_part().assembly()
+			var pb: Assembly = pw.b.signal_part().assembly()
+			if found.has(pa) or found.has(pb):
+				var padd: Array = [pa, pb]
+				for ins in pw.via:
+					if is_instance_valid(ins):
+						padd.append((ins as Part).assembly())
+				groups_to_add.append(padd)
 		for add: Array in groups_to_add:
 			for asm in add:
 				if asm and not found.has(asm):
@@ -455,11 +468,25 @@ static func serialize(assemblies: Array, origin: Transform3D) -> Dictionary:
 		wires.append({"f": group_index[fp.comp_group], "fp": w.from_port,
 			"t": group_index[tp.comp_group], "tp": w.to_port, "via": via})
 
+	var pwires: Array = []
+	for pw in Power.wires:
+		if not pw.is_valid():
+			continue
+		var ap: Part = pw.a.signal_part()
+		var bp: Part = pw.b.signal_part()
+		if not ids.has(ap) or not ids.has(bp) or not group_index.has(ap.comp_group) or not group_index.has(bp.comp_group):
+			continue
+		var pvia: Array = []
+		for ins in pw.via:
+			if is_instance_valid(ins) and ids.has(ins):
+				pvia.append(ids[ins])
+		pwires.append({"a": group_index[ap.comp_group], "b": group_index[bp.comp_group], "via": pvia})
+
 	return {
 		"format": FORMAT, "version": VERSION,
 		"game": str(ProjectSettings.get_setting("application/config/version", "")),
 		"time": int(Time.get_unix_time_from_system()),
-		"parts": part_list, "groups": groups, "welds": welds, "bodies": bodies, "wires": wires,
+		"parts": part_list, "groups": groups, "welds": welds, "bodies": bodies, "wires": wires, "pwires": pwires,
 	}
 
 
@@ -599,6 +626,20 @@ func restore(data: Dictionary, origin: Transform3D) -> Array:
 			if by_id.has(int(id)):
 				via.append(by_id[int(id)])
 		Signals.connect_ports(from, str(wd["fp"]), to, str(wd["tp"]), via)
+	for pd: Dictionary in data.get("pwires", []):
+		var aarr: Array = group_parts[int(pd["a"])]
+		var barr: Array = group_parts[int(pd["b"])]
+		if aarr.is_empty() or barr.is_empty() or not is_instance_valid(aarr[0]) or not is_instance_valid(barr[0]):
+			continue
+		var pa := Power.node_of(aarr[0])
+		var pb := Power.node_of(barr[0])
+		if pa == null or pb == null:
+			continue
+		var pvia: Array = []
+		for id in pd.get("via", []):
+			if by_id.has(int(id)):
+				pvia.append(by_id[int(id)])
+		Power.connect_nodes(pa, pb, pvia)
 
 	return created
 

@@ -8,11 +8,16 @@ extends GameTool
 ##    isolador ali (ou usa um isolador que já existe). Clicar no último desfaz.
 ## 3) Clique na peça de destino e escolha a entrada (só aparecem as do mesmo tipo).
 ## Escolher de novo a mesma ligação desliga o fio.
+## G: troca para FIO DE ENERGIA (vermelho, mais grosso): clique numa peça de energia
+## (bateria, painel, posto, luz, relé, chave, medidor), nos isoladores e na outra peça.
+## Tudo o que está ligado pelos fios de energia forma uma rede e divide a mesma carga.
 ## Botão direito: cancela o fio em andamento; ou, mirando:
 ##   isolador → remove · alavanca variável → troca a faixa (-1 a 1 / só positivo)
 ##   componente, chip, tela... → abre os ajustes
 
 var _src: SignalNode = null
+var power_mode := false          ## G: fio de energia em vez de lógica
+var _psrc: PowerNode = null      ## fio de energia em andamento
 var _src_port := ""
 var _via: Array[Part] = []
 var _preview: MeshInstance3D
@@ -64,6 +69,7 @@ func unequip() -> void:
 func _cancel() -> void:
 	_src = null
 	_src_port = ""
+	_psrc = null
 	_via.clear()
 
 
@@ -71,14 +77,24 @@ func _cancel() -> void:
 static func has_config(n: SignalNode) -> bool:
 	if n is MechJoint:
 		return (n as MechJoint).is_configurable()
+	if n is PowerNode:
+		return (n as PowerNode).kind in ["luz", "holofote", "bateria"]
 	return n is ChipNode or n is ConstNode or n is KeysNode or n is KeypadNode or n is DisplayNode
 
 
 func handle_input(event: InputEvent) -> bool:
+	if event.is_action_pressed("toggle_grid"):     # G
+		power_mode = not power_mode
+		_cancel()
+		player.toast("Fiação: %s" % ("FIO DE ENERGIA (liga baterias, painéis, luzes, relés...)" if power_mode else "fio de lógica (saída → entrada)"))
+		return true
+	if power_mode and event.is_action_pressed("primary"):
+		_power_click()
+		return true
 	if event.is_action_pressed("secondary"):
 		var aimed := player.aim_part()
 		var an := Signals.node_of(aimed)
-		if _src:
+		if _src or _psrc:
 			_cancel()
 			player.toast("Fio cancelado")
 		elif aimed and aimed.kind == "isolador":
@@ -202,24 +218,72 @@ func _place_insulator(on: Part) -> void:
 		player.toast("Já tem um isolador aqui")
 		return
 	spawn_sparks(point, player.aim["normal"], 10, Color(1.0, 0.85, 0.3))
-	if _src:
+	if _src or _psrc:
 		_via.append(ins)
 		player.toast("Isolador %d no caminho do fio" % _via.size())
 	else:
 		player.toast("Isolador colocado: comece um fio numa peça com saída para passar por ele")
 
 
+## Modo energia: clique.
+func _power_click() -> void:
+	if player.aim.is_empty():
+		return
+	var part := player.aim_part()
+	if part == null:
+		_place_insulator(null)
+		return
+	if part.kind == "isolador":
+		if _psrc == null:
+			player.toast("Primeiro clique numa peça de energia (bateria, painel, luz, relé...)")
+		elif not _via.is_empty() and _via.back() == part:
+			_via.pop_back()
+			player.toast("Isolador removido do caminho")
+		elif _via.has(part):
+			player.toast("O fio já passa por este isolador")
+		else:
+			_via.append(part)
+			player.toast("Fio passando pelo isolador %d" % _via.size())
+		return
+	var pn := Power.node_of(part)
+	if pn == null:
+		if _psrc:
+			_place_insulator(part)
+		else:
+			player.toast("Fios de energia vão em peças de energia: bateria, painel solar, posto, luz, holofote, relé, chave, medidor")
+		return
+	if _psrc == null or pn == _psrc:
+		_psrc = pn
+		_via.clear()
+		player.toast("Fio de energia de %s: clique nos isoladores (opcional) e na outra peça" % pn.title())
+		return
+	var linked := Power.toggle(_psrc, pn, _via)
+	player.toast(("Fio de energia: %s ↔ %s" % [_psrc.title(), pn.title()]) if linked else "Fio de energia removido")
+	spawn_sparks(player.aim["position"], player.aim["normal"], 12, Color(1.0, 0.45, 0.15))
+	_cancel()
+
+
 func physics_update(_delta: float) -> void:
 	_imesh.clear_surfaces()
+	if _psrc != null:
+		if not _psrc.is_alive():
+			_cancel()
+			return
+		_draw_preview(Signals.anchor(_psrc.signal_part()), WireRenderer.POWER_ON)
+		return
 	if _src == null or not _src.is_alive():
 		_cancel()
 		return
-	var pts: Array[Vector3] = [Signals.anchor(_src.signal_part())]
+	_draw_preview(Signals.anchor(_src.signal_part()), SignalNode.TYPE_COLORS.get(_src_type(), Color(1.0, 0.8, 0.2)))
+
+
+func _draw_preview(start: Vector3, color: Color) -> void:
+	var pts: Array[Vector3] = [start]
 	for ins in _via:
 		if is_instance_valid(ins):
 			pts.append(Components.wire_anchor(ins))
 	pts.append(player.aim["position"] if not player.aim.is_empty() else player.eye_position() + player.aim_direction() * 3.0)
-	_line_mat.albedo_color = SignalNode.TYPE_COLORS.get(_src_type(), Color(1.0, 0.8, 0.2))
+	_line_mat.albedo_color = color
 	_imesh.surface_begin(Mesh.PRIMITIVE_LINES, _line_mat)
 	for i in pts.size() - 1:
 		_imesh.surface_add_vertex(pts[i])
@@ -229,6 +293,19 @@ func physics_update(_delta: float) -> void:
 
 func hint_text() -> String:
 	var part := player.aim_part()
+	if power_mode:
+		var pn := Power.node_of(part)
+		if _psrc:
+			if pn and pn != _psrc:
+				var linked := Power.find_wire(_psrc, pn) != null
+				return "Clique: %s o fio de energia %s ↔ %s   ·   Botão direito: cancelar" % ["remover" if linked else "ligar", _psrc.title(), pn.title()]
+			return "Fio de energia de %s: clique na outra peça ou na estrutura para um isolador (%d)   ·   Botão direito: cancelar" % [_psrc.title(), _via.size()]
+		if pn:
+			var net := Power.network_of(pn)
+			var nw := Power.wires_of(pn).size()
+			return "%s (%d fio%s de energia, rede com %d peça%s)   ·   Clique: começar um fio de energia   ·   G: fio de lógica" % [pn.title(),
+				nw, "" if nw == 1 else "s", net.size(), "" if net.size() == 1 else "s"]
+		return "FIO DE ENERGIA: clique numa bateria, painel, posto, luz, relé, chave ou medidor   ·   G: fio de lógica"
 	var n := Signals.node_of(part)
 	if _src:
 		if n and n != _src and not _compatible_inputs(n).is_empty():
@@ -249,4 +326,4 @@ func hint_text() -> String:
 		if has_config(n):
 			parts.append("Botão direito: ajustes")
 		return "   ·   ".join(parts)
-	return "Clique numa peça com saída para começar um fio   ·   Clique numa superfície: isolador"
+	return "Clique numa peça com saída para começar um fio   ·   Clique numa superfície: isolador   ·   G: fio de energia"

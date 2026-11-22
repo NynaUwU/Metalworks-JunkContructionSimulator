@@ -24,8 +24,10 @@ func points() -> int:
 
 
 func add(amount: float) -> void:
+	var before := points()
 	_points += amount
-	points_changed.emit(points())
+	if points() != before:          # o posto de recarga cobra frações a cada tick
+		points_changed.emit(points())
 
 
 func can_afford(price: int) -> bool:

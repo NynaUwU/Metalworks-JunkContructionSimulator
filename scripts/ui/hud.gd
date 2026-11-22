@@ -10,6 +10,7 @@ Toque duplo (ou Shift) — correr (até segurando algo)
 Espaço — pular · Ctrl — agachar
 E — usar (loja, assento, botão, alavanca, engate)
 E segurado num puxador — puxar (portas etc.)
+E numa chave de energia — liga/desliga
 
 [b]Ferramentas[/b]
 1 — Gravitador (pegar peças)
@@ -83,6 +84,8 @@ Alavanca variável: segure E e mova o mouse
 Fiação: clique na peça de origem (escolha a
   saída), na estrutura por onde o fio passa
   (isoladores) e no destino (escolha a entrada)
+Fiação, G: fio de ENERGIA (bateria, painel,
+  posto, luz, holofote, relé, chave, medidor)
 Fiação, botão direito: remove isolador, ajustes
   (componente, chip, tela...) ou faixa da alavanca
 Chip lógico: botão direito com a Fiação escolhe

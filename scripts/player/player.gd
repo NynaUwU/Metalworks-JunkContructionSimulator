@@ -169,6 +169,8 @@ func interact_hint() -> String:
 			return "E: sentar"
 		if part.interact_kind == "teclado":
 			return "%s: digitar a senha" % key
+		if part.interact_kind == "chave" and part.node is PowerNode:
+			return "%s: %s a chave de energia" % [key, "desligar" if (part.node as PowerNode).closed else "ligar"]
 		if part.interact_kind == "puxador" and not is_seated():
 			return "E (segure): puxar"
 		if part.interact_kind == "engate" and part.mech:
@@ -282,6 +284,11 @@ func _use_device_press() -> bool:
 		return true
 	if t is Part and (t as Part).interact_kind == "puxador" and not is_seated():
 		_start_pull(t)
+		return true
+	if t is Part and (t as Part).interact_kind == "chave" and (t as Part).node is PowerNode:
+		var pn: PowerNode = (t as Part).node
+		pn.toggle()
+		toast("Chave de energia %s" % ("ligada: a energia passa" if pn.closed else "desligada: a energia não passa"))
 		return true
 	if t is Part and (t as Part).interact_kind == "teclado" and (t as Part).node is KeypadNode:
 		keypad_requested.emit((t as Part).node)

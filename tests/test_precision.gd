@@ -2,7 +2,7 @@ extends Node3D
 ## Testes: chapas finas rápidas, cilindros, tamanhos, Trena, marcas, Alinhador, puxador.
 ##   godot --headless --path . res://tests/test_precision.tscn
 
-const EXPECTED_CHECKS := 39
+const EXPECTED_CHECKS := 42
 
 var _fails := 0
 var _checks := 0
@@ -272,6 +272,25 @@ func _run() -> void:
 		if is_equal_approx(float(w.get("r", 0.05)), 0.025):
 			has_small = true
 	check(has_small, "o tamanho do ponto de solda é salvo")
+
+	print("== Dobradiça de pino octogonal")
+	var po := Components.spawn("pino_oct", Transform3D(Basis(), Vector3(140, 1.5, -40)))
+	check(po.size() == 2 and po[0].planes.size() == 10 and po[1].planes.size() == 10 and po[0].mech != null and po[0].mech.type == "pino",
+		"dois tambores octogonais (8 faces + pontas) com a junta de pino")
+	po[0].assembly().set_anchored(true)
+	# Braço com peso de um lado: a gravidade gira o tambor livre em volta do eixo X.
+	var arm := Build.spawn_box(Vector3(0.12, 0.05, 0.6), "aco", Transform3D(Basis(), po[1].global_position + Vector3(0, 0, 0.36)))
+	Build.make_weld(arm, po[1], po[1].global_position + Vector3(0, 0, 0.06))
+	var ang := 0.0
+	var ax_err := 0.0
+	for i in 90:
+		await get_tree().physics_frame
+		ang = maxf(ang, absf(po[0].mech.angle()))
+		ax_err = maxf(ax_err, rad_to_deg((po[1].global_basis.orthonormalized().x).angle_to(Vector3.RIGHT)))
+	check(ang > deg_to_rad(45.0) and ax_err < 1.0, "gira livre no eixo e não sai dele (%.0f°, desvio %.2f°)" % [rad_to_deg(ang), ax_err])
+	var pod := Saves.serialize([po[0].assembly(), po[1].assembly()], Transform3D.IDENTITY)
+	var kinds: Array = pod["groups"].map(func(g: Dictionary) -> String: return g["kind"])
+	check(kinds.has("pino_oct"), "salva como dobradiça de pino octogonal")
 
 
 func _press(action: String) -> InputEventAction:

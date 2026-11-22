@@ -15,6 +15,7 @@ const INFO := {
 	"servo_linear": {"nome": "Servo linear", "preco": 40, "desc": "Vai até uma posição e segura (sinal -1 = recolhido, 0 = meio, 1 = esticado)."},
 	"dobradica": {"nome": "Dobradiça", "preco": 10, "desc": "Duas folhas que giram livres até quase dobrar uma sobre a outra."},
 	"pino": {"nome": "Dobradiça de pino", "preco": 8, "desc": "Dois blocos num pino: giram livres, volta inteira (eixo livre)."},
+	"pino_oct": {"nome": "Dobradiça de pino octogonal", "preco": 8, "desc": "Dois tambores octogonais num pino: giram livres, volta inteira. 8 faces para soldar."},
 	"esferica": {"nome": "Junta esférica", "preco": 12, "desc": "Inclina para qualquer lado e gira em volta do próprio eixo."},
 	"trava": {"nome": "Dobradiça com trava", "preco": 18, "desc": "Gira livre; com sinal trava no ângulo em que está (ou o contrário, nos ajustes)."},
 	"torcao": {"nome": "Dobradiça de torção", "preco": 15, "desc": "Gira, mas sempre volta sozinha à posição inicial, como uma mola."},
@@ -39,7 +40,23 @@ const INFO := {
 	"mostrador": {"nome": "Mostrador numérico", "preco": 6, "desc": "Mostra um número grande."},
 	"tela": {"nome": "Tela de valores", "preco": 8, "desc": "Mostra dois valores com nome."},
 	"tela_texto": {"nome": "Tela de texto", "preco": 10, "desc": "Mostra um texto; {A}, {B}, {C}, {D} e {texto} viram os valores."},
+	"bateria": {"nome": "Bateria", "preco": 20, "desc": "Guarda energia (média: 50 Wh). Ligue com o fio de energia (Fiação, G). Saídas: Carga e %."},
+	"solar": {"nome": "Painel solar", "preco": 25, "desc": "Gera até 25 W de graça, virado para o sol. Carrega as baterias da rede."},
+	"recarga": {"nome": "Posto de recarga", "preco": 60, "desc": "Solde no chão e ligue na rede: carrega as baterias (1500 W), pago com pontos (1 a cada 10 Wh)."},
+	"luz": {"nome": "Luz", "preco": 6, "desc": "Lâmpada de até 15 W. Cor, brilho e alcance nos ajustes. Entradas: Liga e Cor."},
+	"holofote": {"nome": "Holofote", "preco": 12, "desc": "Luz em cone, forte (até 50 W). Ilumina para a frente."},
+	"rele": {"nome": "Relé de potência", "preco": 8, "desc": "Um sinal de lógica (Liga) liga e desliga a passagem de energia."},
+	"chave": {"nome": "Chave de energia", "preco": 5, "desc": "E liga e desliga a passagem de energia."},
+	"medidor": {"nome": "Medidor de energia", "preco": 10, "desc": "Mostra a carga e o consumo da rede e manda como sinal."},
 }
+
+## Peças de energia (Marco 4B): tamanho da caixa principal.
+const POWER_SIZES := {
+	"bateria": Vector3(0.3, 0.2, 0.22), "solar": Vector3(0.6, 0.03, 0.6), "recarga": Vector3(0.35, 1.2, 0.3),
+	"luz": Vector3(0.14, 0.05, 0.14), "holofote": Vector3(0.16, 0.06, 0.16), "rele": Vector3(0.16, 0.08, 0.12),
+	"chave": Vector3(0.14, 0.06, 0.2), "medidor": Vector3(0.3, 0.05, 0.2),
+}
+const POWER_KINDS := ["bateria", "solar", "recarga", "luz", "holofote", "rele", "chave", "medidor"]
 
 const INSULATOR_ANCHOR := Vector3(0, 0.055, 0)   ## onde o fio encosta no isolador (no "pescoço")
 const MOTOR_APOTHEM := 0.17
@@ -54,7 +71,7 @@ static func wire_anchor(insulator: Part) -> Vector3:
 
 ## Peças mecânicas que vêm em tamanhos (pequeno / médio / grande). O tamanho vai em
 ## size.x (0 = médio, o padrão de sempre).
-const SCALED := ["motor", "servo", "pistao", "servo_linear", "dobradica", "pino", "esferica", "trava", "torcao", "mola", "guincho"]
+const SCALED := ["motor", "servo", "pistao", "servo_linear", "dobradica", "pino", "pino_oct", "esferica", "trava", "torcao", "mola", "guincho", "bateria"]
 const SIZE_SMALL := 0.6
 const SIZE_LARGE := 1.6
 
@@ -98,6 +115,8 @@ static func bounds(kind: String, size := Vector3.ZERO) -> AABB:
 			return AABB(Vector3(-0.2, -0.03, -0.28), Vector3(0.4, 0.06, 0.56))
 		"pino":
 			return AABB(Vector3(-0.15, -0.06, -0.1), Vector3(0.3, 0.12, 0.2))
+		"pino_oct":
+			return AABB(Vector3(-0.15, -0.06, -0.06), Vector3(0.3, 0.12, 0.12))
 		"esferica":
 			return AABB(Vector3(-0.11, -0.04, -0.11), Vector3(0.22, 0.31, 0.22))
 		"trava", "torcao":
@@ -131,6 +150,10 @@ static func bounds(kind: String, size := Vector3.ZERO) -> AABB:
 	if SIGNAL_SIZES.has(kind):
 		var s: Vector3 = SIGNAL_SIZES[kind]
 		return AABB(-s * 0.5, s + Vector3(0, 0.06 if kind == "indicador" else 0.0, 0))
+	if POWER_SIZES.has(kind):
+		var ps: Vector3 = POWER_SIZES[kind]
+		var extra := {"luz": 0.07, "holofote": 0.16, "chave": 0.14, "bateria": 0.03}.get(kind, 0.0) as float
+		return AABB(-ps * 0.5, ps + Vector3(0, extra, 0))
 	return AABB(Vector3(-0.5, -0.5, -0.5), Vector3.ONE)
 
 
@@ -171,6 +194,8 @@ static func _spawn_kind(kind: String, xform: Transform3D, size: Vector3) -> Arra
 			return [_spawn_single(kind, xform)]
 		"pino":
 			return _spawn_pin(xform, scale_of(kind, size))
+		"pino_oct":
+			return _spawn_pin_oct(xform, scale_of(kind, size))
 		"esferica":
 			return _spawn_ball(xform, scale_of(kind, size))
 		"roda":
@@ -185,6 +210,8 @@ static func _spawn_kind(kind: String, xform: Transform3D, size: Vector3) -> Arra
 			return [_spawn_handle(xform)]
 		"chip", "constante", "teclas", "teclado", "indicador", "pixel", "mostrador", "tela", "tela_texto":
 			return [_spawn_signal(kind, xform)]
+		"bateria", "solar", "recarga", "luz", "holofote", "rele", "chave", "medidor":
+			return [_spawn_power(kind, xform, scale_of(kind, size))]
 	return []
 
 
@@ -589,6 +616,33 @@ static func _spawn_pin(xform: Transform3D, k := 1.0) -> Array[Part]:
 	return [a, b]
 
 
+## Dobradiça de pino octogonal: dois tambores octogonais no mesmo eixo (X), como a de
+## pino, mas com 8 faces para soldar. Usa a mesma junta ("pino").
+static func _spawn_pin_oct(xform: Transform3D, k := 1.0) -> Array[Part]:
+	var parts: Array[Part] = []
+	for i in 2:
+		var side := -1.0 if i == 0 else 1.0
+		var p := Build.spawn_planes(_oct_planes_x(0.06 * k, 0.12 * k), "aco" if i == 0 else "ferro",
+			xform * Transform3D(Basis(), Vector3(side * 0.065 * k, 0, 0)))
+		_component(p, "Dobradiça de pino octogonal", "pino_oct")
+		parts.append(p)
+	_deco_cyl(parts[0], 0.025 * k, 0.3 * k, Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3(0.065 * k, 0, 0)), Color(0.75, 0.77, 0.8), 0.9)
+	var j := _joint("pino", parts[0], parts[1], Vector3(0.065 * k, 0, 0), Vector3.RIGHT)
+	j.size_scale = k
+	j.capture_rest()
+	Build.add_joint(j)
+	return parts
+
+
+## Prisma octogonal com o eixo em X (faces nos eixos Y/Z), centrado na origem.
+static func _oct_planes_x(apothem: float, length: float) -> Array[Plane]:
+	var out: Array[Plane] = [Plane(Vector3.RIGHT, length * 0.5), Plane(Vector3.LEFT, length * 0.5)]
+	for k in 8:
+		var a := k * PI / 4.0
+		out.append(Plane(Vector3(0, cos(a), sin(a)), apothem))
+	return out
+
+
 static func _spawn_ball(xform: Transform3D, k := 1.0) -> Array[Part]:
 	var base := _box(Vector3(0.22, 0.08, 0.22) * k, "carcaca", xform, "Junta esférica (base)", "esferica")
 	var plate := _box(Vector3(0.22, 0.06, 0.22) * k, "aco", xform * Transform3D(Basis(), Vector3(0, 0.24 * k, 0)), "Junta esférica (placa)", "esferica")
@@ -772,6 +826,100 @@ static func _spawn_signal(kind: String, xform: Transform3D) -> Part:
 	return p
 
 
+# --- Energia (Marco 4B) -----------------------------------------------------------
+
+static func _spawn_power(kind: String, xform: Transform3D, k := 1.0) -> Part:
+	var size: Vector3 = POWER_SIZES[kind] * (k if kind == "bateria" else 1.0)
+	var top := size.y * 0.5
+	var mat: String = {"solar": "aluminio", "recarga": "carcaca"}.get(kind, "plastico")
+	var p: Part
+	if kind == "luz":
+		p = Build.spawn_planes(octagon_planes(size.x * 0.5, top), "plastico", xform)
+		_component(p, INFO[kind]["nome"], kind)
+	else:
+		p = _box(size, mat, xform, INFO[kind]["nome"], kind)
+	var n := PowerNode.new()
+	n.part = p
+	n.kind = kind
+	n.size_scale = k
+	match kind:
+		"bateria":
+			for x: float in [-0.08, 0.08]:
+				_deco_cyl(p, 0.022 * k, 0.03 * k, Transform3D(Basis(), Vector3(x * k, top + 0.012 * k, 0.05 * k)), Color(0.85, 0.15, 0.1) if x > 0 else Color(0.12, 0.12, 0.13), 0.6)
+			_deco_box(p, Vector3(size.x + 0.004, 0.03 * k, size.z + 0.004), Vector3(0, top - 0.03 * k, 0), Color(0.95, 0.75, 0.1))
+			var w := size.x - 0.06 * k
+			n.glow = _deco_box(p, Vector3(w, 0.008, 0.04 * k), Vector3(0, top + 0.004, -0.05 * k), Color.WHITE)
+			n.glow.set_meta("x0", 0.0)
+			n.glow.set_meta("w", w)
+			n.charge = n.capacity() * 0.5          # vem pela metade
+		"solar":
+			_deco_box(p, Vector3(size.x - 0.03, 0.006, size.z - 0.03), Vector3(0, top + 0.002, 0), Color(0.08, 0.14, 0.32))
+			for i in 3:
+				_deco_box(p, Vector3(size.x - 0.03, 0.008, 0.008), Vector3(0, top + 0.003, -0.15 + i * 0.15), Color(0.6, 0.65, 0.7))
+				_deco_box(p, Vector3(0.008, 0.008, size.z - 0.03), Vector3(-0.15 + i * 0.15, top + 0.003, 0), Color(0.6, 0.65, 0.7))
+		"recarga":
+			_deco_box(p, Vector3(size.x + 0.02, 0.04, size.z + 0.02), Vector3(0, top - 0.02, 0), Color(0.15, 0.5, 0.25))
+			var screen := _deco_box(p, Vector3(0.26, 0.2, 0.01), Vector3(0, 0.25, -size.z * 0.5 - 0.004), SCREEN_DARK)
+			screen.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			var l := Label3D.new()
+			l.text = "RECARGA"
+			l.font_size = 22
+			l.pixel_size = 0.0018
+			l.outline_size = 4
+			l.modulate = Color(0.75, 1.0, 0.8)
+			l.position = Vector3(0, 0.25, -size.z * 0.5 - 0.011)
+			l.rotation.y = PI
+			p.add_child(l)
+			n.label = l
+			n.glow = _deco_box(p, Vector3(0.06, 0.06, 0.012), Vector3(0, 0.45, -size.z * 0.5 - 0.004), Color.WHITE)
+			# Plugue/tomada: onde o fio encosta (topo) e um cabo enrolado de enfeite.
+			_deco_cyl(p, 0.05, 0.08, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(size.x * 0.5 + 0.03, 0.0, 0)), Color(0.1, 0.1, 0.1), 0.2)
+			n.closed = true
+		"luz":
+			n.glow = _deco_sphere(p, 0.045, Vector3(0, top + 0.02, 0), Color.WHITE)
+			var ol := OmniLight3D.new()
+			ol.position = Vector3(0, top + 0.08, 0)
+			ol.shadow_enabled = false
+			ol.visible = false
+			p.add_child(ol)
+			n.light = ol
+			n.light_range = 8.0
+		"holofote":
+			var head := Node3D.new()
+			head.position = Vector3(0, top + 0.08, 0)
+			p.add_child(head)
+			_deco_cyl(head, 0.075, 0.14, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3.ZERO), Color(0.2, 0.2, 0.22), 0.6)
+			_deco_box(p, Vector3(0.03, 0.06, 0.03), Vector3(0, top + 0.02, 0), Color(0.3, 0.3, 0.32))
+			n.glow = _deco_cyl(head, 0.065, 0.01, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(0, 0, -0.072)), Color.WHITE, 0.0)
+			var sl := SpotLight3D.new()
+			sl.position = Vector3(0, 0, -0.09)
+			sl.spot_angle = 28.0
+			sl.shadow_enabled = false
+			sl.visible = false
+			head.add_child(sl)
+			n.light = sl
+			n.light_range = 14.0
+		"rele":
+			_label3d(p, "RELÉ", top + 0.002, 40, Color(0.9, 0.9, 0.95), Vector3(0, 0, 0.02))
+			n.glow = _deco_box(p, Vector3(0.03, 0.01, 0.03), Vector3(0.05, top + 0.004, -0.035), Color.WHITE)
+		"chave":
+			var arm := Node3D.new()
+			arm.position = Vector3(0, top, 0.02)
+			p.add_child(arm)
+			_deco_box(arm, Vector3(0.03, 0.12, 0.03), Vector3(0, 0.06, 0), Color(0.6, 0.62, 0.66))
+			_deco_box(arm, Vector3(0.05, 0.03, 0.05), Vector3(0, 0.12, 0), Color(0.95, 0.75, 0.1))
+			n.lever = arm
+			n.glow = _deco_box(p, Vector3(0.03, 0.01, 0.03), Vector3(0, top + 0.004, -0.07), Color.WHITE)
+			p.interact_kind = "chave"
+		"medidor":
+			_deco_box(p, Vector3(size.x - 0.03, 0.004, size.z - 0.03), Vector3(0, top, 0), SCREEN_DARK)
+			n.label = _label3d(p, "", top + 0.003, 40, Color(0.5, 1.0, 0.6))
+	Build.add_node(n)
+	Power.register(n)
+	n.update_visual()
+	return p
+
+
 ## Texto deitado em cima da peça (lido de quem está na frente, olhando para -Z).
 static func _label3d(parent: Node3D, text: String, top_y: float, font_size: int, color: Color, offset := Vector3.ZERO, width := 0.0) -> Label3D:
 	var l := Label3D.new()
@@ -851,6 +999,11 @@ static func build_visual(kind: String, size := Vector3.ZERO) -> Node3D:
 			_deco_box(root, Vector3(0.26, 0.08, 0.26), Vector3.ZERO, Color(0.16, 0.17, 0.19))
 			for i in 3:
 				_deco_box(root, Vector3(0.26, 0.004, 0.04), Vector3(0, 0.041, -0.08 + i * 0.08), Color(0.95, 0.75, 0.1))
+		"pino_oct":
+			var x_axis := Basis(Vector3.BACK, PI * 0.5)
+			_deco_cyl(root, 0.06, 0.12, Transform3D(x_axis, Vector3(-0.065, 0, 0)), steel, 0.6)
+			_deco_cyl(root, 0.06, 0.12, Transform3D(x_axis, Vector3(0.065, 0, 0)), Color(0.5, 0.32, 0.2), 0.5)
+			_deco_cyl(root, 0.025, 0.3, Transform3D(x_axis, Vector3.ZERO), Color(0.75, 0.77, 0.8))
 		"pino":
 			_deco_box(root, Vector3(0.12, 0.12, 0.2), Vector3(-0.065, 0, 0), steel)
 			_deco_box(root, Vector3(0.12, 0.12, 0.2), Vector3(0.065, 0, 0), Color(0.5, 0.32, 0.2))
@@ -889,6 +1042,41 @@ static func build_visual(kind: String, size := Vector3.ZERO) -> Node3D:
 		"puxador":
 			_deco_box(root, Vector3(0.18, 0.025, 0.05), Vector3.ZERO, steel)
 			_handle_visual(root)
+		"bateria":
+			var bs: Vector3 = POWER_SIZES[kind]
+			_deco_box(root, bs, Vector3.ZERO, Color(0.13, 0.14, 0.16))
+			_deco_box(root, Vector3(bs.x + 0.004, 0.03, bs.z + 0.004), Vector3(0, bs.y * 0.5 - 0.03, 0), Color(0.95, 0.75, 0.1))
+			_deco_box(root, Vector3(bs.x - 0.06, 0.008, 0.04), Vector3(0, bs.y * 0.5 + 0.004, -0.05), Color(0.3, 1.0, 0.4), 1.5)
+			for x: float in [-0.08, 0.08]:
+				_deco_cyl(root, 0.022, 0.03, Transform3D(Basis(), Vector3(x, bs.y * 0.5 + 0.012, 0.05)), Color(0.85, 0.15, 0.1) if x > 0 else Color(0.12, 0.12, 0.13), 0.6)
+		"solar":
+			_deco_box(root, POWER_SIZES[kind], Vector3.ZERO, Color(0.6, 0.62, 0.66))
+			_deco_box(root, Vector3(0.57, 0.006, 0.57), Vector3(0, 0.017, 0), Color(0.08, 0.14, 0.32))
+		"recarga":
+			_deco_box(root, POWER_SIZES[kind], Vector3.ZERO, Color(0.3, 0.32, 0.35))
+			_deco_box(root, Vector3(0.37, 0.04, 0.32), Vector3(0, 0.58, 0), Color(0.15, 0.5, 0.25))
+			_deco_box(root, Vector3(0.26, 0.2, 0.01), Vector3(0, 0.25, -0.155), SCREEN_DARK)
+			_deco_box(root, Vector3(0.06, 0.06, 0.012), Vector3(0, 0.45, -0.155), Color(0.3, 1.0, 0.4), 2.0)
+		"luz":
+			_deco_cyl(root, 0.07, 0.05, Transform3D.IDENTITY, Color(0.16, 0.17, 0.19))
+			_deco_box(root, Vector3(0.07, 0.07, 0.07), Vector3(0, 0.045, 0), Color(1.0, 0.9, 0.6), 3.0)
+		"holofote":
+			_deco_box(root, POWER_SIZES[kind], Vector3.ZERO, Color(0.16, 0.17, 0.19))
+			_deco_box(root, Vector3(0.03, 0.06, 0.03), Vector3(0, 0.05, 0), Color(0.3, 0.3, 0.32))
+			_deco_cyl(root, 0.075, 0.14, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(0, 0.11, 0)), Color(0.2, 0.2, 0.22), 0.6)
+			_deco_box(root, Vector3(0.1, 0.1, 0.01), Vector3(0, 0.11, -0.075), Color(1.0, 0.95, 0.7), 3.0)
+		"rele", "chave", "medidor":
+			var rs: Vector3 = POWER_SIZES[kind]
+			_deco_box(root, rs, Vector3.ZERO, BOARD_DARK)
+			match kind:
+				"rele":
+					_label3d(root, "RELÉ", rs.y * 0.5 + 0.002, 40, Color(0.9, 0.9, 0.95))
+				"chave":
+					_deco_box(root, Vector3(0.03, 0.12, 0.03), Vector3(0, 0.09, 0.02), Color(0.6, 0.62, 0.66))
+					_deco_box(root, Vector3(0.05, 0.03, 0.05), Vector3(0, 0.15, 0.02), Color(0.95, 0.75, 0.1))
+				"medidor":
+					_deco_box(root, Vector3(rs.x - 0.03, 0.004, rs.z - 0.03), Vector3(0, rs.y * 0.5, 0), SCREEN_DARK)
+					_label3d(root, "75%", rs.y * 0.5 + 0.003, 48, Color(0.5, 1.0, 0.6))
 		"chip", "constante", "teclas", "teclado", "indicador", "pixel", "mostrador", "tela", "tela_texto":
 			var ssz: Vector3 = SIGNAL_SIZES[kind]
 			_deco_box(root, ssz, Vector3.ZERO, BOARD_DARK)

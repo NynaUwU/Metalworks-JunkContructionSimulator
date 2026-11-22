@@ -631,3 +631,43 @@ func _alignghost() -> void:
 	_look_from_eye(c + Vector3(-0.4, 0.1, 0.2))
 	await _frames(10)
 	await _shot("a1_previa_alinhador")
+
+
+func _energy() -> void:
+	var o := Vector3(6, 0.02, -2)
+	var sp := func(kind: String, at: Vector3, size := Vector3.ZERO) -> PowerNode:
+		var b := Components.bounds(kind, size)
+		var p: Part = Components.spawn(kind, Transform3D(Basis(), o + at + Vector3(0, -b.position.y, 0)), size)[0]
+		return p.node as PowerNode
+	var bat := sp.call("bateria", Vector3(0, 0, 0)) as PowerNode
+	var big := sp.call("bateria", Vector3(-0.9, 0, 0.3), Vector3(1.6, 0, 0)) as PowerNode
+	var l1 := sp.call("luz", Vector3(1.0, 0, -0.6)) as PowerNode
+	var l2 := sp.call("luz", Vector3(1.6, 0, 0.2)) as PowerNode
+	l2.color = Color(0.3, 0.6, 1.0)
+	var spot := sp.call("holofote", Vector3(0.4, 0, -1.4)) as PowerNode
+	var relay := sp.call("rele", Vector3(0.6, 0, 0.6)) as PowerNode
+	var meter := sp.call("medidor", Vector3(-0.4, 0, 1.2)) as PowerNode
+	var panel := sp.call("solar", Vector3(-1.4, 0, -1.2)) as PowerNode
+	var po := Components.spawn("pino_oct", Transform3D(Basis(), o + Vector3(2.4, 0.08, -1.0)))
+	var po2 := Components.spawn("pino", Transform3D(Basis(), o + Vector3(2.4, 0.08, -0.4)))
+	assert(po.size() == 2 and po2.size() == 2)
+	Power.connect_nodes(bat, l1)
+	Power.connect_nodes(bat, relay)
+	Power.connect_nodes(relay, l2)
+	Power.connect_nodes(bat, spot)
+	Power.connect_nodes(bat, big)
+	Power.connect_nodes(big, meter)
+	Power.connect_nodes(panel, big)
+	var lever: Part = Components.spawn("alavanca", Transform3D(Basis(), o + Vector3(1.4, 0.04, 1.3)))[0]
+	Signals.connect_ports(lever.device, "Saída", relay, "Liga")
+	lever.device.press()
+	await _frames(30)
+	player.teleport(o + Vector3(0.4, 0.03, 3.2))
+	_look_from_eye(o + Vector3(0.4, 0.1, -0.2))
+	await _frames(10)
+	await _shot("e1_energia")
+	# Depósito de eletrônica com as peças de energia e o posto de recarga
+	player.teleport(Vector3(-32, 0.05, 14.5))
+	_look_from_eye(Vector3(-33.5, 0.2, 6.5))
+	await _frames(30)
+	await _shot("e2_deposito_energia")

@@ -87,6 +87,7 @@ func populate() -> void:
 	_spawn_scrap()
 	_spawn_component_depot()
 	_spawn_logic_depot()
+	_spawn_charging_post()
 	demo_seat = DemoBuilds.build_car(Vector3(-7, 0, 3))
 
 
@@ -132,6 +133,7 @@ func _build_stations() -> void:
 	shop.position = Vector3(10, 0, -25.5)
 	StationBuilder.label_sign(self, "COMPONENTES", Vector3(-30, 5.22, 19.8))
 	StationBuilder.label_sign(self, "ELETRÔNICA", Vector3(-32, 2.2, 0.6))
+	StationBuilder.label_sign(self, "RECARGA", CHARGING_POST + Vector3(0, 2.0, 0))
 	var wires := WireRenderer.new()
 	wires.name = "Wires"
 	add_child(wires)
@@ -206,6 +208,7 @@ func _build_environment() -> void:
 	sun = DirectionalLight3D.new()
 	sun.name = "Sun"
 	sun.rotation_degrees = Vector3(-52, -35, 0)
+	Power.sun_dir = (Basis.from_euler(sun.rotation) * Vector3.FORWARD).normalized()   # painel solar
 	sun.light_energy = 1.15
 	sun.light_color = Color(1.0, 0.96, 0.9)
 	sun.shadow_enabled = true
@@ -465,6 +468,9 @@ func _spawn_component_depot() -> void:
 	for c in 6:
 		var wheel := Vector3(0.55, 0.3, 0) if c < 3 else Vector3(0.8, 0.4, 0)
 		_spawn_component("roda", o + Vector3(-4.5 + c * 1.8, 0, 9.2), wheel)
+	# Dobradiças de pino octogonais: pequena, média e grande (duas de cada).
+	for c in 6:
+		_spawn_component("pino_oct", o + Vector3(-4.5 + c * 1.8, 0, 10.6), Vector3([0.6, 0.6, 1.0, 1.0, 1.6, 1.6][c], 0, 0))
 
 
 ## Depósito de eletrônica (lógica, teclas, mostradores), ao lado do galpão.
@@ -476,10 +482,22 @@ func _spawn_logic_depot() -> void:
 		["teclas", "teclas", "teclado", "teclado", "indicador", "indicador"],
 		["pixel", "pixel", "mostrador", "mostrador", "tela", "tela_texto"],
 		["puxador", "puxador", "puxador", "puxador", "puxador", "puxador"],
+		["bateria", "bateria", "solar", "solar", "luz", "luz"],
+		["holofote", "holofote", "rele", "chave", "medidor", "medidor"],
 	]
 	for r in rows.size():
 		for c in rows[r].size():
 			_spawn_component(rows[r][c], o + Vector3(-3.0 + c * 1.2, 0, -2.4 + r * 1.2))
+
+
+const CHARGING_POST := Vector3(-37.5, 0.02, 6.0)
+
+
+## Posto de recarga soldado no chão, ao lado do depósito de eletrônica.
+func _spawn_charging_post() -> void:
+	var b := Components.bounds("recarga")
+	var post: Part = Components.spawn("recarga", Transform3D(Basis(), CHARGING_POST + Vector3(0, -b.position.y, 0)))[0]
+	Build.make_weld(post, null, CHARGING_POST + Vector3(0.1, 0.0, 0.1), false)
 
 
 func _spawn_pile(center: Vector3) -> void:

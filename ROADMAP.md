@@ -127,16 +127,18 @@ Inspirado no Wiremod e no ACF do Garry's Mod (sem nada de NPCs nem geradores de 
 - Solver do Jolt com 96/24 iterações: suspensões com dobradiças em cadeia não dobram (Model-T de teste)
 - Ponto de solda pequeno/normal/grande (R); solda pega a peça mais próxima; não trava componentes sem querer
 
-### v0.9 — 4B: Energia elétrica
-- [ ] Rede elétrica:
-  - tudo o que está ligado por **fio de energia** (visível e diferente do fio de lógica) divide a mesma carga;
-  - a rede tem portas de leitura: carga, % e consumo.
-- [ ] Bateria em tamanhos, com carga em Wh
-- [ ] Fontes: gerador (ligado a um motor por transmissão), painel solar pequeno, estação de recarga paga com pontos
-- [ ] Relé de potência e chave: um sinal de lógica liga e desliga um circuito de energia
-- [ ] Luz e holofote (cor, brilho, alcance), que gastam energia
-- [ ] Medidor de energia (vira sinal de lógica)
-- [ ] Testes: carga e descarga, relé, rede dividida
+### ✅ v0.9 — 4B: Energia elétrica
+- Rede elétrica: o que está ligado pelo mesmo fio de energia divide a carga; relé/chave desligados cortam
+- Fio de energia na Fiação (G): vermelho, mais grosso, acende quando passa energia
+- Bateria P/M/G (10,8 / 50 / 205 Wh) com Carga e %
+- Fontes: painel solar (grátis, conforme o sol) e posto de recarga (pago com pontos, soldado no chão)
+- Relé de potência (sinal) e chave de energia (E)
+- Luz e holofote (cor, brilho, alcance) que gastam energia; ficam fracos sem carga
+- Medidor de energia (Carga, Capacidade, %, Consumo, Geração como sinal)
+- Testes: carga e descarga, rede dividida, relé, chave, sol, posto, medidor, salvar
+- **Gerador ficou para a v0.11:** ligado a um motor de verdade (com combustível) pela transmissão. Com o motor
+  simples (que não gasta nada) ele seria energia infinita.
+- Junto: dobradiça de pino octogonal; fios mais grossos e retos em distâncias curtas
 
 ### v0.10 — 4C: Sensores
 - [ ] Ranger:
@@ -158,6 +160,7 @@ Inspirado no Wiremod e no ACF do Garry's Mod (sem nada de NPCs nem geradores de 
 - [ ] Testes de cada sensor
 
 ### v0.11 — 4D: Trem de força estilo ACF
+- [ ] Gerador (vindo da 4B): ligado ao motor pela transmissão, carrega as baterias
 - [ ] Ferramenta Transmissão:
   - liga tanque → motor, motor → câmbio, câmbio → câmbio e câmbio → cubos de roda;
   - ligações invisíveis (aparecem só com a ferramenta na mão);

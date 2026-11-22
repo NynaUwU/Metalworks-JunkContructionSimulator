@@ -54,6 +54,7 @@ func reset(root: Node3D) -> void:
 	joints.clear()
 	devices.clear()
 	Signals.reset()
+	Power.reset()
 	active_seat = null
 	seat_keys_enabled = true
 
@@ -349,8 +350,11 @@ func delete_part(part: Part) -> void:
 		_remove_device(part.device)
 	if part.node:
 		Signals.unregister(part.node)
+		if part.node is PowerNode:
+			Power.unregister(part.node)
 	if part.kind == "isolador":
 		Signals.remove_via(part)
+		Power.remove_via(part)
 	if part == active_seat:
 		active_seat = null
 	for w: Weld in part.welds.duplicate():
@@ -640,6 +644,7 @@ func network(seat: Part) -> Array[MechJoint]:
 
 func _physics_process(delta: float) -> void:
 	Signals.tick(delta)
+	Power.tick(delta)
 	if _balance_dirty:
 		_balance_dirty = false
 		balance_masses()

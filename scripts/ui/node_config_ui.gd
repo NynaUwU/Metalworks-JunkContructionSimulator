@@ -82,6 +82,8 @@ func _rebuild() -> void:
 		_keypad_section(node as KeypadNode)
 	elif node is DisplayNode:
 		_display_section(node as DisplayNode)
+	elif node is PowerNode:
+		_power_section(node as PowerNode)
 	_content.add_child(_ports_text())
 	var close_b := Button.new()
 	close_b.text = "Fechar"
@@ -234,6 +236,24 @@ func _display_section(d: DisplayNode) -> void:
 			_content.add_child(_label("{texto} = entrada Texto · {A} {B} {C} {D} = entradas numéricas. Ex.: Velocidade: {A} km/h", 12, Color(1, 1, 1, 0.55)))
 		"pixel":
 			_content.add_child(_label("Entrada Cor: vetor (vermelho; verde; azul) de 0 a 255.", 12, Color(1, 1, 1, 0.55)))
+
+
+# --- Energia ---------------------------------------------------------------------------
+
+func _power_section(pn: PowerNode) -> void:
+	match pn.kind:
+		"luz", "holofote":
+			_content.add_child(_row("Cor", _color_btn(pn.color, func(c: Color) -> void:
+				pn.color = c
+				pn.update_visual())))
+			_content.add_child(_slider("Brilho", 5, 100, 5, pn.brightness * 100.0, "%d %%", func(x: float) -> void: pn.brightness = x / 100.0))
+			_content.add_child(_slider("Alcance", 2, 30 if pn.kind == "holofote" else 20, 1, pn.light_range, "%d m", func(x: float) -> void: pn.light_range = x))
+			_content.add_child(_check("Acesa sem fio na entrada Liga", pn.always_on, func(on: bool) -> void: pn.always_on = on))
+			var watts := (PowerNode.SPOT_W if pn.kind == "holofote" else PowerNode.LIGHT_W)
+			_content.add_child(_label("Gasta até %d W (no brilho máximo). A entrada Cor (vetor 0 a 255) troca a cor." % roundi(watts), 12, Color(1, 1, 1, 0.55)))
+		"bateria":
+			_content.add_child(_label("Capacidade: %s · carga: %s" % [PowerNode._wh(pn.capacity()), PowerNode._wh(pn.charge)], 14, Color(0.6, 1.0, 0.7)))
+			_content.add_child(_label("Baterias ligadas pelo mesmo fio de energia dividem a carga.", 12, Color(1, 1, 1, 0.55)))
 
 
 # --- Captura de teclas ---------------------------------------------------------------------

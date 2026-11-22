@@ -97,6 +97,7 @@ Nome, mapa, visual e código são próprios.
   - **propulsor** (empurra para o lado da ponta lisa; a chama sai pelo bocal);
   - **eletroímã** (ligado, puxa e gruda aço e ferro na face de metal; alumínio não);
   - **engate rápido** (trava no que encostar na face listrada; liga com **E** ou com sinal);
+  - **dobradiça de pino octogonal** (como a de pino, com dois tambores octogonais: 8 faces para soldar);
   - **roda**, **assento** e **puxador** (alça: segure **E** nela e mova a mira para puxar com força fraca,
     bom para portas e tampas; afastar demais solta).
 - **Formato:** tudo o que é "cilíndrico" é **octogonal** (pistão, hastes, discos, propulsor, ímã, isolador,
@@ -154,6 +155,24 @@ Nome, mapa, visual e código são próprios.
 - **Depurador (5):** mire numa peça para ver todas as entradas e saídas ao vivo; botão direito dá nome e ajustes.
 - Tudo isso fica no depósito **ELETRÔNICA** (ao lado do galpão) e na loja.
 
+**Energia elétrica** (Marco 4B)
+- **Fio de energia:** na Fiação (4), aperte **G** para trocar para o fio de energia (vermelho, mais grosso). Clique numa
+  peça de energia, nos isoladores (opcional) e na outra peça. Clicar de novo no mesmo par remove o fio.
+- **Rede:** tudo o que está ligado pelos fios de energia divide a mesma carga (as baterias enchem e esvaziam juntas).
+  Relé e chave desligados cortam a rede naquele ponto.
+- **Peças** (depósito ELETRÔNICA e loja, categoria Energia):
+  - **bateria** pequena / média / grande (10,8 / 50 / 205 Wh); saídas Carga e %;
+  - **painel solar:** até 25 W de graça, virado para o sol;
+  - **posto de recarga:** 1500 W pagos com pontos (1 ponto a cada 10 Wh); só funciona **soldado no chão**. Tem um
+    ao lado do depósito ELETRÔNICA (placa RECARGA);
+  - **luz** (até 15 W) e **holofote** (até 50 W): cor, brilho e alcance nos ajustes (botão direito com a Fiação);
+    entradas Liga (0 a 1) e Cor (vetor 0 a 255);
+  - **relé de potência** (entrada Liga) e **chave de energia** (E): ligam e desligam a passagem;
+  - **medidor:** mostra e manda como sinal a Carga, Capacidade, %, Consumo e Geração da rede.
+- A cada instante: o sol alimenta as luzes; o que faltar vem do posto (se houver) e depois das baterias. Sem carga,
+  as luzes ficam mais fracas na proporção. Sobrando, as baterias carregam.
+- Lógica continua de graça. Os componentes simples (motor, servo, pistão...) não gastam energia.
+
 **Salvar e carregar** (Esc → **Salvar / Carregar**)
 - **Mundos:** salve o mundo inteiro com um nome (peças, soldas, componentes com seus ajustes e teclas,
   fios, pontos e onde você está). Carregue, apague ou comece um **mundo novo**.
@@ -186,6 +205,8 @@ scripts/
   signals/signals.gd      nós de sinal e fios porta a porta (autoload "Signals")
   signals/gates.gd        os 86 modos do chip lógico
   signals/*_node.gd       chip, constante, teclas, teclado de senha, mostradores, assento
+  power/power.gd          fios de energia e redes elétricas (autoload "Power")
+  power/power_node.gd     bateria, painel solar, posto de recarga, luz, holofote, relé, chave, medidor
   tools/debug_tool.gd     Depurador
   tools/snap.gd           ponto mirado encaixado na grade de 5 cm da peça (ou numa marca)
   tools/measure_tool.gd   Trena (medir e marcar)
@@ -246,6 +267,10 @@ godot --headless --path . res://tests/test_precision.tscn
 
 ```bash
 godot --headless --path . res://tests/test_vehicle.tscn
+```
+
+```bash
+godot --headless --path . res://tests/test_power.tscn
 ```
 
 **Publicar uma versão:** mude `config/version` no `project.godot` e crie

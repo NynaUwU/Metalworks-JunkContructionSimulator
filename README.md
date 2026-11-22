@@ -197,6 +197,10 @@ Nome, mapa, visual e código são próprios.
 - **Câmbios:** manual (Sobe/Desce ou Marcha), automático (troca sozinho) e CVT. Entradas Freio, Ré (com o carro
   andando para a frente, freia antes de engatar) e, com **esterço de tanque** (diferencial duplo), Esq/Dir/Esterço
   (gira no lugar). Dá para ligar câmbio em câmbio: as relações multiplicam.
+- **Caixa de transferência:** alta (1,0) ou **reduzida** (2,6), pela entrada Reduzida. Multiplica a relação de tudo o que
+  vem depois dela.
+- **Diferencial:** as rodas depois dele giram **diferente nas curvas** (aberto; a média segue o motor). Entrada **Travar**
+  deixa elas iguais. Relação ajustável. Saída Diferença.
 - **Gerador:** motor → gerador (Transmissão) e o gerador na rede (fio de energia): até 400 W.
 - **Combustível:** tanques de gasolina e diesel (P/M/G; médio 40 L). Abasteça na **bomba de combustível** (E nela,
   1 ponto a cada 5 L; só soldada no chão). Tem uma ao lado do posto RECARGA.
@@ -249,6 +253,17 @@ Nome, mapa, visual e código são próprios.
   nelas (clicar de novo desmarca; botão direito termina). Saídas: Peça, Lista, Quantidade, Posição, Distância, Massa.
 - **Pintor:** pinta com a **Cor** (0 a 255) a peça da entrada **Peça**, as da **Lista** ou, sem fio nelas, a que está
   na frente do bico. **Limpar** volta a cor do metal. A pintura vai junto no save e nos pedaços cortados.
+
+**Atuadores** (Marco 4E, depósito ELETRÔNICA e loja, categoria Atuadores). A frente deles é o lado da lente/bico (-Z).
+- **Propulsor vetorial:** empurra a máquina para a frente com **Força** (-1 a 1) × força máxima (ajustes). **Vetor**
+  com fio escolhe a direção no mundo (**Local** ligado: nos eixos da peça). Chama por trás.
+- **Hoverball:** segura a peça na **Altura** acima do chão (padrão 1,5 m). Use 3 ou 4 numa máquina para ela flutuar
+  nivelada; freia o deslize de lado. Entrada **Ligado**.
+- **Forcer:** empurra (ou puxa, com Força negativa) o que está na frente, até o **Alcance**.
+- **Gimbal:** gira a máquina para a frente dele apontar para o **Alvo** (um ponto: GPS, buscador...) ou a **Direção**.
+- **Peso ajustável:** 1 a 2000 kg pela entrada **Massa**.
+- **Congelador:** **Congelar** ligado deixa a máquina inteira parada onde está; desligado, solta.
+- **User:** na subida de **Usar**, aperta E no que está na frente (botão, alavanca, chave de energia, bomba, engate).
 
 **Salvar e carregar** (Esc → **Salvar / Carregar**)
 - **Mundos:** salve o mundo inteiro com um nome (peças, soldas, componentes com seus ajustes e teclas,

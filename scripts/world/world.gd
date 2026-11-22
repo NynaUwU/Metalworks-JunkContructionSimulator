@@ -495,6 +495,8 @@ func _spawn_logic_depot() -> void:
 		["rom", "hd", "hd", "radio", "radio", "radio"],
 		["console", "tela_pixels", "osciloscopio", "hud_indicador", "hud_indicador", "camera"],
 		["camera", "marcador", "marcador", "marcador_lista", "pintor", "pintor"],
+		["propulsor_vetorial", "propulsor_vetorial", "hoverball", "hoverball", "hoverball", "forcer"],
+		["gimbal", "peso", "peso", "congelador", "user", "user"],
 	]
 	for r in rows.size():
 		for c in rows[r].size():
@@ -514,6 +516,7 @@ func _spawn_engine_depot() -> void:
 		["motor_diesel", "motor_rotativo", "motor_eletrico", "turbina"],
 		["cambio_manual", "cambio_auto", "cvt", "gerador"],
 		["embreagem_auto", "embreagem_auto", "embreagem_manual", "embreagem_manual"],
+		["transferencia", "transferencia", "diferencial", "diferencial"],
 		["cubo", "cubo", "cubo", "cubo"],
 		["tanque_gasolina", "tanque_gasolina", "tanque_diesel", "tanque_diesel"],
 	]

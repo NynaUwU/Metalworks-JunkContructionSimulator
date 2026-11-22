@@ -106,6 +106,8 @@ FPGA: botão direito com a Fiação abre o editor
 Rádio: mesmo canal = sinais sem fio
 Marcador: botão direito com a Fiação →
   Marcar peças (clique nelas)
+Atuadores (propulsor, hoverball, forcer,
+  gimbal, User): a frente é o lado da lente
 Depurador: mira mostra entradas e saídas ao vivo;
   botão direito: nome e ajustes
 Pistão no modo amortecedor = suspensão

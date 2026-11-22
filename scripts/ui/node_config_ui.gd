@@ -96,6 +96,8 @@ func _rebuild() -> void:
 		_screen_section(node as ScreenNode)
 	elif node is GadgetNode:
 		_gadget_section(node as GadgetNode)
+	elif node is ActuatorNode:
+		_actuator_section(node as ActuatorNode)
 	_content.add_child(_ports_text())
 	var close_b := Button.new()
 	close_b.text = "Fechar"
@@ -424,6 +426,30 @@ func _gadget_section(g: GadgetNode) -> void:
 			_content.add_child(_label("Sem fio em Peça e Lista, pinta a peça na frente do bico (face de cima). Pintar sem fio = sempre. Limpar (pulso) volta a cor do metal. A pintura vai junto no save.", 12, Color(1, 1, 1, 0.55)))
 
 
+# --- Atuadores (Marco 4E) ----------------------------------------------------------------
+
+func _actuator_section(a: ActuatorNode) -> void:
+	match a.kind:
+		"propulsor_vetorial":
+			_content.add_child(_slider("Força máxima", 100, 20000, 100, a.max_force, "%d N", func(x: float) -> void: a.max_force = x))
+			_content.add_child(_label("Força (-1 a 1) × força máxima, para a frente (lado da lente; a chama sai por trás). Vetor com fio: direção no mundo (Local ligado: nos eixos da peça).", 12, Color(1, 1, 1, 0.55)))
+		"hoverball":
+			_content.add_child(_slider("Altura (sem fio)", 0.2, 20, 0.1, a.height, "%.1f m", func(x: float) -> void: a.height = x))
+			_content.add_child(_slider("Força máxima", 100, 20000, 100, a.max_force, "%d N", func(x: float) -> void: a.max_force = x))
+			_content.add_child(_check("Frear o deslize de lado", a.air_brake, func(on: bool) -> void: a.air_brake = on))
+			_content.add_child(_label("Mede a distância até o chão embaixo dela e empurra para cima até ficar na Altura. Uma máquina de 100 kg precisa de uns 1000 N no total: divida entre as hoverballs.", 12, Color(1, 1, 1, 0.55)))
+		"forcer", "user":
+			_content.add_child(_slider("Alcance", 0.5, 30 if a.kind == "forcer" else 3, 0.5, a.reach, "%.1f m", func(x: float) -> void: a.reach = x))
+			_content.add_child(_label("Força em N: positivo empurra, negativo puxa o que está na frente." if a.kind == "forcer" else "Na subida de Usar, aperta E no que está na frente: botão (segura enquanto Usar estiver ligado), alavanca, chave de energia, bomba, engate.", 12, Color(1, 1, 1, 0.55)))
+		"gimbal":
+			_content.add_child(_slider("Torque máximo", 100, 50000, 100, a.max_force, "%d N·m", func(x: float) -> void: a.max_force = x))
+			_content.add_child(_label("Gira a máquina dele para a frente (seta) apontar para o Alvo (um ponto, ex.: GPS ou buscador) ou para a Direção. Saída Erro em graus.", 12, Color(1, 1, 1, 0.55)))
+		"peso":
+			_content.add_child(_slider("Massa (sem fio)", 1, 2000, 1, a.mass_default, "%d kg", func(x: float) -> void: a.mass_default = x))
+		"congelador":
+			_content.add_child(_label("Congelar ligado: a máquina inteira (soldas e juntas) fica parada onde está. Desligado: solta de novo.", 12, Color(1, 1, 1, 0.55)))
+
+
 # --- Trem de força -----------------------------------------------------------------------
 
 func _drive_section(d: DriveNode) -> void:
@@ -446,6 +472,19 @@ func _drive_section(d: DriveNode) -> void:
 	elif d.is_clutch():
 		_content.add_child(_label("Automática: engata sozinha pelo giro do motor." if d.kind == "embreagem_auto" else "Manual: entrada Pedal (1 = pisada, desengatada; 0 = engatada).", 13, Color(1.0, 0.85, 0.4)))
 		_content.add_child(_label("Qualquer lugar no caminho entre o motor e as rodas. Sem embreagem, o motor fica preso às rodas.", 12, Color(1, 1, 1, 0.55)))
+	elif d.is_transfer():
+		_content.add_child(_slider("Alta", 0.5, 2.0, 0.05, d.high_ratio, "%.2f : 1", func(x: float) -> void: d.high_ratio = x))
+		_content.add_child(_slider("Reduzida", 1.5, 5.0, 0.1, d.low_ratio, "%.1f : 1", func(x: float) -> void: d.low_ratio = x))
+		_content.add_child(_check("Reduzida sem fio (sem fio na entrada Reduzida)", d.low_default, func(on: bool) -> void:
+			d.low_default = on
+			d.low = on))
+		_content.add_child(_label("Multiplica a relação de tudo o que vem depois dela no caminho até as rodas. Reduzida = mais força, menos velocidade.", 12, Color(1, 1, 1, 0.55)))
+	elif d.is_diff():
+		_content.add_child(_slider("Relação", 1.0, 8.0, 0.1, d.diff_ratio, "%.1f : 1", func(x: float) -> void: d.diff_ratio = x))
+		_content.add_child(_check("Travado sem fio (sem fio na entrada Travar)", d.lock_default, func(on: bool) -> void:
+			d.lock_default = on
+			d.locked = on))
+		_content.add_child(_label("Aberto: as rodas ligadas depois dele giram diferente nas curvas, e a média segue o motor. Travado: giram iguais. Saída Diferença: rad/s entre a roda mais rápida e a mais lenta.", 12, Color(1, 1, 1, 0.55)))
 	elif d.is_tank():
 		_content.add_child(_label("%s: %.1f de %d L. Encha na bomba de combustível (E nela)." % [d.fuel_type().capitalize(), d.fuel, roundi(d.capacity())], 13, Color(1.0, 0.85, 0.4)))
 

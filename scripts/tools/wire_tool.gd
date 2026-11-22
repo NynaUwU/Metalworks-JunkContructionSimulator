@@ -93,7 +93,7 @@ static func has_config(n: SignalNode) -> bool:
 	if n is DriveNode:
 		return true
 	return n is ChipNode or n is ConstNode or n is KeysNode or n is KeypadNode or n is DisplayNode \
-		or n is FpgaNode or n is MemoryNode or n is RadioNode or n is ScreenNode or n is GadgetNode
+		or n is FpgaNode or n is MemoryNode or n is RadioNode or n is ScreenNode or n is GadgetNode or n is ActuatorNode
 
 
 ## Começa a marcar peças para um marcador (vem dos ajustes dele).

@@ -42,6 +42,13 @@ const INFO := {
 	"camera": {"nome": "Câmera", "preco": 20, "desc": "Com Ligar ligado, quem está sentado na máquina vê pela câmera (frente da peça). Zoom em graus."},
 	"marcador": {"nome": "Marcador de peça", "preco": 6, "desc": "Guarda uma peça (Fiação: botão direito → Marcar peças). Saídas: Peça, Posição, Distância, Massa."},
 	"marcador_lista": {"nome": "Marcador de peças (lista)", "preco": 10, "desc": "Guarda várias peças (até 64). Saídas: Lista, Quantidade e a primeira peça."},
+	"propulsor_vetorial": {"nome": "Propulsor vetorial", "preco": 40, "desc": "Empurra a máquina para a frente (lado da lente) com Força (-1 a 1) × força máxima. Vetor com fio escolhe a direção."},
+	"hoverball": {"nome": "Hoverball", "preco": 35, "desc": "Segura a peça na Altura acima do chão (padrão 1,5 m). Use 3 ou 4 para uma máquina flutuar."},
+	"forcer": {"nome": "Forcer", "preco": 25, "desc": "Empurra (ou puxa, com Força negativa) o que está na frente, até o Alcance."},
+	"gimbal": {"nome": "Gimbal", "preco": 30, "desc": "Gira a máquina para a frente dele apontar para o Alvo (ponto) ou a Direção (vetor)."},
+	"peso": {"nome": "Peso ajustável", "preco": 15, "desc": "Massa de 1 a 2000 kg pela entrada Massa (sem fio: a dos ajustes)."},
+	"congelador": {"nome": "Congelador", "preco": 20, "desc": "Congelar ligado: a máquina inteira fica parada no ar. Desligado: solta."},
+	"user": {"nome": "User (aperta E)", "preco": 15, "desc": "Usar: aperta E no que está na frente (botão, alavanca, chave de energia, bomba, engate)."},
 	"pintor": {"nome": "Pintor", "preco": 12, "desc": "Pinta com a Cor (0 a 255) a peça da entrada Peça, as da Lista ou a que estiver na frente do bico."},
 	"radio": {"nome": "Rádio", "preco": 15, "desc": "Manda e recebe sinais sem fio entre máquinas no mesmo canal (A, B, C, D, Vetor e Texto)."},
 	"chip": {"nome": "Chip lógico", "preco": 6, "desc": "E, OU, somar, comparar, memória, temporizador... (86 modos). Escolha o modo no botão direito da Fiação."},
@@ -83,6 +90,8 @@ const INFO := {
 	"cambio_auto": {"nome": "Câmbio automático", "preco": 60, "desc": "Troca as marchas sozinho. Entradas: Freio, Ré, Esq/Dir (tanque)."},
 	"embreagem_auto": {"nome": "Embreagem automática", "preco": 25, "desc": "Entre o motor e o câmbio: engata sozinha pelo giro (sai patinando na arrancada)."},
 	"embreagem_manual": {"nome": "Embreagem manual", "preco": 20, "desc": "Entre o motor e o câmbio: entrada Pedal (1 = pisada, desengata; 0 = engatada)."},
+	"transferencia": {"nome": "Caixa de transferência", "preco": 45, "desc": "Alta (1,0) ou reduzida (2,6): entrada Reduzida. Põe no caminho entre o câmbio e as rodas para subir rampas."},
+	"diferencial": {"nome": "Diferencial", "preco": 35, "desc": "As rodas depois dele giram diferente nas curvas (aberto). Entrada Travar: giram iguais. Relação ajustável."},
 	"cvt": {"nome": "Câmbio CVT", "preco": 70, "desc": "Relação contínua: deixa o motor no giro de mais força."},
 	"cubo": {"nome": "Cubo de roda", "preco": 12, "desc": "Eixo livre: solde a base no chassi e a roda no disco. Ajustes: Inverter o giro e Lado."},
 	"tanque_gasolina": {"nome": "Tanque de gasolina", "preco": 15, "desc": "Combustível dos motores a gasolina (médio: 40 L)."},
@@ -142,9 +151,11 @@ const DRIVE_SIZES := {
 	"embreagem_auto": Vector3(0.26, 0.26, 0.12), "embreagem_manual": Vector3(0.26, 0.26, 0.12),
 	"tanque_gasolina": Vector3(0.4, 0.3, 0.5), "tanque_diesel": Vector3(0.4, 0.3, 0.5),
 	"gerador": Vector3(0.3, 0.25, 0.3), "bomba": Vector3(0.4, 1.1, 0.3),
+	"transferencia": Vector3(0.3, 0.22, 0.26), "diferencial": Vector3(0.28, 0.26, 0.26),
 }
 const DRIVE_KINDS := ["motor_mono", "motor_4l", "motor_v8", "motor_v12", "motor_diesel", "motor_rotativo", "motor_eletrico", "turbina",
-	"cambio_manual", "cambio_auto", "cvt", "tanque_gasolina", "tanque_diesel", "embreagem_auto", "embreagem_manual"]
+	"cambio_manual", "cambio_auto", "cvt", "tanque_gasolina", "tanque_diesel", "embreagem_auto", "embreagem_manual",
+	"transferencia", "diferencial"]
 const SIZE_SMALL := 0.6
 const SIZE_LARGE := 1.6
 
@@ -222,7 +233,7 @@ static func bounds(kind: String, size := Vector3.ZERO) -> AABB:
 			return AABB(Vector3(-0.09, -0.0125, -0.03), Vector3(0.18, 0.09, 0.06))
 	if SIGNAL_SIZES.has(kind):
 		var s: Vector3 = SIGNAL_SIZES[kind]
-		return AABB(-s * 0.5, s + Vector3(0, {"indicador": 0.06, "radio": 0.22, "pintor": 0.05}.get(kind, 0.0), 0))
+		return AABB(-s * 0.5, s + Vector3(0, {"indicador": 0.06, "radio": 0.22, "pintor": 0.05, "hoverball": 0.15}.get(kind, 0.0), 0))
 	if SENSOR_SIZES.has(kind):
 		var ss: Vector3 = SENSOR_SIZES[kind]
 		return AABB(-ss * 0.5, ss + Vector3(0, 0.03 if kind == "ranger" else 0.0, 0))
@@ -291,7 +302,7 @@ static func _spawn_kind(kind: String, xform: Transform3D, size: Vector3) -> Arra
 			return [_spawn_insulator(xform)]
 		"puxador":
 			return [_spawn_handle(xform)]
-		"chip", "constante", "teclas", "teclado", "indicador", "pixel", "mostrador", "tela", "tela_texto", "fpga", "memoria", "rom", "hd", "radio", "console", "tela_pixels", "osciloscopio", "hud_indicador", "camera", "marcador", "marcador_lista", "pintor":
+		"chip", "constante", "teclas", "teclado", "indicador", "pixel", "mostrador", "tela", "tela_texto", "fpga", "memoria", "rom", "hd", "radio", "console", "tela_pixels", "osciloscopio", "hud_indicador", "camera", "marcador", "marcador_lista", "pintor", "propulsor_vetorial", "hoverball", "forcer", "gimbal", "peso", "congelador", "user":
 			return [_spawn_signal(kind, xform)]
 		"bateria", "solar", "recarga", "luz", "holofote", "rele", "chave", "medidor":
 			return [_spawn_power(kind, xform, scale_of(kind, size))]
@@ -857,6 +868,9 @@ const SIGNAL_SIZES := {
 	"console": Vector3(0.7, 0.04, 0.5), "tela_pixels": Vector3(0.4, 0.04, 0.4), "osciloscopio": Vector3(0.5, 0.06, 0.3),
 	"hud_indicador": Vector3(0.14, 0.04, 0.1), "camera": Vector3(0.12, 0.1, 0.16), "marcador": Vector3(0.12, 0.04, 0.12),
 	"marcador_lista": Vector3(0.16, 0.04, 0.12), "pintor": Vector3(0.12, 0.08, 0.12),
+	"propulsor_vetorial": Vector3(0.16, 0.12, 0.24), "hoverball": Vector3(0.16, 0.06, 0.16), "forcer": Vector3(0.14, 0.1, 0.18),
+	"gimbal": Vector3(0.16, 0.1, 0.16), "peso": Vector3(0.2, 0.15, 0.2), "congelador": Vector3(0.14, 0.06, 0.14),
+	"user": Vector3(0.12, 0.08, 0.16),
 }
 const SIGNAL_LABELS := {
 	"chip": "Chip lógico", "constante": "Valor constante", "teclas": "Teclas", "teclado": "Teclado de senha",
@@ -864,8 +878,11 @@ const SIGNAL_LABELS := {
 	"tela_texto": "Tela de texto", "fpga": "FPGA", "memoria": "Memória (RAM)", "rom": "Memória (ROM)",
 	"hd": "Disco rígido (HD)", "radio": "Rádio", "console": "Console de letras", "tela_pixels": "Tela de pixels",
 	"osciloscopio": "Osciloscópio", "hud_indicador": "Indicador no HUD", "camera": "Câmera", "marcador": "Marcador de peça",
-	"marcador_lista": "Marcador de peças (lista)", "pintor": "Pintor",
+	"marcador_lista": "Marcador de peças (lista)", "pintor": "Pintor", "propulsor_vetorial": "Propulsor vetorial",
+	"hoverball": "Hoverball", "forcer": "Forcer", "gimbal": "Gimbal", "peso": "Peso ajustável", "congelador": "Congelador",
+	"user": "User (aperta E)",
 }
+const ACTUATOR_COLOR := Color(0.95, 0.55, 0.15)
 const MARKER_COLOR := Color(0.8, 0.45, 1.0)
 static var _mono: SystemFont
 
@@ -875,6 +892,44 @@ static func mono_font() -> SystemFont:
 		_mono = SystemFont.new()
 		_mono.font_names = PackedStringArray(["Consolas", "DejaVu Sans Mono", "Liberation Mono", "Courier New", "monospace"])
 	return _mono
+
+
+## Aparência dos atuadores (na peça de verdade, `a` recebe a chama e a luz; na loja, null).
+## A frente (bico, lente, dedo) fica no lado -Z.
+static func _actuator_deco(parent: Node3D, kind: String, size: Vector3, a: ActuatorNode) -> void:
+	var top := size.y * 0.5
+	var fz := -size.z * 0.5
+	_deco_box(parent, Vector3(size.x + 0.004, 0.02, size.z + 0.004), Vector3(0, -top + 0.01, 0), ACTUATOR_COLOR)
+	var glow: MeshInstance3D = null
+	match kind:
+		"propulsor_vetorial":
+			_deco_cyl(parent, 0.05, 0.06, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(0, 0, -fz + 0.03)), Color(0.2, 0.2, 0.22), 0.8, 12)
+			_deco_cyl(parent, 0.035, 0.02, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(0, 0, fz - 0.01)), Color(0.75, 0.77, 0.8), 0.9, 12)
+			if a:
+				var fl := _flame(parent, Vector3(0, 0, -fz + 0.07))
+				fl.rotation.x = -PI * 0.5          # a chama sai para trás (+Z)
+				a.flame = fl
+		"hoverball":
+			glow = _deco_sphere(parent, 0.075, Vector3(0, top + 0.07, 0), Color(0.3, 0.7, 1.0))
+		"forcer":
+			_deco_cyl(parent, 0.04, 0.03, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(0, 0, fz - 0.015)), Color(0.2, 0.2, 0.22), 0.8, 12)
+			glow = _deco_cyl(parent, 0.025, 0.006, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(0, 0, fz - 0.032)), Color(0.9, 0.4, 1.0), 0.3, 12)
+		"gimbal":
+			_deco_cyl(parent, size.x * 0.48, 0.02, Transform3D(Basis(), Vector3(0, top + 0.01, 0)), Color(0.3, 0.32, 0.35), 0.8, 16)
+			glow = _deco_box(parent, Vector3(0.02, 0.012, size.z * 0.45), Vector3(0, top + 0.026, fz * 0.45), Color(0.8, 1.0, 0.3))
+		"peso":
+			_deco_box(parent, Vector3(size.x - 0.03, 0.01, size.z - 0.03), Vector3(0, top + 0.005, 0), Color(0.3, 0.32, 0.35))
+			var kl := _label3d(parent, "50 kg", top + 0.012, 40, Color(1, 1, 1))
+			if a:
+				a.label = kl
+		"congelador":
+			_label3d(parent, "GELO", top + 0.003, 34, Color(0.6, 0.95, 1.0))
+			glow = _deco_box(parent, Vector3(0.03, 0.01, 0.03), Vector3(0.04, top + 0.004, 0.04), Color(0.5, 0.9, 1.0))
+		"user":
+			_deco_box(parent, Vector3(0.025, 0.025, 0.07), Vector3(0, 0, fz - 0.035), Color(0.85, 0.7, 0.55))
+			glow = _deco_box(parent, Vector3(0.03, 0.01, 0.03), Vector3(0.03, top + 0.004, 0.04), Color(1.0, 0.8, 0.2))
+	if a and glow:
+		a.glow = glow
 
 
 ## Quadrado em cima da peça para telas desenhadas por imagem.
@@ -1022,6 +1077,12 @@ static func _spawn_signal(kind: String, xform: Transform3D) -> Part:
 					_deco_cyl(p, 0.018, 0.05, Transform3D(Basis(), Vector3(0, top + 0.025, 0)), Color(0.25, 0.25, 0.27), 0.6)
 					g.lamp = _deco_box(p, Vector3(size.x - 0.03, 0.006, 0.03), Vector3(0, top + 0.002, size.z * 0.5 - 0.025), Color.WHITE)
 			node = g
+		"propulsor_vetorial", "hoverball", "forcer", "gimbal", "peso", "congelador", "user":
+			var a := ActuatorNode.new()
+			a.part = p
+			a.kind = kind
+			_actuator_deco(p, kind, size, a)
+			node = a
 	Build.add_node(node)
 	return p
 
@@ -1271,6 +1332,20 @@ static func _spawn_drive(kind: String, xform: Transform3D, k := 1.0) -> Part:
 			n.gears = 1
 			n.first_ratio = 4.0
 			n.top_ratio = 0.6
+	elif n.is_transfer():
+		_deco_box(p, Vector3(size.x - 0.04, 0.004, size.z - 0.04), Vector3(0, top, 0), BOARD_DARK)
+		for x: float in [-0.07, 0.07]:
+			_deco_cyl(p, 0.035, size.z + 0.06, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(x, -0.03, 0)), Color(0.75, 0.77, 0.8), 0.8)
+		_deco_box(p, Vector3(0.02, 0.1, 0.02), Vector3(0.1, top + 0.05, -0.06), Color(0.15, 0.15, 0.16))
+		n.glow = _deco_box(p, Vector3(0.04, 0.01, 0.04), Vector3(-0.09, top + 0.005, 0.08), Color.WHITE)
+		n.label = _label3d(p, "", top + 0.05, 24, Color(1, 1, 1))
+		n.label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	elif n.is_diff():
+		_deco_cyl(p, size.y * 0.5 + 0.01, size.z * 0.7, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3.ZERO), Color(0.35, 0.37, 0.4), 0.6)
+		_deco_cyl(p, 0.03, size.x + 0.16, Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3.ZERO), Color(0.75, 0.77, 0.8), 0.9)
+		n.glow = _deco_box(p, Vector3(0.04, 0.01, 0.04), Vector3(0.0, top + 0.012, 0.0), Color.WHITE)
+		n.label = _label3d(p, "", top + 0.06, 24, Color(1, 1, 1))
+		n.label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	elif n.is_clutch():
 		var cc := Color(0.15, 0.45, 0.75) if kind == "embreagem_auto" else Color(0.85, 0.45, 0.1)
 		_deco_cyl(p, 0.11, size.z + 0.01, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3.ZERO), cc, 0.5)
@@ -1519,6 +1594,17 @@ static func build_visual(kind: String, size := Vector3.ZERO) -> Node3D:
 			var gs: Vector3 = DRIVE_SIZES[kind]
 			_deco_box(root, gs, Vector3.ZERO, Color(0.3, 0.32, 0.35))
 			_deco_cyl(root, 0.06, gs.z + 0.02, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(0, -0.02, 0)), Color(0.75, 0.77, 0.8), 0.8)
+		"transferencia":
+			var trs: Vector3 = DRIVE_SIZES[kind]
+			_deco_box(root, trs, Vector3.ZERO, Color(0.3, 0.32, 0.35))
+			for x: float in [-0.07, 0.07]:
+				_deco_cyl(root, 0.035, trs.z + 0.06, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(x, -0.03, 0)), Color(0.75, 0.77, 0.8), 0.8)
+			_deco_box(root, Vector3(0.02, 0.1, 0.02), Vector3(0.1, trs.y * 0.5 + 0.05, -0.06), Color(0.15, 0.15, 0.16))
+		"diferencial":
+			var dfs: Vector3 = DRIVE_SIZES[kind]
+			_deco_box(root, dfs, Vector3.ZERO, Color(0.3, 0.32, 0.35))
+			_deco_cyl(root, dfs.y * 0.5 + 0.01, dfs.z * 0.7, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3.ZERO), Color(0.35, 0.37, 0.4), 0.6)
+			_deco_cyl(root, 0.03, dfs.x + 0.16, Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3.ZERO), Color(0.75, 0.77, 0.8), 0.9)
 		"embreagem_auto", "embreagem_manual":
 			var cs: Vector3 = DRIVE_SIZES[kind]
 			_deco_box(root, cs, Vector3.ZERO, Color(0.3, 0.32, 0.35))
@@ -1543,7 +1629,7 @@ static func build_visual(kind: String, size := Vector3.ZERO) -> Node3D:
 				"medidor":
 					_deco_box(root, Vector3(rs.x - 0.03, 0.004, rs.z - 0.03), Vector3(0, rs.y * 0.5, 0), SCREEN_DARK)
 					_label3d(root, "75%", rs.y * 0.5 + 0.003, 48, Color(0.5, 1.0, 0.6))
-		"chip", "constante", "teclas", "teclado", "indicador", "pixel", "mostrador", "tela", "tela_texto", "fpga", "memoria", "rom", "hd", "radio", "console", "tela_pixels", "osciloscopio", "hud_indicador", "camera", "marcador", "marcador_lista", "pintor":
+		"chip", "constante", "teclas", "teclado", "indicador", "pixel", "mostrador", "tela", "tela_texto", "fpga", "memoria", "rom", "hd", "radio", "console", "tela_pixels", "osciloscopio", "hud_indicador", "camera", "marcador", "marcador_lista", "pintor", "propulsor_vetorial", "hoverball", "forcer", "gimbal", "peso", "congelador", "user":
 			var ssz: Vector3 = SIGNAL_SIZES[kind]
 			_deco_box(root, ssz, Vector3.ZERO, BOARD_DARK)
 			var top := ssz.y * 0.5
@@ -1605,6 +1691,8 @@ static func build_visual(kind: String, size := Vector3.ZERO) -> Node3D:
 				"radio":
 					_deco_cyl(root, 0.006, 0.22, Transform3D(Basis(), Vector3(0.045, top + 0.11, -0.045)), Color(0.15, 0.15, 0.16), 0.4)
 					_deco_box(root, Vector3(0.03, 0.01, 0.03), Vector3(-0.035, top + 0.004, -0.035), Color(0.3, 1.0, 0.4), 2.0)
+				"propulsor_vetorial", "hoverball", "forcer", "gimbal", "peso", "congelador", "user":
+					_actuator_deco(root, kind, ssz, null)
 				"tela", "tela_texto":
 					_deco_box(root, Vector3(ssz.x - 0.04, 0.004, ssz.z - 0.04), Vector3(0, top, 0), SCREEN_DARK)
 					_label3d(root, "A: 1\nB: 0" if kind == "tela" else "Olá!", top + 0.003, 56, Color(0.75, 0.95, 1.0))

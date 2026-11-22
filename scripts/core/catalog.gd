@@ -107,6 +107,8 @@ const ITEMS := [
 	{"id": "cvt", "nome": "Câmbio CVT", "cat": "Câmbios", "component": "cvt"},
 	{"id": "embreagem_auto", "nome": "Embreagem automática", "cat": "Câmbios", "component": "embreagem_auto"},
 	{"id": "embreagem_manual", "nome": "Embreagem manual", "cat": "Câmbios", "component": "embreagem_manual"},
+	{"id": "transferencia", "nome": "Caixa de transferência", "cat": "Câmbios", "component": "transferencia"},
+	{"id": "diferencial", "nome": "Diferencial", "cat": "Câmbios", "component": "diferencial"},
 	{"id": "cubo", "nome": "Cubo de roda", "cat": "Câmbios", "component": "cubo", "box": Vector3(1, 0, 0), "params": [SIZE]},
 	{"id": "tanque_gasolina", "nome": "Tanque de gasolina", "cat": "Combustível", "component": "tanque_gasolina", "box": Vector3(1, 0, 0), "params": [SIZE]},
 	{"id": "tanque_diesel", "nome": "Tanque de diesel", "cat": "Combustível", "component": "tanque_diesel", "box": Vector3(1, 0, 0), "params": [SIZE]},
@@ -131,6 +133,13 @@ const ITEMS := [
 	{"id": "marcador", "nome": "Marcador de peça", "cat": "Sensores", "component": "marcador"},
 	{"id": "marcador_lista", "nome": "Marcador de peças (lista)", "cat": "Sensores", "component": "marcador_lista"},
 	{"id": "pintor", "nome": "Pintor", "cat": "Atuadores", "component": "pintor"},
+	{"id": "propulsor_vetorial", "nome": "Propulsor vetorial", "cat": "Atuadores", "component": "propulsor_vetorial"},
+	{"id": "hoverball", "nome": "Hoverball", "cat": "Atuadores", "component": "hoverball"},
+	{"id": "forcer", "nome": "Forcer", "cat": "Atuadores", "component": "forcer"},
+	{"id": "gimbal", "nome": "Gimbal", "cat": "Atuadores", "component": "gimbal"},
+	{"id": "peso", "nome": "Peso ajustável", "cat": "Atuadores", "component": "peso"},
+	{"id": "congelador", "nome": "Congelador", "cat": "Atuadores", "component": "congelador"},
+	{"id": "user", "nome": "User (aperta E)", "cat": "Atuadores", "component": "user"},
 ]
 
 static var _geo_cache := {}

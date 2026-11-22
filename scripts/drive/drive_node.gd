@@ -24,6 +24,8 @@ const GEARBOXES := {
 }
 const TANKS := {"tanque_gasolina": "Tanque de gasolina", "tanque_diesel": "Tanque de diesel"}
 const CLUTCHES := {"embreagem_auto": "Embreagem automática", "embreagem_manual": "Embreagem manual"}
+## Divisores (Marco 4E): multiplicam a relação no caminho, como um câmbio sem marchas.
+const SPLITTERS := {"transferencia": "Caixa de transferência", "diferencial": "Diferencial"}
 const TANK_L := 40.0              ## tanque médio (pequeno/grande: × tamanho³)
 const LITERS_PER_KWH := 3.0       ## consumo (escala do jogo)
 const GEN_W := 400.0              ## gerador: potência máxima (W)
@@ -58,6 +60,16 @@ var _prev_up := false
 var _prev_down := false
 var inp := {}                     ## últimas entradas do câmbio
 var wheel_speed := 0.0            ## giro médio das rodas, para a frente (rad/s)
+
+# --- Caixa de transferência
+var high_ratio := 1.0             ## alta
+var low_ratio := 2.6              ## reduzida
+var low := false                  ## engatada na reduzida agora
+var low_default := false          ## sem fio na entrada Reduzida
+# --- Diferencial
+var diff_ratio := 1.0
+var locked := false               ## travado agora (as rodas giram iguais)
+var lock_default := false         ## sem fio na entrada Travar
 
 # --- Tanque
 var fuel := 0.0                   ## litros
@@ -95,6 +107,18 @@ func is_clutch() -> bool:
 	return CLUTCHES.has(kind)
 
 
+func is_transfer() -> bool:
+	return kind == "transferencia"
+
+
+func is_diff() -> bool:
+	return kind == "diferencial"
+
+
+func is_splitter() -> bool:
+	return SPLITTERS.has(kind)
+
+
 func spec() -> Dictionary:
 	return ENGINES.get(kind, {})
 
@@ -108,6 +132,8 @@ func kind_label() -> String:
 		return "%s %s" % [TANKS[kind], ["pequeno", "médio", "grande"][1 if is_equal_approx(size_scale, 1.0) else (0 if size_scale < 1.0 else 2)]]
 	if is_clutch():
 		return CLUTCHES[kind]
+	if is_splitter():
+		return SPLITTERS[kind]
 	return kind
 
 
@@ -133,6 +159,10 @@ func inputs() -> Array:
 			["Esq", NUM], ["Dir", NUM], ["Esterço", NUM]]
 	if kind == "embreagem_manual":
 		return [["Pedal", NUM]]
+	if is_transfer():
+		return [["Reduzida", NUM]]
+	if is_diff():
+		return [["Travar", NUM]]
 	return []
 
 
@@ -145,6 +175,10 @@ func outputs() -> Array:
 		return [["Combustível", NUM], ["%", NUM]]
 	if is_clutch():
 		return [["Engate", NUM], ["Patinação", NUM]]
+	if is_transfer():
+		return [["Reduzida", NUM], ["Relação", NUM]]
+	if is_diff():
+		return [["Travado", NUM], ["Diferença", NUM]]
 	return []
 
 
@@ -169,6 +203,13 @@ func evaluate(i: Dictionary, wired: Dictionary, _dt: float) -> void:
 		inp["_marcha_wired"] = wired.has("Marcha")
 	elif kind == "embreagem_manual":
 		pedal = clampf(float(i.get("Pedal", 0.0)), 0.0, 1.0)
+	elif is_transfer():
+		low = float(i["Reduzida"]) > 0.5 if wired.has("Reduzida") else low_default
+		out["Reduzida"] = 1.0 if low else 0.0
+		out["Relação"] = total_ratio()
+	elif is_diff():
+		locked = float(i["Travar"]) > 0.5 if wired.has("Travar") else lock_default
+		out["Travado"] = 1.0 if locked else 0.0
 
 
 ## Quer estar ligado (entrada Ligado, ou sozinho se não tiver fio).
@@ -225,8 +266,12 @@ func gear_ratio(g: int) -> float:
 	return first_ratio * pow(top_ratio / first_ratio, f)
 
 
-## Relação total (marcha × diferencial). 0 = neutro.
+## Relação total (marcha × diferencial). 0 = neutro. Divisores: a relação deles.
 func total_ratio() -> float:
+	if is_transfer():
+		return low_ratio if low else high_ratio
+	if is_diff():
+		return diff_ratio
 	return gear_ratio(gear) * final_drive
 
 
@@ -241,6 +286,12 @@ func update_visual() -> void:
 			"R" if gear < 0 else ("N" if gear == 0 else str(gear)) if kind != "cvt" else ("R" if gear < 0 else ("N" if gear == 0 else "%.2f" % cvt_ratio))]
 	elif is_tank():
 		label.text = "%s\n%d / %d L" % [fuel_type().to_upper(), roundi(fuel), roundi(capacity())]
+	elif is_transfer():
+		label.text = "TRANSFER\n%s %.1f" % ["REDUZIDA" if low else "ALTA", total_ratio()]
+		_set_glow(Color(1.0, 0.6, 0.1) if low else Color(0.3, 1.0, 0.4), 1.5)
+	elif is_diff():
+		label.text = "DIFERENCIAL\n%s %.1f" % ["TRAVADO" if locked else "ABERTO", diff_ratio]
+		_set_glow(Color(1.0, 0.3, 0.2) if locked else Color(0.3, 0.7, 1.0), 1.5)
 	elif is_clutch():
 		label.text = "EMBREAGEM\n%s · %d%%" % ["AUTO" if kind == "embreagem_auto" else "MANUAL", roundi(engage_shown * 100.0)]
 		_set_glow(Color(0.3, 1.0, 0.4).lerp(Color(1.0, 0.6, 0.1), 1.0 - engage_shown), 0.4 + engage_shown * 2.0)
@@ -302,6 +353,10 @@ func save_state() -> Dictionary:
 	if is_gearbox():
 		return {"gear": gear, "gears": gears, "first": first_ratio, "top": top_ratio, "final": final_drive,
 			"rev": reverse_ratio, "tank": tank_steer, "up": shift_up_frac}
+	if is_transfer():
+		return {"high": high_ratio, "low": low_ratio, "low_def": low_default}
+	if is_diff():
+		return {"dr": diff_ratio, "lock_def": lock_default}
 	return {}
 
 
@@ -316,4 +371,11 @@ func load_state(d: Dictionary) -> void:
 	reverse_ratio = float(d.get("rev", reverse_ratio))
 	tank_steer = bool(d.get("tank", tank_steer))
 	shift_up_frac = float(d.get("up", shift_up_frac))
+	high_ratio = float(d.get("high", high_ratio))
+	low_ratio = float(d.get("low", low_ratio))
+	low_default = bool(d.get("low_def", low_default))
+	low = low_default
+	diff_ratio = float(d.get("dr", diff_ratio))
+	lock_default = bool(d.get("lock_def", lock_default))
+	locked = lock_default
 	update_visual()

@@ -187,10 +187,12 @@ Inspirado no Wiremod e no ACF do Garry's Mod (sem nada de NPCs nem geradores de 
 - Pintor (Peça, Lista ou o que está na frente do bico); pintura no save e nos pedaços cortados
 - Testes: 22 verificações novas (test_telas)
 
-### v0.12.x — 4E (parte 3): Atuadores e trem de força
-- [ ] Atuadores: propulsor vetorial, hoverball (mantém altura), forcer (empurra à distância), gimbal
-  (aponta para um vetor), peso ajustável, congelador por sinal, "User" (aperta E sozinho)
-- [ ] Caixa de transferência (reduzida/alta) e diferencial avulso (câmbio → câmbio já funciona desde a 0.11.1)
+### ✅ v0.12.2 — 4E (parte 3): Atuadores e trem de força
+- Atuadores: propulsor vetorial, hoverball (amortece no ponto: flutua nivelada), forcer, gimbal (PID), peso ajustável,
+  congelador por sinal e User (aperta E)
+- Caixa de transferência (alta/reduzida) e diferencial avulso (aberto/travado; câmbio → câmbio desde a 0.11.1)
+- Testes: 15 verificações novas (test_atuadores)
+- **Marco 4 completo.**
 
 ## Marco 5 — Polimento
 - [ ] Sons: solda, corte, impactos, componentes

@@ -893,6 +893,42 @@ func _telas() -> void:
 	player.stand_up()
 
 
+func _atuadores() -> void:
+	# Plataforma com 4 hoverballs flutuando, um propulsor vetorial ligado e os atuadores no chão.
+	var o := Vector3(6, 0.02, -3)
+	var plat := Build.spawn_box(Vector3(1.2, 0.08, 1.2), "aluminio", Transform3D(Basis(), o + Vector3(0, 0.6, 0)))
+	var hb := Components.bounds("hoverball")
+	for c: Vector2 in [Vector2(-0.45, -0.45), Vector2(0.45, -0.45), Vector2(-0.45, 0.45), Vector2(0.45, 0.45)]:
+		var at := o + Vector3(c.x, 0.64, c.y)
+		var h: Part = Components.spawn("hoverball", Transform3D(Basis(), at + Vector3(0, -hb.position.y, 0)))[0]
+		Build.make_weld(h, plat, at)
+		(h.node as ActuatorNode).height = 1.2
+		(h.node as ActuatorNode).max_force = 400.0
+	var pb := Components.bounds("propulsor_vetorial")
+	var th: Part = Components.spawn("propulsor_vetorial", Transform3D(Basis(), o + Vector3(0, 0.64 - pb.position.y, 0.3)))[0]
+	Build.make_weld(th, plat, o + Vector3(0, 0.64, 0.3))
+	(th.node as ActuatorNode).max_force = 5.0
+	var k: Part = Components.spawn("constante", Transform3D(Basis(), o + Vector3(0.3, 0.67, -0.3)))[0]
+	Build.make_weld(k, plat, o + Vector3(0.3, 0.64, -0.3))
+	(k.node as ConstNode).set_value(SignalNode.NUM, 1.0)
+	Signals.connect_ports(k.node, "Valor", th.node, "Força")
+	var x := -1.4
+	for kind: String in ["forcer", "gimbal", "peso", "congelador", "user", "pintor"]:
+		var b := Components.bounds(kind)
+		var p: Part = Components.spawn(kind, Transform3D(Basis(), o + Vector3(x, -b.position.y, 1.6)))[0]
+		p.assembly().set_frozen(true)
+		x += 0.5
+	await _frames(200)
+	player.teleport(o + Vector3(1.2, 0.03, 3.6))
+	_look_from_eye(plat.global_position + Vector3(-0.3, -0.3, 0.6))
+	await _frames(10)
+	await _shot("a1_atuadores")
+	player.teleport(Vector3(-32, 0.05, 21.5))
+	_look_from_eye(Vector3(-32, 0.1, 15.5))
+	await _frames(20)
+	await _shot("a2_deposito")
+
+
 func _drive() -> void:
 	# Carro de exemplo novo (motor + câmbio + cubos) com a Transmissão na mão.
 	await _frames(60)

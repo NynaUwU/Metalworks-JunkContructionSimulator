@@ -105,6 +105,10 @@ static func link_meaning(x: Object, y: Object) -> String:
 			return "embreagem → câmbio"
 		if a is DriveNode and (a as DriveNode).is_gearbox() and b is MechJoint:
 			return "câmbio → roda"
+		if a is DriveNode and (a as DriveNode).is_transfer():
+			return "caixa de transferência (alta/reduzida)"
+		if a is DriveNode and (a as DriveNode).is_diff():
+			return "diferencial (rodas giram diferente nas curvas)"
 	return "(essa ligação não faz nada)"
 
 
@@ -223,14 +227,21 @@ func explore(e: DriveNode) -> Dictionary:
 				ngbs = gbs + [d]
 				if not out["gearboxes"].has(d):
 					out["gearboxes"][d] = []
+			elif d and d.is_splitter():
+				ngbs = gbs + [d]                            # transferência/diferencial: só a relação
 			elif d and d.is_clutch():
 				ncl = clutches + [d]
 			elif o is MechJoint and (o as MechJoint).type == "cubo":
-				var entry := {"j": o, "gbs": gbs, "clutches": clutches}
+				var diff: DriveNode = null
+				for g: DriveNode in gbs:
+					if g.is_diff():
+						diff = g                            # o diferencial mais perto da roda
+				var entry := {"j": o, "gbs": gbs, "clutches": clutches, "diff": diff}
 				out["hubs"].append(entry)
 				for g in gbs:
-					out["gearboxes"][g].append(entry)
-			queue.append([o, ngbs, ncl])                    # passa por câmbios, embreagens e cubos
+					if out["gearboxes"].has(g):
+						out["gearboxes"][g].append(entry)
+			queue.append([o, ngbs, ncl])                    # passa por câmbios, divisores, embreagens e cubos
 	return out
 
 
@@ -382,6 +393,25 @@ func _drive_hubs(e: DriveNode, net: Dictionary, dt: float) -> float:
 		gb.out["Giro das rodas"] = w_avg
 	if hubs.is_empty():
 		return 0.0
+	# Diferenciais abertos: giro médio das rodas de cada um (as rodas podem girar diferente,
+	# mas a média segue o motor).
+	var diff_mean := {}
+	var diff_span := {}
+	for h: Dictionary in hubs:
+		var df: DriveNode = h.get("diff")
+		if df == null:
+			continue
+		if not diff_mean.has(df):
+			diff_mean[df] = [0.0, 0]
+			diff_span[df] = [INF, -INF]
+		diff_mean[df][0] += float(h["w"])
+		diff_mean[df][1] += 1
+		diff_span[df][0] = minf(diff_span[df][0], float(h["w"]))
+		diff_span[df][1] = maxf(diff_span[df][1], float(h["w"]))
+	for df: DriveNode in diff_mean:
+		diff_mean[df] = float(diff_mean[df][0]) / maxf(float(diff_mean[df][1]), 1.0)
+		df.out["Diferença"] = float(diff_span[df][1]) - float(diff_span[df][0])
+		df.update_visual()
 	var n := float(hubs.size())
 	var t_clutch := 0.0
 	var clutch_shown := {}
@@ -418,7 +448,10 @@ func _drive_hubs(e: DriveNode, net: Dictionary, dt: float) -> float:
 			_driven[j] = true
 			continue
 		# Esterço de tanque: a carga do motor vem do giro médio (um lado anda para trás).
-		var w := tank_w if tank else float(h["w"])
+		# Diferencial aberto: a carga vem do giro médio das rodas dele.
+		var df: DriveNode = h.get("diff")
+		var open := df != null and not df.locked and not tank
+		var w := tank_w if tank else (float(diff_mean[df]) if open else float(h["w"]))
 		var slip := e.omega - ratio * w
 		t_clutch += t_eng / n * clampf(slip / SLIP_BAND, -1.0, 1.0)
 		var mult := 1.0
@@ -427,6 +460,8 @@ func _drive_hubs(e: DriveNode, net: Dictionary, dt: float) -> float:
 			var moving := 1.0 if (e.throttle > 0.05 or absf(tank_w) > 0.5) else 0.0
 			mult = moving + steer if j.hub_side < 0 else moving - steer
 		var target := e.omega / ratio * mult if absf(ratio) > 1e-4 else 0.0
+		if open:
+			target = float(h["w"]) + (target - float(diff_mean[df]))   # cada roda no seu giro; a média segue o motor
 		j.drive_spin(float(h["sign"]) * target, t_eng * absf(ratio) / n * (1.0 + absf(steer)), dt)
 		_driven[j] = true
 		for c: DriveNode in h["clutches"]:

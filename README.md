@@ -26,6 +26,7 @@ Nome, mapa, visual e código são próprios.
 | Correr | toque duplo numa tecla de andar (ou Shift), também segurando algo com o Gravitador |
 | Agachar (mais devagar, alcança mais baixo) | Ctrl |
 | Trocar ferramenta | 1 Gravitador · 2 Solda · 3 Esmerilhadeira · 4 Fiação · 5 Depurador · 6 Trena · 7 Alinhador |
+| Trocar ferramenta (estilo Garry's Mod) | roda do mouse escolhe, clique confirma, botão direito cancela |
 | Usar (loja, assento, botão, alavanca, engate rápido) | E |
 | Puxar um puxador (portas, tampas...) | E segurado |
 | Modo edição do assento (sentado) | Tab |
@@ -37,7 +38,7 @@ Nome, mapa, visual e código são próprios.
 - Soltar o clique: a peça volta a ter física (dá para arremessar).
 - **Botão direito** (segurando): **congela** a peça no lugar.
 - **E + mover o mouse**: gira a peça. Com **Shift**, em passos de 15°.
-- Roda do mouse: aproxima ou afasta. **T**: alinha à grade do mundo.
+- Roda do mouse (segurando): aproxima ou afasta. Sem segurar nada, a roda escolhe a ferramenta. **T**: alinha à grade do mundo.
 - **R** mirando numa peça congelada: descongela (e o que estiver ligado a ela por juntas).
   **R duas vezes**: descongela tudo.
 

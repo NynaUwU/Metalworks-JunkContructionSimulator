@@ -18,6 +18,8 @@ const CROUCH_SPEED := 2.2
 const PUSH_FORCE := 45.0
 
 signal tool_changed(index: int)
+## Troca de ferramenta pela roda do mouse (estilo Garry's Mod): -1 = escolha fechada.
+signal tool_select_preview(index: int)
 signal toast_requested(text: String)
 signal interact_requested(target: Node)
 signal seat_changed(seated: bool)
@@ -94,6 +96,7 @@ func _ready() -> void:
 
 
 func select_tool(index: int) -> void:
+	_close_tool_select()
 	if index < 0 or index >= tools.size() or seat:
 		return
 	if tools.size() > current_tool:
@@ -105,6 +108,37 @@ func select_tool(index: int) -> void:
 
 func current() -> GameTool:
 	return tools[current_tool]
+
+
+# --- Troca pela roda do mouse (estilo Garry's Mod) -------------------------------
+## Rodinha: abre a escolha e passa pelas ferramentas (para baixo = próxima).
+## Clique confirma; botão direito, Esc ou alguns segundos parado cancela.
+## Se a ferramenta usa a roda (ex.: Gravitador segurando algo), a roda é dela.
+
+const TOOL_SELECT_TIMEOUT := 3.0
+var tool_select := -1             ## ferramenta destacada na escolha (-1 = fechada)
+var _tool_select_time := 0.0
+
+
+func _step_tool_select(step: int) -> void:
+	var base := tool_select if tool_select >= 0 else current_tool
+	tool_select = posmod(base + step, tools.size())
+	_tool_select_time = TOOL_SELECT_TIMEOUT
+	tool_select_preview.emit(tool_select)
+
+
+func _close_tool_select() -> void:
+	if tool_select >= 0:
+		tool_select = -1
+		tool_select_preview.emit(-1)
+
+
+func _process_tool_select(delta: float) -> void:
+	if tool_select < 0:
+		return
+	_tool_select_time -= delta
+	if _tool_select_time <= 0.0 or is_seated() or Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+		_close_tool_select()
 
 
 func toast(text: String) -> void:
@@ -408,7 +442,20 @@ func _unhandled_input(event: InputEvent) -> void:
 			select_tool(i)
 			get_viewport().set_input_as_handled()
 			return
+	if tool_select >= 0:
+		if event.is_action_pressed("primary"):
+			select_tool(tool_select)       # confirma (o clique não vai para a ferramenta)
+			get_viewport().set_input_as_handled()
+			return
+		if event.is_action_pressed("secondary") or event.is_action_pressed("pause"):
+			_close_tool_select()
+			get_viewport().set_input_as_handled()
+			return
 	if current().handle_input(event):
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("wheel_down") or event.is_action_pressed("wheel_up"):
+		_step_tool_select(1 if event.is_action_pressed("wheel_down") else -1)
 		get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("interact"):
@@ -542,8 +589,9 @@ func _push_bodies(delta: float) -> void:
 		body.apply_impulse(push.normalized() * PUSH_FORCE * delta, c.get_position() - body.global_position)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	_sync_camera()
+	_process_tool_select(delta)
 
 
 func _sync_camera() -> void:

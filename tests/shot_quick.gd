@@ -671,3 +671,53 @@ func _energy() -> void:
 	_look_from_eye(Vector3(-33.5, 0.2, 6.5))
 	await _frames(30)
 	await _shot("e2_deposito_energia")
+
+
+func _mouse(button: MouseButton, down: bool) -> void:
+	var ev := InputEventMouseButton.new()
+	ev.button_index = button
+	ev.pressed = down
+	ev.position = get_viewport().get_visible_rect().size * 0.5
+	Input.parse_input_event(ev)
+
+
+func _wheelsel() -> void:
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	player.select_tool(0)
+	await _frames(5)
+	_mouse(MOUSE_BUTTON_WHEEL_DOWN, true)
+	_mouse(MOUSE_BUTTON_WHEEL_DOWN, false)
+	_mouse(MOUSE_BUTTON_WHEEL_DOWN, true)
+	_mouse(MOUSE_BUTTON_WHEEL_DOWN, false)
+	await _frames(5)
+	print("WHEEL depois de 2x para baixo: escolha=%d atual=%d" % [player.tool_select, player.current_tool])
+	await _shot("t1_roda_escolha")
+	_mouse(MOUSE_BUTTON_LEFT, true)
+	_mouse(MOUSE_BUTTON_LEFT, false)
+	await _frames(5)
+	print("WHEEL clique: escolha=%d atual=%d (%s)" % [player.tool_select, player.current_tool, player.current().tool_name])
+	_mouse(MOUSE_BUTTON_WHEEL_UP, true)
+	_mouse(MOUSE_BUTTON_WHEEL_UP, false)
+	await _frames(5)
+	_mouse(MOUSE_BUTTON_RIGHT, true)
+	_mouse(MOUSE_BUTTON_RIGHT, false)
+	await _frames(5)
+	print("WHEEL cima + botão direito: escolha=%d atual=%d" % [player.tool_select, player.current_tool])
+	# Segurando algo com o Gravitador, a roda é dele (distância).
+	player.select_tool(0)
+	var block := Build.spawn_box(Vector3(0.4, 0.4, 0.4), "aco", Transform3D(Basis(), player.global_position + Vector3(0, 0.2, -2.5)))
+	await _frames(20)
+	_look_from_eye(block.global_position)
+	await _frames(3)
+	player.hand.grab()
+	var d0: float = player.hand.hold_distance
+	_mouse(MOUSE_BUTTON_WHEEL_UP, true)
+	_mouse(MOUSE_BUTTON_WHEEL_UP, false)
+	await _frames(5)
+	print("WHEEL segurando: escolha=%d distância %.1f → %.1f" % [player.tool_select, d0, player.hand.hold_distance])
+	player.hand.drop()
+	# Passa do tempo: fecha sozinho.
+	_mouse(MOUSE_BUTTON_WHEEL_DOWN, true)
+	_mouse(MOUSE_BUTTON_WHEEL_DOWN, false)
+	await get_tree().create_timer(3.4).timeout
+	print("WHEEL depois de 3,4 s parado: escolha=%d atual=%d" % [player.tool_select, player.current_tool])

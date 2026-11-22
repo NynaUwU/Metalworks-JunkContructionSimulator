@@ -2,7 +2,7 @@ extends Node3D
 ## Testes: chapas finas rápidas, cilindros, tamanhos, Trena, marcas, Alinhador, puxador.
 ##   godot --headless --path . res://tests/test_precision.tscn
 
-const EXPECTED_CHECKS := 42
+const EXPECTED_CHECKS := 44
 
 var _fails := 0
 var _checks := 0
@@ -233,6 +233,30 @@ func _run() -> void:
 	await _frames(40)
 	check(heavy.global_position.y < 0.6, "força fraca: não levanta um bloco de 785 kg (y %.2f)" % heavy.global_position.y)
 	player._release_device()
+
+	print("== Troca de ferramenta pela roda do mouse")
+	player.select_tool(0)
+	player._step_tool_select(1)
+	player._step_tool_select(1)
+	var sel_ok := player.tool_select == 2 and player.current_tool == 0
+	player._step_tool_select(-1)
+	player._step_tool_select(-1)
+	player._step_tool_select(-1)
+	var wrap_ok := player.tool_select == player.tools.size() - 1
+	player.select_tool(player.tool_select)
+	check(sel_ok and wrap_ok and player.current_tool == player.tools.size() - 1 and player.tool_select == -1,
+		"roda passa pelas ferramentas (dá a volta) e o clique troca")
+	player.select_tool(0)
+	var wb := Build.spawn_box(Vector3(0.3, 0.3, 0.3), "aco", Transform3D(Basis(), Vector3(150, 0.15, -40)))
+	await _frames(5)
+	_aim(player, Vector3(150, 0, -38.5), wb.global_position)
+	await _frames(3)
+	player.hand.grab()
+	var ev := InputEventAction.new()
+	ev.action = "wheel_up"
+	ev.pressed = true
+	check(player.hand.holding and player.hand.handle_input(ev), "segurando algo, a roda é do Gravitador (distância)")
+	player.hand.drop()
 	player.queue_free()
 
 	print("== Pontos de solda: tamanho, peça mais próxima e componentes")

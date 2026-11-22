@@ -15,6 +15,8 @@ E numa chave de energia — liga/desliga
 [b]Ferramentas[/b]
 1 — Gravitador (pegar peças)
 2 — Solda
+Roda do mouse — escolher a ferramenta, clique
+  confirma (segurando algo, a roda é do Gravitador)
 3 — Esmerilhadeira (cortar / remover solda)
 4 — Fiação (ligar uma saída numa entrada)
 5 — Depurador (ver os sinais de uma peça)
@@ -141,12 +143,14 @@ var _mask_mat: ShaderMaterial
 var _mask_strength := 0.0
 var _style_on: StyleBoxFlat
 var _style_off: StyleBoxFlat
+var _style_pick: StyleBoxFlat     ## escolhendo pela roda do mouse
 
 
 func setup(p_player: Player) -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	player = p_player
 	player.tool_changed.connect(_on_tool_changed)
+	player.tool_select_preview.connect(_on_tool_select_preview)
 	player.toast_requested.connect(show_toast)
 	Build.message.connect(show_toast)
 	_build_ui()
@@ -192,6 +196,12 @@ func _build_ui() -> void:
 	_style_off.bg_color = Color(0.08, 0.09, 0.1, 0.65)
 	_style_off.set_corner_radius_all(8)
 	_style_off.set_content_margin_all(10)
+	_style_pick = StyleBoxFlat.new()
+	_style_pick.bg_color = Color(0.2, 0.45, 0.8, 0.9)
+	_style_pick.set_corner_radius_all(8)
+	_style_pick.set_content_margin_all(10)
+	_style_pick.set_border_width_all(3)
+	_style_pick.border_color = Color(1, 1, 1, 0.95)
 
 	var bottom := VBoxContainer.new()
 	bottom.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
@@ -450,6 +460,15 @@ func _on_tool_changed(index: int) -> void:
 		_hotbar_slots[i].add_theme_stylebox_override("panel", _style_on if i == index else _style_off)
 
 
+## Roda do mouse: destaca a ferramenta que vai ser escolhida (-1 = fechou).
+func _on_tool_select_preview(index: int) -> void:
+	for i in _hotbar_slots.size():
+		var st := _style_on if i == player.current_tool else _style_off
+		if i == index and index != player.current_tool:
+			st = _style_pick
+		_hotbar_slots[i].add_theme_stylebox_override("panel", st)
+
+
 func _process(delta: float) -> void:
 	if player == null:
 		return
@@ -466,6 +485,8 @@ func _process(delta: float) -> void:
 		_hint.text = placer.hint_text()
 	elif player.is_seated():
 		_hint.text = "Sentado   ·   Tab: modo edição (teclas)   ·   E: levantar   ·   Clique: usar botões e alavancas"
+	elif player.tool_select >= 0:
+		_hint.text = "Roda do mouse: escolher   ·   Clique: trocar para %s   ·   Botão direito: cancelar" % player.tools[player.tool_select].tool_name
 	else:
 		_hint.text = player.current().hint_text()
 	var prog := player.current().progress()

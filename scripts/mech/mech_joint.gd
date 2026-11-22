@@ -35,7 +35,7 @@ const HINGE_LIMIT := deg_to_rad(170.0)
 const NAMES := {
 	"motor": "Motor", "servo": "Servo", "pistao": "Pistão", "servo_linear": "Servo linear",
 	"dobradica": "Dobradiça", "pino": "Dobradiça de pino", "esferica": "Junta esférica",
-	"trava": "Dobradiça com trava", "torcao": "Dobradiça de torção", "mola": "Mola", "balanca": "Balança",
+	"trava": "Dobradiça com trava", "torcao": "Dobradiça de torção", "mola": "Mola", "balanca": "Balança", "cubo": "Cubo de roda",
 	"guincho": "Guincho", "propulsor": "Propulsor", "ima": "Eletroímã", "engate": "Engate rápido",
 }
 ## Recebem sinal (teclas do assento / fios).
@@ -183,11 +183,24 @@ func outputs() -> Array:
 			return [["Compressão", NUM]]
 		"balanca":
 			return [["Peso", NUM], ["Força", NUM]]
+		"cubo":
+			return [["Giro", NUM]]
 		"guincho":
 			return [["Cabo", NUM]]
 		"ima", "engate":
 			return [["Grudado", NUM]]
 	return []
+
+
+## Cubo de roda: o trem de força (Drive) pede um giro com torque máximo (0 = eixo livre).
+func drive_spin(w: float, max_torque: float, dt: float) -> void:
+	if joint == null or not is_instance_valid(joint) or not joint is HingeJoint3D:
+		return
+	var h := joint as HingeJoint3D
+	h.set_param(HingeJoint3D.PARAM_MOTOR_MAX_IMPULSE, max_torque * dt)
+	h.set_param(HingeJoint3D.PARAM_MOTOR_TARGET_VELOCITY, w * HINGE_SIGN)
+	if max_torque > 0.0:
+		_wake(true)
 
 
 ## Giro do lado b em relação ao a, em volta do eixo (rad/s).
@@ -215,6 +228,8 @@ func update_outputs(_dt: float) -> void:
 			out["Extensão"] = extension()
 		"mola":
 			out["Compressão"] = -extension()
+		"cubo":
+			out["Giro"] = spin()
 		"balanca":
 			# Média suave: o solver oscila um pouco em deslocamentos de décimos de milímetro.
 			var f_now := strength * clampf(-extension(), 0.0, SCALE_TRAVEL * size_scale)
@@ -304,8 +319,9 @@ func rebuild(root: Node) -> void:
 		# ConeTwist: o eixo de torção é o X local da junta.
 		xf = part_a.global_transform * Transform3D(_twist_basis(), pivot)
 	else:
+		limit_simple_motor()
 		var h := HingeJoint3D.new()
-		var motorized := type in ["motor", "servo", "torcao"]
+		var motorized := type in ["motor", "servo", "torcao", "cubo"]   # cubo: o câmbio aciona
 		h.set_flag(HingeJoint3D.FLAG_ENABLE_MOTOR, motorized)
 		_motor_on = motorized
 		h.set_param(HingeJoint3D.PARAM_MOTOR_MAX_IMPULSE, strength / float(Engine.physics_ticks_per_second))
@@ -382,7 +398,20 @@ func _twist_basis() -> Basis:
 
 
 ## Atualiza a força/torque da junta física depois de mudar `strength` (ou o ângulo da esférica).
+## Motor simples (Marco 2): limitado, bom só para veículo pessoal. Força e velocidade de
+## verdade vêm dos motores do trem de força (tanque → motor → câmbio → cubos).
+const SIMPLE_MAX_TORQUE := 800.0   ## N·m (× tamanho³)
+const SIMPLE_MAX_SPEED := 12.0     ## rad/s
+
+
+func limit_simple_motor() -> void:
+	if type == "motor":
+		strength = minf(strength, SIMPLE_MAX_TORQUE * size_scale * size_scale * size_scale)
+		speed = minf(speed, SIMPLE_MAX_SPEED)
+
+
 func apply_strength() -> void:
+	limit_simple_motor()
 	if joint == null or not is_instance_valid(joint):
 		return
 	if type in LINEAR:

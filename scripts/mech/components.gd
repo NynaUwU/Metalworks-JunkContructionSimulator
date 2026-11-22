@@ -9,7 +9,7 @@ extends RefCounted
 ##   junta esférica: base embaixo, placa em cima, inclina para qualquer lado.
 
 const INFO := {
-	"motor": {"nome": "Motor", "preco": 40, "desc": "Gira sem parar. Solde a carcaça na estrutura e a roda no disco. Sem sinal: rígido ou solto."},
+	"motor": {"nome": "Motor", "preco": 40, "desc": "Motor simples (até 800 N·m e 12 rad/s: veículo pessoal). Solde a carcaça na estrutura e a roda no disco."},
 	"servo": {"nome": "Servo", "preco": 35, "desc": "Gira até um ângulo e segura. Bom para direção."},
 	"pistao": {"nome": "Pistão", "preco": 45, "desc": "Empurra 0,5 m em linha reta. Sem sinal: volta ao início ou fica parado."},
 	"servo_linear": {"nome": "Servo linear", "preco": 40, "desc": "Vai até uma posição e segura (sinal -1 = recolhido, 0 = meio, 1 = esticado)."},
@@ -58,6 +58,22 @@ const INFO := {
 	"zona": {"nome": "Zona", "preco": 10, "desc": "Detecta o que entra na caixa em cima dele (tamanho nos ajustes): peças, massa e o jogador."},
 	"impacto": {"nome": "Detector de impacto", "preco": 8, "desc": "Força da batida (N) e o que bateu."},
 	"receptor": {"nome": "Receptor de laser", "preco": 5, "desc": "Acende quando um laser (medidor laser ou a ferramenta Laser) acerta nele."},
+	"motor_mono": {"nome": "Motor monocilíndrico", "preco": 30, "desc": "Pequeno e econômico (5 N·m). Gasolina. Ligue tanque → motor → câmbio → cubos com a Transmissão (9)."},
+	"motor_4l": {"nome": "Motor 4 em linha", "preco": 60, "desc": "Carro comum (14 N·m). Gasolina. Entradas: Acelerador e Ligado."},
+	"motor_v8": {"nome": "Motor V8", "preco": 140, "desc": "Forte (40 N·m). Gasolina. Bom para carros pesados e caminhonetes."},
+	"motor_v12": {"nome": "Motor V12", "preco": 220, "desc": "Muito forte e gira alto (60 N·m). Gasolina."},
+	"motor_diesel": {"nome": "Motor diesel", "preco": 180, "desc": "Muita força em giro baixo (75 N·m). Diesel. Para caminhões e tratores."},
+	"motor_rotativo": {"nome": "Motor rotativo", "preco": 90, "desc": "Leve e gira muito alto (16 N·m). Gasolina."},
+	"motor_eletrico": {"nome": "Motor elétrico", "preco": 110, "desc": "Força cheia desde parado (30 N·m). Usa bateria: ligue bateria → motor com a Transmissão."},
+	"turbina": {"nome": "Turbina", "preco": 260, "desc": "Gira altíssimo e demora a responder (35 N·m). Diesel."},
+	"cambio_manual": {"nome": "Câmbio manual", "preco": 40, "desc": "Marchas pelas entradas Sobe/Desce ou Marcha. A seta aponta para a frente do veículo."},
+	"cambio_auto": {"nome": "Câmbio automático", "preco": 60, "desc": "Troca as marchas sozinho. Entradas: Freio, Ré, Embreagem, Esq/Dir (tanque)."},
+	"cvt": {"nome": "Câmbio CVT", "preco": 70, "desc": "Relação contínua: deixa o motor no giro de mais força."},
+	"cubo": {"nome": "Cubo de roda", "preco": 12, "desc": "Eixo livre: solde a base no chassi e a roda no disco. O câmbio gira ele."},
+	"tanque_gasolina": {"nome": "Tanque de gasolina", "preco": 15, "desc": "Combustível dos motores a gasolina (médio: 40 L)."},
+	"tanque_diesel": {"nome": "Tanque de diesel", "preco": 15, "desc": "Combustível do motor diesel e da turbina (médio: 40 L)."},
+	"gerador": {"nome": "Gerador", "preco": 50, "desc": "Ligue motor → gerador com a Transmissão e o gerador na rede (fio de energia): até 400 W."},
+	"bomba": {"nome": "Bomba de combustível", "preco": 80, "desc": "Solde no chão: E nela enche os tanques a até 5 m (1 ponto a cada 5 L)."},
 	"balanca": {"nome": "Balança", "preco": 15, "desc": "Pesa o que está em cima do prato (média até ~200 kg, grande até ~830 kg). Saídas: Peso (kg) e Força (N)."},
 }
 
@@ -99,7 +115,20 @@ static func wire_anchor(insulator: Part) -> Vector3:
 
 ## Peças mecânicas que vêm em tamanhos (pequeno / médio / grande). O tamanho vai em
 ## size.x (0 = médio, o padrão de sempre).
-const SCALED := ["motor", "servo", "pistao", "servo_linear", "dobradica", "pino", "pino_oct", "esferica", "trava", "torcao", "mola", "guincho", "bateria", "balanca"]
+const SCALED := ["motor", "servo", "pistao", "servo_linear", "dobradica", "pino", "pino_oct", "esferica", "trava", "torcao", "mola", "guincho", "bateria", "balanca",
+	"cubo", "tanque_gasolina", "tanque_diesel"]
+
+## Trem de força (Marco 4D): tamanho da caixa principal.
+const DRIVE_SIZES := {
+	"motor_mono": Vector3(0.25, 0.3, 0.25), "motor_4l": Vector3(0.3, 0.35, 0.5), "motor_v8": Vector3(0.5, 0.4, 0.6),
+	"motor_v12": Vector3(0.55, 0.42, 0.8), "motor_diesel": Vector3(0.45, 0.5, 0.7), "motor_rotativo": Vector3(0.35, 0.3, 0.35),
+	"motor_eletrico": Vector3(0.3, 0.3, 0.4), "turbina": Vector3(0.4, 0.4, 0.8),
+	"cambio_manual": Vector3(0.3, 0.2, 0.36), "cambio_auto": Vector3(0.3, 0.2, 0.36), "cvt": Vector3(0.3, 0.2, 0.36),
+	"tanque_gasolina": Vector3(0.4, 0.3, 0.5), "tanque_diesel": Vector3(0.4, 0.3, 0.5),
+	"gerador": Vector3(0.3, 0.25, 0.3), "bomba": Vector3(0.4, 1.1, 0.3),
+}
+const DRIVE_KINDS := ["motor_mono", "motor_4l", "motor_v8", "motor_v12", "motor_diesel", "motor_rotativo", "motor_eletrico", "turbina",
+	"cambio_manual", "cambio_auto", "cvt", "tanque_gasolina", "tanque_diesel"]
 const SIZE_SMALL := 0.6
 const SIZE_LARGE := 1.6
 
@@ -183,6 +212,11 @@ static func bounds(kind: String, size := Vector3.ZERO) -> AABB:
 		return AABB(-ss * 0.5, ss + Vector3(0, 0.03 if kind == "ranger" else 0.0, 0))
 	if kind == "balanca":
 		return AABB(Vector3(-0.2, -0.03, -0.2), Vector3(0.4, 0.135, 0.4))
+	if kind == "cubo":
+		return AABB(Vector3(-0.1, -0.06, -0.1), Vector3(0.2, 0.18, 0.2))
+	if DRIVE_SIZES.has(kind):
+		var ds: Vector3 = DRIVE_SIZES[kind]
+		return AABB(-ds * 0.5, ds + Vector3(0, 0.06 if kind.begins_with("motor") or kind == "turbina" else 0.02, 0))
 	if POWER_SIZES.has(kind):
 		var ps: Vector3 = POWER_SIZES[kind]
 		var extra := {"luz": 0.07, "holofote": 0.16, "chave": 0.14, "bateria": 0.03}.get(kind, 0.0) as float
@@ -249,6 +283,14 @@ static func _spawn_kind(kind: String, xform: Transform3D, size: Vector3) -> Arra
 			return [_spawn_sensor(kind, xform)]
 		"balanca":
 			return _spawn_scale(xform, scale_of(kind, size))
+		"cubo":
+			return _spawn_hub(xform, scale_of(kind, size))
+		"gerador":
+			return [_spawn_generator(xform)]
+		"bomba":
+			return [_spawn_pump(xform)]
+	if kind in DRIVE_KINDS:
+		return [_spawn_drive(kind, xform, scale_of(kind, size))]
 	return []
 
 
@@ -373,7 +415,7 @@ static func _spawn_motor(xform: Transform3D, k := 1.0) -> Array[Part]:
 	var j := _joint("motor", stator, rotor, Vector3(0, MOTOR_HALF_H * k, 0), Vector3.UP)
 	j.size_scale = k
 	j.speed = 10.0
-	j.strength = 1500.0 * k * k * k
+	j.strength = 600.0 * k * k * k        # motor simples: limitado (até 800 × tamanho³)
 	j.bind_pos = [{"key": KEY_W}]
 	j.bind_neg = [{"key": KEY_S}]
 	j.capture_rest()
@@ -1047,6 +1089,131 @@ static func _spawn_scale(xform: Transform3D, k := 1.0) -> Array[Part]:
 	return [base, plate]
 
 
+# --- Trem de força (Marco 4D) -------------------------------------------------------
+
+const ENGINE_COLORS := {
+	"motor_mono": Color(0.6, 0.62, 0.66), "motor_4l": Color(0.25, 0.27, 0.3), "motor_v8": Color(0.7, 0.15, 0.12),
+	"motor_v12": Color(0.75, 0.6, 0.1), "motor_diesel": Color(0.2, 0.35, 0.2), "motor_rotativo": Color(0.15, 0.3, 0.6),
+	"motor_eletrico": Color(0.15, 0.45, 0.75), "turbina": Color(0.55, 0.57, 0.6),
+}
+
+
+static func _spawn_drive(kind: String, xform: Transform3D, k := 1.0) -> Part:
+	var size: Vector3 = DRIVE_SIZES[kind] * (k if kind.begins_with("tanque") else 1.0)
+	var top := size.y * 0.5
+	var n := DriveNode.new()
+	n.kind = kind
+	n.size_scale = k
+	var p: Part
+	if kind == "turbina" or kind.begins_with("tanque"):
+		# Turbina e tanque: "cilindro" octogonal deitado (eixo Z).
+		var planes: Array[Plane] = ConvexGeo.oct_prism_planes(size.x, size.z)
+		p = Build.spawn_planes(planes, "carcaca" if kind == "turbina" else "aco", xform)
+		_component(p, INFO[kind]["nome"], kind)
+	else:
+		p = _box(size, "carcaca", xform, INFO[kind]["nome"], kind)
+	n.part = p
+	if n.is_engine():
+		var c: Color = ENGINE_COLORS[kind]
+		_deco_box(p, Vector3(size.x + 0.004, size.y * 0.4, size.z + 0.004), Vector3(0, -size.y * 0.1, 0), c)
+		var cyl: int = DriveNode.ENGINES[kind]["cyl"]
+		if kind == "turbina":
+			_deco_cyl(p, size.x * 0.42, 0.04, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(0, 0, -size.z * 0.5 - 0.02)), Color(0.15, 0.15, 0.16), 0.8)
+		elif cyl > 0:
+			var heads := mini(cyl, 6)
+			for h in heads:
+				var z := -size.z * 0.35 + size.z * 0.7 * (float(h) / maxf(heads - 1, 1))
+				_deco_box(p, Vector3(size.x * 0.7, 0.05, size.z * 0.7 / heads - 0.01), Vector3(0, top + 0.025, z if heads > 1 else 0.0), Color(0.3, 0.32, 0.35))
+		else:
+			for r in 4:
+				_deco_box(p, Vector3(size.x + 0.01, 0.012, 0.02), Vector3(0, top * 0.3, -size.z * 0.3 + r * size.z * 0.2), Color(0.75, 0.77, 0.8))
+		n.glow = _deco_box(p, Vector3(0.04, 0.012, 0.04), Vector3(size.x * 0.35, top + 0.006, size.z * 0.4), Color.WHITE)
+		n.label = _label3d(p, "", top + 0.055, 28, Color(1.0, 0.85, 0.4))
+		n.label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		var snd := AudioStreamPlayer3D.new()
+		var gen := AudioStreamGenerator.new()
+		gen.mix_rate = 22050.0
+		gen.buffer_length = 0.12
+		snd.stream = gen
+		snd.unit_size = 6.0
+		snd.max_distance = 60.0
+		snd.volume_db = -10.0
+		p.add_child(snd)
+		n.sound = snd
+	elif n.is_gearbox():
+		_deco_box(p, Vector3(size.x - 0.04, 0.004, size.z - 0.04), Vector3(0, top, 0), BOARD_DARK)
+		# Seta para a frente (-Z).
+		_deco_box(p, Vector3(0.03, 0.01, 0.16), Vector3(0, top + 0.006, -0.02), Color(1.0, 0.75, 0.1))
+		var tip := _deco_box(p, Vector3(0.08, 0.01, 0.03), Vector3(0, top + 0.006, -0.11), Color(1.0, 0.75, 0.1))
+		tip.rotation.y = 0.0
+		n.label = _label3d(p, "", top + 0.012, 30, Color(0.9, 0.95, 1.0), Vector3(0, 0, 0.1))
+		if kind == "cambio_auto":
+			n.gears = 5
+		elif kind == "cvt":
+			n.gears = 1
+			n.first_ratio = 4.0
+			n.top_ratio = 0.6
+	else:
+		var tc := Color(0.85, 0.15, 0.1) if kind == "tanque_gasolina" else Color(0.15, 0.2, 0.15)
+		_deco_cyl(p, size.x * 0.5 + 0.004, size.z * 0.5, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3.ZERO), tc, 0.3)
+		_deco_cyl(p, 0.035 * k, 0.04 * k, Transform3D(Basis(), Vector3(size.x * 0.25, size.x * 0.5 + 0.015 * k, size.z * 0.3)), Color(0.15, 0.15, 0.16), 0.6)
+		n.label = _label3d(p, "", size.x * 0.5 + 0.04 * k, 26, Color(1, 1, 1))
+		n.label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		n.fuel = n.capacity() * 0.5          # vem pela metade
+	Build.add_node(n)
+	n.update_visual()
+	return p
+
+
+## Cubo de roda: base (solda no chassi) e disco (solda a roda); eixo livre que o câmbio gira.
+static func _spawn_hub(xform: Transform3D, k := 1.0) -> Array[Part]:
+	var mount := _box(Vector3(0.16, 0.12, 0.16) * k, "carcaca", xform, "Cubo de roda (base)", "cubo")
+	_deco_box(mount, Vector3(0.17, 0.03, 0.17) * k, Vector3(0, 0.02, 0) * k, Color(0.85, 0.6, 0.12))
+	var disc := _oct(0.1 * k, 0.05 * k, "aco", xform * Transform3D(Basis(), Vector3(0, 0.089 * k, 0)), "Cubo de roda (disco)", "cubo")
+	for i in 4:
+		var a := i * PI * 0.5
+		_deco_cyl(disc, 0.01 * k, 0.02 * k, Transform3D(Basis(), Vector3(cos(a), 0, sin(a)) * 0.06 * k + Vector3(0, 0.03 * k, 0)), Color(0.75, 0.77, 0.8), 0.9)
+	var j := _joint("cubo", mount, disc, Vector3(0, 0.06 * k, 0), Vector3.UP)
+	j.size_scale = k
+	j.strength = 0.0
+	j.capture_rest()
+	Build.add_joint(j)
+	return [mount, disc]
+
+
+static func _spawn_generator(xform: Transform3D) -> Part:
+	var size: Vector3 = DRIVE_SIZES["gerador"]
+	var p := _box(size, "carcaca", xform, "Gerador", "gerador")
+	_deco_cyl(p, 0.1, size.z + 0.01, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3.ZERO), Color(0.2, 0.45, 0.75), 0.6)
+	var n := PowerNode.new()
+	n.part = p
+	n.kind = "gerador"
+	n.glow = _deco_box(p, Vector3(0.04, 0.01, 0.04), Vector3(0.1, size.y * 0.5 + 0.005, -0.1), Color.WHITE)
+	Build.add_node(n)
+	Power.register(n)
+	return p
+
+
+## Bomba de combustível: soldada no chão, E nela enche os tanques por perto (pago).
+static func _spawn_pump(xform: Transform3D) -> Part:
+	var size: Vector3 = DRIVE_SIZES["bomba"]
+	var p := _box(size, "carcaca", xform, "Bomba de combustível", "bomba")
+	_deco_box(p, Vector3(size.x + 0.01, 0.05, size.z + 0.01), Vector3(0, size.y * 0.5 - 0.025, 0), Color(0.85, 0.15, 0.1))
+	_deco_box(p, Vector3(0.24, 0.16, 0.01), Vector3(0, 0.2, -size.z * 0.5 - 0.004), SCREEN_DARK)
+	var l := Label3D.new()
+	l.text = "COMBUSTÍVEL\nE: abastecer\n1 ponto / 5 L"
+	l.font_size = 20
+	l.pixel_size = 0.0016
+	l.outline_size = 4
+	l.modulate = Color(1.0, 0.85, 0.4)
+	l.position = Vector3(0, 0.2, -size.z * 0.5 - 0.011)
+	l.rotation.y = PI
+	p.add_child(l)
+	_deco_cyl(p, 0.03, 0.25, Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3(size.x * 0.5 + 0.1, 0.1, 0)), Color(0.1, 0.1, 0.1), 0.2)
+	p.interact_kind = "bomba"
+	return p
+
+
 ## Texto deitado em cima da peça (lido de quem está na frente, olhando para -Z).
 static func _label3d(parent: Node3D, text: String, top_y: float, font_size: int, color: Color, offset := Vector3.ZERO, width := 0.0) -> Label3D:
 	var l := Label3D.new()
@@ -1209,6 +1376,28 @@ static func build_visual(kind: String, size := Vector3.ZERO) -> Node3D:
 				"receptor":
 					_deco_cyl(root, 0.07, 0.006, Transform3D(Basis(), Vector3(0, ss.y * 0.5 + 0.003, 0)), Color(0.9, 0.9, 0.9))
 					_deco_cyl(root, 0.035, 0.008, Transform3D(Basis(), Vector3(0, ss.y * 0.5 + 0.004, 0)), sc)
+		"cubo":
+			_deco_box(root, Vector3(0.16, 0.12, 0.16), Vector3.ZERO, Color(0.3, 0.32, 0.35))
+			_deco_cyl(root, 0.1, 0.05, Transform3D(Basis(), Vector3(0, 0.089, 0)), steel, 0.85)
+		"gerador":
+			_deco_box(root, DRIVE_SIZES[kind], Vector3.ZERO, Color(0.3, 0.32, 0.35))
+			_deco_cyl(root, 0.1, 0.31, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3.ZERO), Color(0.2, 0.45, 0.75), 0.6)
+		"bomba":
+			_deco_box(root, DRIVE_SIZES[kind], Vector3.ZERO, Color(0.85, 0.6, 0.12))
+			_deco_box(root, Vector3(0.41, 0.05, 0.31), Vector3(0, 0.525, 0), Color(0.85, 0.15, 0.1))
+		"motor_mono", "motor_4l", "motor_v8", "motor_v12", "motor_diesel", "motor_rotativo", "motor_eletrico", "turbina":
+			var es: Vector3 = DRIVE_SIZES[kind]
+			_deco_box(root, es, Vector3.ZERO, Color(0.3, 0.32, 0.35))
+			_deco_box(root, Vector3(es.x + 0.004, es.y * 0.4, es.z + 0.004), Vector3(0, -es.y * 0.1, 0), ENGINE_COLORS[kind])
+			_deco_box(root, Vector3(es.x * 0.7, 0.05, es.z * 0.7), Vector3(0, es.y * 0.5 + 0.025, 0), Color(0.3, 0.32, 0.35))
+		"cambio_manual", "cambio_auto", "cvt":
+			var gs: Vector3 = DRIVE_SIZES[kind]
+			_deco_box(root, gs, Vector3.ZERO, Color(0.3, 0.32, 0.35))
+			_deco_box(root, Vector3(0.03, 0.01, 0.16), Vector3(0, gs.y * 0.5 + 0.006, -0.02), Color(1.0, 0.75, 0.1))
+			_deco_box(root, Vector3(0.08, 0.01, 0.03), Vector3(0, gs.y * 0.5 + 0.006, -0.11), Color(1.0, 0.75, 0.1))
+		"tanque_gasolina", "tanque_diesel":
+			var ts: Vector3 = DRIVE_SIZES[kind]
+			_deco_cyl(root, ts.x * 0.5, ts.z, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3.ZERO), Color(0.85, 0.15, 0.1) if kind == "tanque_gasolina" else Color(0.15, 0.2, 0.15), 0.3)
 		"balanca":
 			_deco_box(root, Vector3(0.4, 0.06, 0.4), Vector3.ZERO, Color(0.85, 0.6, 0.12))
 			_deco_box(root, Vector3(0.4, 0.03, 0.4), Vector3(0, 0.09, 0), Color(0.6, 0.62, 0.66))

@@ -55,6 +55,7 @@ func reset(root: Node3D) -> void:
 	devices.clear()
 	Signals.reset()
 	Power.reset()
+	Drive.reset()
 	active_seat = null
 	seat_keys_enabled = true
 
@@ -653,6 +654,7 @@ func network(seat: Part) -> Array[MechJoint]:
 func _physics_process(delta: float) -> void:
 	Signals.tick(delta)
 	Power.tick(delta)
+	Drive.tick(delta)
 	if _balance_dirty:
 		_balance_dirty = false
 		balance_masses()

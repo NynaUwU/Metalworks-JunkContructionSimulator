@@ -761,3 +761,18 @@ func _sensors() -> void:
 	await _frames(4)
 	await _shot("s1_sensores")
 	(player.tools[7] as LaserTool).firing = false
+
+
+func _drive() -> void:
+	# Carro de exemplo novo (motor + câmbio + cubos) com a Transmissão na mão.
+	await _frames(60)
+	player.teleport(Vector3(-10.2, 0.03, 5.6))
+	player.select_tool(8)
+	_look_from_eye(Vector3(-13, 0.5, 2.6))
+	await _frames(10)
+	await _shot("d1_transmissao")
+	player.select_tool(0)
+	player.teleport(Vector3(-40, 0.05, 31.5))
+	_look_from_eye(Vector3(-40, 0.2, 23))
+	await _frames(30)
+	await _shot("d2_deposito_motores")

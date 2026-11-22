@@ -233,6 +233,7 @@ func clear_world() -> void:
 	Build.devices.clear()
 	Signals.reset()
 	Power.reset()
+	Drive.reset()
 	Build.welds.clear()
 	Build.active_seat = null
 	for c in Build.world_root.get_children():
@@ -291,6 +292,14 @@ static func machine_of(part: Part) -> Array:
 					if is_instance_valid(ins):
 						add.append((ins as Part).assembly())
 				groups_to_add.append(add)
+		# Ligações de transmissão também.
+		for dl in Drive.links:
+			if not Drive.alive(dl.a) or not Drive.alive(dl.b):
+				continue
+			var da: Assembly = Drive.part_of(dl.a).assembly()
+			var db: Assembly = Drive.part_of(dl.b).assembly()
+			if found.has(da) or found.has(db):
+				groups_to_add.append([da, db])
 		# Fios de energia também.
 		for pw in Power.wires:
 			if not pw.is_valid():
@@ -482,11 +491,22 @@ static func serialize(assemblies: Array, origin: Transform3D) -> Dictionary:
 				pvia.append(ids[ins])
 		pwires.append({"a": group_index[ap.comp_group], "b": group_index[bp.comp_group], "via": pvia})
 
+	var dlinks: Array = []
+	for dl in Drive.links:
+		if not Drive.alive(dl.a) or not Drive.alive(dl.b):
+			continue
+		var la: Part = Drive.part_of(dl.a)
+		var lb: Part = Drive.part_of(dl.b)
+		if not ids.has(la) or not ids.has(lb) or not group_index.has(la.comp_group) or not group_index.has(lb.comp_group):
+			continue
+		dlinks.append({"a": group_index[la.comp_group], "b": group_index[lb.comp_group], "r": snappedf(dl.rest, 0.001)})
+
 	return {
 		"format": FORMAT, "version": VERSION,
 		"game": str(ProjectSettings.get_setting("application/config/version", "")),
 		"time": int(Time.get_unix_time_from_system()),
 		"parts": part_list, "groups": groups, "welds": welds, "bodies": bodies, "wires": wires, "pwires": pwires,
+		"dlinks": dlinks,
 	}
 
 
@@ -640,6 +660,17 @@ func restore(data: Dictionary, origin: Transform3D) -> Array:
 			if by_id.has(int(id)):
 				pvia.append(by_id[int(id)])
 		Power.connect_nodes(pa, pb, pvia)
+	for ld: Dictionary in data.get("dlinks", []):
+		var la_arr: Array = group_parts[int(ld["a"])]
+		var lb_arr: Array = group_parts[int(ld["b"])]
+		if la_arr.is_empty() or lb_arr.is_empty() or not is_instance_valid(la_arr[0]) or not is_instance_valid(lb_arr[0]):
+			continue
+		var oa := Drive.node_of(la_arr[0])
+		var ob := Drive.node_of(lb_arr[0])
+		if oa == null or ob == null or Drive.find_link(oa, ob):
+			continue
+		var dl := Drive.link(oa, ob)
+		dl.rest = maxf(float(ld.get("r", dl.rest)), dl.rest)
 
 	return created
 

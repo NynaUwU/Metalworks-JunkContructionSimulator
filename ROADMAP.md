@@ -151,35 +151,24 @@ Inspirado no Wiremod e no ACF do Garry's Mod (sem nada de NPCs nem geradores de 
 - Troca de ferramenta pela roda do mouse (v0.9.1)
 - **Marcador de peça** ficou para a 4E (junto com o FPGA e a memória), que precisa de ferramenta de seleção
 
-### v0.11 — 4D: Trem de força estilo ACF
-- [ ] Gerador (vindo da 4B): ligado ao motor pela transmissão, carrega as baterias
-- [ ] Ferramenta Transmissão:
-  - liga tanque → motor, motor → câmbio, câmbio → câmbio e câmbio → cubos de roda;
-  - ligações invisíveis (aparecem só com a ferramenta na mão);
-  - limite de distância; quebra se esticar 1,5×; sem loops;
-  - lado esquerdo/direito automático.
-- [ ] Cubo de roda: eixo livre soldado no chassi, onde a roda é soldada
-- [ ] Motores:
-  - tipos: monocilíndrico, 4 em linha, V8, V12, diesel, rotativo, elétrico (bateria) e turbina, com força
-    ajustada às massas do jogo;
-  - simulação: RPM com volante de inércia, curva de torque, marcha lenta, corte de giro, partida;
-  - sem combustível, desliga;
-  - portas: Acelerador e Ligado → RPM, Torque, Potência e Consumo.
-- [ ] Câmbios:
-  - tipos: manual (até 10 marchas + diferencial final), automático (pontos de troca), CVT, transfer
-    (reduzida/alta), diferencial, diferencial duplo (tanque), embreagem avulsa;
-  - limite de torque;
-  - portas: Marcha, Sobe, Desce, Embreagem, Freio, Esq/Dir e Esterço.
-- [ ] Física das rodas:
-  - cada roda pede força pela diferença de velocidade e o motor reparte o que tem;
-  - reação no chassi, freio, aderência dos pneus.
-- [ ] Combustível: tanques de gasolina e diesel em tamanhos e um posto de combustível (pontos)
-- [ ] Som do motor seguindo o RPM
-- [ ] Motor simples do Marco 2 limitado (pouca força e velocidade: só veículo pessoal)
-- [ ] Carro de exemplo novo com motor, câmbio e cubos
-- [ ] Testes: aceleração, troca de marcha, esterçamento de tanque, falta de combustível, ligação quebrando
+### ✅ v0.11 — 4D: Trem de força estilo ACF
+- Ferramenta Transmissão (9): tanque → motor, bateria → motor elétrico, motor → câmbio, motor → gerador,
+  câmbio → cubos; invisível sem a ferramenta; até 8 m; quebra se esticar 1,5×; lado esquerdo/direito automático
+- Cubo de roda (eixo livre acionado pelo câmbio)
+- Motores: mono, 4 em linha, V8, V12, diesel, rotativo, elétrico (bateria) e turbina; RPM com volante, curva de
+  torque, marcha lenta, corte de giro, partida; sem combustível desliga; som seguindo o RPM
+- Câmbios: manual, automático, CVT; diferencial duplo (esterço de tanque); embreagem automática; freio; ré
+  (freia antes de engatar)
+- Rodas: os cubos recebem a velocidade que o motor quer com torque limitado pela embreagem (implícito no Jolt)
+- Combustível: tanques de gasolina e diesel P/M/G e bomba de combustível paga com pontos
+- Gerador (vindo da 4B)
+- Motor simples limitado (800 N·m, 12 rad/s); carro de exemplo novo
+- Testes: aceleração, troca de marcha, freio, esterço de tanque, ré, falta de combustível, ligação quebrando,
+  elétrico, gerador, bomba, salvar
+- **Ficou para depois:** câmbio → câmbio em cadeia, transfer (reduzida/alta) e diferencial avulso (4E)
 
 ### v0.12 — 4E: Avançado
+- [ ] Câmbio → câmbio em cadeia, caixa de transferência (reduzida/alta) e diferencial avulso (vindos da 4D)
 - [ ] Marcador de peça (vindo da 4C): simples e avançado, com lista
 - [ ] FPGA: chip com editor visual
   - dentro dele, arrasta e liga portas lógicas;

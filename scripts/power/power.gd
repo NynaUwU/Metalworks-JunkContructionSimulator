@@ -180,7 +180,7 @@ func _solve(g: Array, dt: float, dt_h: float) -> Dictionary:
 		demand += n.demand_w()
 		var f := n.free_w()
 		free += f
-		if n.kind == "solar":
+		if n.kind == "solar" or n.kind == "gerador":
 			n.power_w = f
 		if n.grid_ready():
 			grid_max += PowerNode.GRID_W

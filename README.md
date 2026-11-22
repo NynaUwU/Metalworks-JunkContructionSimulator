@@ -25,7 +25,7 @@ Nome, mapa, visual e código são próprios.
 | Andar / pular | W A S D / Espaço |
 | Correr | toque duplo numa tecla de andar (ou Shift), também segurando algo com o Gravitador |
 | Agachar (mais devagar, alcança mais baixo) | Ctrl |
-| Trocar ferramenta | 1 Gravitador · 2 Solda · 3 Esmerilhadeira · 4 Fiação · 5 Depurador · 6 Trena · 7 Alinhador · 8 Laser |
+| Trocar ferramenta | 1 Gravitador · 2 Solda · 3 Esmerilhadeira · 4 Fiação · 5 Depurador · 6 Trena · 7 Alinhador · 8 Laser · 9 Transmissão |
 | Trocar ferramenta (estilo Garry's Mod) | roda do mouse escolhe, clique confirma, botão direito cancela |
 | Usar (loja, assento, botão, alavanca, engate rápido) | E |
 | Puxar um puxador (portas, tampas...) | E segurado |
@@ -81,8 +81,9 @@ Nome, mapa, visual e código são próprios.
 
 **Máquinas**
 - Componentes:
-  - **motor** (gira; sem sinal fica rígido ou solto). A velocidade sobe e desce em rampa (**Arrancada**,
-    1 s por padrão): as rodas não patinam ao sair nem derrapam ao parar;
+  - **motor** (simples: gira; sem sinal fica rígido ou solto). **Limitado** (até 800 N·m e 12 rad/s): bom só para
+    veículo pessoal. Para força e velocidade de verdade, use o **trem de força** (abaixo). A velocidade sobe e
+    desce em rampa (**Arrancada**, 1 s por padrão): as rodas não patinam ao sair nem derrapam ao parar;
   - **servo** (vai até um ângulo e segura);
   - **pistão** (empurra 0,5 m; sem sinal volta ou fica parado). Nos ajustes, o modo **amortecedor** vira
     suspensão: mola + amortecimento com **rigidez**, **amortecimento** e **altura sem carga** ajustáveis;
@@ -141,7 +142,7 @@ Nome, mapa, visual e código são próprios.
   Controles, componentes (o motor dá Ângulo e Giro, o pistão dá Extensão...), chips, teclas, assento e telas.
   Lógica é de graça: sinais não gastam energia.
 - **Fiação (4):** clique na peça de origem e escolha a saída, passe pelos isoladores (opcional) e clique no destino
-  escolhendo a entrada (só aparecem as do mesmo tipo). Escolher a mesma ligação de novo desliga o fio.
+  escolhendo a entrada (só aparecem as do mesmo tipo). O menu aparece sempre, mesmo com uma porta só. Escolher a mesma ligação de novo desliga o fio.
   Vários fios numa entrada de número somam. Cor do fio = tipo; aceso quando tem sinal.
 - **Chip lógico:** uma peça só com 86 modos (botão direito com a Fiação para escolher):
   - lógica (E, OU, NÃO, XOU...) e comparação;
@@ -173,6 +174,24 @@ Nome, mapa, visual e código são próprios.
 - A cada instante: o sol alimenta as luzes; o que faltar vem do posto (se houver) e depois das baterias. Sem carga,
   as luzes ficam mais fracas na proporção. Sobrando, as baterias carregam.
 - Lógica continua de graça. Os componentes simples (motor, servo, pistão...) não gastam energia.
+
+**Trem de força** (Marco 4D, estilo ACF; depósito MOTORES e loja: Motores, Câmbios, Combustível)
+- Monte: **tanque → motor → câmbio → cubos de roda**, ligados pela ferramenta **Transmissão (9)**: clique numa peça
+  e depois na outra. As ligações são invisíveis (só aparecem com a ferramenta na mão), têm até 8 m e **quebram se
+  esticarem 1,5×**. Botão direito numa peça desfaz as ligações dela.
+- **Cubo de roda:** eixo livre. Solde a base no chassi (com o eixo para fora) e a roda no disco.
+- **Motores** (8): monocilíndrico, 4 em linha, V8, V12, diesel, rotativo, elétrico (usa bateria: bateria → motor)
+  e turbina. RPM com volante, curva de torque, marcha lenta, corte de giro e partida; sem combustível, desliga.
+  Entradas Acelerador (0 a 1) e Ligado (sem fio, liga sozinho). Saídas RPM, Torque, Potência, Consumo e Ligado.
+  Som que segue o giro.
+- **Câmbios:** manual (Sobe/Desce ou Marcha), automático (troca sozinho) e CVT. **A seta em cima aponta para a
+  frente do veículo**; o lado esquerdo/direito dos cubos sai da posição. Entradas Freio, Ré (com o carro andando
+  para a frente, freia antes de engatar), Embreagem, e, com **esterço de tanque** (diferencial duplo), Esq/Dir/Esterço
+  (gira no lugar). A embreagem é automática: sai patinando no giro de arrancada.
+- **Gerador:** motor → gerador (Transmissão) e o gerador na rede (fio de energia): até 400 W.
+- **Combustível:** tanques de gasolina e diesel (P/M/G; médio 40 L). Abasteça na **bomba de combustível** (E nela,
+  1 ponto a cada 5 L; só soldada no chão). Tem uma ao lado do posto RECARGA.
+- **Carro de exemplo novo** perto do antigo: W acelera, S dá ré, A/D viram (tanque), Espaço freia.
 
 **Sensores** (Marco 4C, depósito ELETRÔNICA e loja, categoria Sensores)
 - Todos mandam o que medem como sinal (ligue com a Fiação). Ajustes: botão direito com a Fiação.
@@ -226,6 +245,9 @@ scripts/
   power/power_node.gd     bateria, painel solar, posto de recarga, luz, holofote, relé, chave, medidor
   sensors/sensor_node.gd  sensores: laser, velocímetro, giroscópio, GPS, localizador, buscador, zona, impacto, receptor
   tools/laser_tool.gd     ferramenta Laser (ponteiro)
+  drive/drive.gd          ligações de transmissão e simulação do trem de força (autoload "Drive")
+  drive/drive_node.gd     motores, câmbios e tanques
+  tools/transmission_tool.gd  ferramenta Transmissão
   tools/debug_tool.gd     Depurador
   tools/snap.gd           ponto mirado encaixado na grade de 5 cm da peça (ou numa marca)
   tools/measure_tool.gd   Trena (medir e marcar)
@@ -294,6 +316,10 @@ godot --headless --path . res://tests/test_power.tscn
 
 ```bash
 godot --headless --path . res://tests/test_sensors.tscn
+```
+
+```bash
+godot --headless --path . res://tests/test_drive.tscn
 ```
 
 **Publicar uma versão:** mude `config/version` no `project.godot` e crie

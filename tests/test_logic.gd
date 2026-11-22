@@ -2,7 +2,7 @@ extends Node3D
 ## Testes da lógica (Marco 4A): chip lógico, fios porta a porta, entradas e mostradores.
 ##   godot --headless --path . res://tests/test_logic.tscn
 
-const EXPECTED_CHECKS := 91
+const EXPECTED_CHECKS := 92
 
 var _fails := 0
 var _checks := 0
@@ -436,6 +436,20 @@ func _tools() -> void:
 	await _frames(3)
 	wire.handle_input(_press("primary"))
 	check(not Signals.is_linked(router.node, "B", tela.node, "B"), "escolher a mesma ligação de novo desliga o fio")
+	# Uma saída só e uma entrada só: o menu aparece do mesmo jeito (pedido do jogador).
+	var lev := _spawn("alavanca", o + Vector3(0, 0.03, 2.5))
+	var ind := _spawn("indicador", o + Vector3(1.2, 0.03, 2.5))
+	await _frames(3)
+	var before := menus.size()
+	pick[0] = 0
+	_aim(player, o + Vector3(0, 0, 4.0), lev.global_position)
+	await _frames(3)
+	wire.handle_input(_press("primary"))
+	_aim(player, o + Vector3(1.2, 0, 4.0), ind.global_position)
+	await _frames(3)
+	wire.handle_input(_press("primary"))
+	check(menus.size() == before + 2 and menus[before][1] == 1 and menus[before + 1][1] == 1 and Signals.is_linked(lev.device, "Saída", ind.node, "Valor"),
+		"com uma saída e uma entrada só, o menu aparece mesmo assim (e liga)")
 
 	print("== Depurador")
 	player.select_tool(4)

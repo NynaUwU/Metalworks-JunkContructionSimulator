@@ -88,7 +88,7 @@ func _ready() -> void:
 	add_to_group("player")      # sensores (buscador, zona) procuram o jogador
 	hand = HandTool.new(self)
 	tools = [hand, WeldTool.new(self), GrinderTool.new(self), WireTool.new(self), DebugTool.new(self),
-		MeasureTool.new(self), AlignTool.new(self), LaserTool.new(self)]
+		MeasureTool.new(self), AlignTool.new(self), LaserTool.new(self), TransmissionTool.new(self)]
 	for t in tools:
 		camera.add_child(t)
 	select_tool(0)
@@ -204,6 +204,8 @@ func interact_hint() -> String:
 			return "E: sentar"
 		if part.interact_kind == "teclado":
 			return "%s: digitar a senha" % key
+		if part.interact_kind == "bomba":
+			return "%s: abastecer os tanques a até 5 m (1 ponto a cada 5 L)" % key
 		if part.interact_kind == "chave" and part.node is PowerNode:
 			return "%s: %s a chave de energia" % [key, "desligar" if (part.node as PowerNode).closed else "ligar"]
 		if part.interact_kind == "puxador" and not is_seated():
@@ -319,6 +321,19 @@ func _use_device_press() -> bool:
 		return true
 	if t is Part and (t as Part).interact_kind == "puxador" and not is_seated():
 		_start_pull(t)
+		return true
+	if t is Part and (t as Part).interact_kind == "bomba":
+		var pump := t as Part
+		if not pump.assembly().anchored:
+			toast("A bomba só funciona soldada no chão")
+			return true
+		var r := Drive.refuel(pump.global_position, 5.0, 0.2)
+		if float(r["liters"]) > 0.01:
+			toast("Abastecido: %.1f L (%.1f pontos)" % [float(r["liters"]), float(r["cost"])])
+		elif Economy.precise_points() < 0.2:
+			toast("Sem pontos para abastecer")
+		else:
+			toast("Nenhum tanque com espaço a até 5 m da bomba")
 		return true
 	if t is Part and (t as Part).interact_kind == "chave" and (t as Part).node is PowerNode:
 		var pn: PowerNode = (t as Part).node

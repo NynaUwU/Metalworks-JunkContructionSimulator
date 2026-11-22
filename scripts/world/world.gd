@@ -88,7 +88,9 @@ func populate() -> void:
 	_spawn_component_depot()
 	_spawn_logic_depot()
 	_spawn_charging_post()
+	_spawn_engine_depot()
 	demo_seat = DemoBuilds.build_car(Vector3(-7, 0, 3))
+	DemoBuilds.build_engine_car(Vector3(-13, 0, 3))
 
 
 ## Começa do zero: apaga todas as peças, zera os pontos e espalha a sucata de novo.
@@ -134,6 +136,8 @@ func _build_stations() -> void:
 	StationBuilder.label_sign(self, "COMPONENTES", Vector3(-30, 5.22, 19.8))
 	StationBuilder.label_sign(self, "ELETRÔNICA", Vector3(-32, 2.2, 0.6))
 	StationBuilder.label_sign(self, "RECARGA", CHARGING_POST + Vector3(0, 2.0, 0))
+	StationBuilder.label_sign(self, "COMBUSTÍVEL", FUEL_PUMP + Vector3(0, 2.2, 0))
+	StationBuilder.label_sign(self, "MOTORES", ENGINE_DEPOT + Vector3(0, 2.4, -5.5))
 	var wires := WireRenderer.new()
 	wires.name = "Wires"
 	add_child(wires)
@@ -494,6 +498,26 @@ func _spawn_logic_depot() -> void:
 
 
 const CHARGING_POST := Vector3(-37.5, 0.02, 6.0)
+const FUEL_PUMP := Vector3(-37.5, 0.02, 11.0)
+const ENGINE_DEPOT := Vector3(-40.0, 0.02, 24.0)
+
+
+## Depósito do trem de força: motores, câmbios, gerador, cubos e tanques; e a bomba de
+## combustível soldada no chão ao lado do posto de recarga.
+func _spawn_engine_depot() -> void:
+	var rows := [
+		["motor_mono", "motor_4l", "motor_v8", "motor_v12"],
+		["motor_diesel", "motor_rotativo", "motor_eletrico", "turbina"],
+		["cambio_manual", "cambio_auto", "cvt", "gerador"],
+		["cubo", "cubo", "cubo", "cubo"],
+		["tanque_gasolina", "tanque_gasolina", "tanque_diesel", "tanque_diesel"],
+	]
+	for r in rows.size():
+		for c in rows[r].size():
+			_spawn_component(rows[r][c], ENGINE_DEPOT + Vector3(-3.0 + c * 2.0, 0, -4.0 + r * 2.0))
+	var b := Components.bounds("bomba")
+	var pump: Part = Components.spawn("bomba", Transform3D(Basis(), FUEL_PUMP + Vector3(0, -b.position.y, 0)))[0]
+	Build.make_weld(pump, null, FUEL_PUMP + Vector3(0.1, 0.0, 0.1), false)
 
 
 ## Posto de recarga soldado no chão, ao lado do depósito de eletrônica.

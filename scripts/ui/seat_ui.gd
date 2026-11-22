@@ -374,9 +374,10 @@ func _section(i: int, j: MechJoint) -> Control:
 			free.button_pressed = j.free_idle
 			free.toggled.connect(func(on: bool) -> void: j.free_idle = on)
 			v.add_child(free)
-			v.add_child(_slider("Velocidade", 1.0, 30.0, 0.5, j.speed, "%.1f rad/s", func(x: float) -> void: j.speed = x))
+			v.add_child(_slider("Velocidade", 1.0, MechJoint.SIMPLE_MAX_SPEED, 0.5, j.speed, "%.1f rad/s", func(x: float) -> void: j.speed = x))
 			v.add_child(_slider("Arrancada", 0.0, 3.0, 0.1, j.ramp, "%.1f s", func(x: float) -> void: j.ramp = x))
-			v.add_child(_slider("Força", 200.0 * k3, 6000.0 * k3, 100.0, j.strength, "%d N·m", func(x: float) -> void:
+			v.add_child(_label("Motor simples: só para veículo pessoal. Para força de verdade: motor + câmbio + cubos (Transmissão, 9).", 12, Color(1, 1, 1, 0.55)))
+			v.add_child(_slider("Força", 100.0 * k3, MechJoint.SIMPLE_MAX_TORQUE * k3, 50.0, j.strength, "%d N·m", func(x: float) -> void:
 				j.strength = x
 				j.apply_strength()))
 		"servo":

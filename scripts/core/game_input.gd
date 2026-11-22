@@ -21,6 +21,7 @@ const KEYS := {
 	"tool_6": [KEY_6],
 	"tool_7": [KEY_7],
 	"tool_8": [KEY_8],
+	"tool_9": [KEY_9],
 	"seat_edit": [KEY_TAB],       # Tab: modo edição do assento
 	"interact": [KEY_E],           # E: usar (loja, assento, botões) · Gravitador: girar
 	"help": [KEY_H],

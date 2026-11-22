@@ -11,18 +11,20 @@ Espaço — pular · Ctrl — agachar
 E — usar (loja, assento, botão, alavanca, engate)
 E segurado num puxador — puxar (portas etc.)
 E numa chave de energia — liga/desliga
+E na bomba de combustível — abastecer (pago)
 
 [b]Ferramentas[/b]
 1 — Gravitador (pegar peças)
 2 — Solda
-Roda do mouse — escolher a ferramenta, clique
-  confirma (segurando algo, a roda é do Gravitador)
 3 — Esmerilhadeira (cortar / remover solda)
 4 — Fiação (ligar uma saída numa entrada)
 5 — Depurador (ver os sinais de uma peça)
 6 — Trena (medir e marcar)
 7 — Alinhador (encaixar um ponto em outro)
 8 — Laser (acende receptores de laser)
+9 — Transmissão (tanque → motor → câmbio → cubos)
+Roda do mouse — escolher a ferramenta, clique
+  confirma (segurando algo, a roda é do Gravitador)
 
 [b]Gravitador[/b]
 Clique segurado — pegar · soltar — cai (dá pra jogar)
@@ -89,6 +91,9 @@ Fiação: clique na peça de origem (escolha a
   (isoladores) e no destino (escolha a entrada)
 Fiação, G: fio de ENERGIA (bateria, painel,
   posto, luz, holofote, relé, chave, medidor)
+Motor de verdade: motor + câmbio + cubos de roda,
+  ligados pela Transmissão (9). Câmbio: seta para
+  a frente; entradas Acelerador, Freio, Ré, Esq/Dir
 Sensores (laser, velocímetro, giroscópio, GPS,
   buscador, zona, impacto, balança...): saídas
   de sinal; ajustes no botão direito da Fiação
@@ -155,6 +160,7 @@ func setup(p_player: Player) -> void:
 	player = p_player
 	player.tool_changed.connect(_on_tool_changed)
 	player.tool_select_preview.connect(_on_tool_select_preview)
+	Drive.link_broken.connect(func(_at: Vector3) -> void: show_toast("Uma ligação de transmissão esticou demais e quebrou"))
 	player.toast_requested.connect(show_toast)
 	Build.message.connect(show_toast)
 	_build_ui()

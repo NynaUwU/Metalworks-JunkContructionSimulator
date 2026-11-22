@@ -16,7 +16,7 @@ extends SignalNode
 const KINDS := {
 	"bateria": "Bateria", "solar": "Painel solar", "recarga": "Posto de recarga",
 	"luz": "Luz", "holofote": "Holofote", "rele": "Relé de potência", "chave": "Chave de energia",
-	"medidor": "Medidor de energia",
+	"medidor": "Medidor de energia", "gerador": "Gerador",
 }
 const BATTERY_WH := 50.0          ## bateria média (pequena e grande: × tamanho³)
 const SOLAR_W := 25.0             ## painel solar ao sol a pino
@@ -36,6 +36,7 @@ var want := 0.0                   ## luz/holofote: brilho pedido (0 a 1) depois 
 var supply := 0.0                 ## fração da energia pedida que chegou (0 a 1)
 var power_w := 0.0                ## gerando (+) ou consumindo (W) neste tick
 var net := {}                     ## medidor: números da rede (Power preenche)
+var drive_w := 0.0                ## gerador: potência que o motor ligado nele dá agora (Drive)
 
 # Ajustes
 var color := Color(1.0, 0.9, 0.7)
@@ -92,6 +93,8 @@ func outputs() -> Array:
 			return [["Ligada", NUM]]
 		"medidor":
 			return [["Carga", NUM], ["Capacidade", NUM], ["%", NUM], ["Consumo", NUM], ["Geração", NUM]]
+		"gerador":
+			return [["Geração", NUM]]
 	return []
 
 
@@ -105,7 +108,7 @@ func update_outputs(_dt: float) -> void:
 		"bateria":
 			out["Carga"] = charge
 			out["%"] = 100.0 * charge / capacity() if capacity() > 0.0 else 0.0
-		"solar":
+		"solar", "gerador":
 			out["Geração"] = power_w
 		"chave":
 			out["Ligada"] = 1.0 if closed else 0.0
@@ -147,6 +150,8 @@ func demand_w() -> float:
 
 ## Geração grátis agora (W): painel solar conforme o ângulo com o sol.
 func free_w() -> float:
+	if kind == "gerador":
+		return drive_w
 	if kind != "solar" or part == null:
 		return 0.0
 	var up := part.global_basis.orthonormalized().y

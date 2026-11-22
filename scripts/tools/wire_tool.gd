@@ -81,6 +81,8 @@ static func has_config(n: SignalNode) -> bool:
 		return (n as PowerNode).kind in ["luz", "holofote", "bateria"]
 	if n is SensorNode:
 		return (n as SensorNode).kind in ["ranger", "localizador", "sensor_loc", "buscador", "zona"]
+	if n is DriveNode:
+		return true
 	return n is ChipNode or n is ConstNode or n is KeysNode or n is KeypadNode or n is DisplayNode
 
 
@@ -160,12 +162,9 @@ func _compatible_inputs(n: SignalNode) -> Array:
 	return n.inputs().filter(func(p: Array) -> bool: return p[1] == t)
 
 
-## Escolhe a saída de `n` (direto, se só tiver uma).
+## Escolhe a saída de `n` no menu (mesmo que só tenha uma: assim dá para ver o que é).
 func _pick_output(n: SignalNode) -> void:
 	var outs := n.outputs()
-	if outs.size() == 1:
-		_start(n, outs[0][0])
-		return
 	var items: Array = []
 	for p: Array in outs:
 		items.append({"text": "%s  (%s) = %s" % [p[0], SignalNode.TYPE_NAMES[p[1]], SignalNode.format(n.out.get(p[0], SignalNode.zero(p[1])))],
@@ -182,12 +181,9 @@ func _start(n: SignalNode, port: String) -> void:
 	player.toast("%s · %s: clique nos isoladores (opcional) e depois no destino" % [n.title(), port])
 
 
-## Escolhe a entrada de `n` do mesmo tipo da saída escolhida (direto, se só tiver uma).
+## Escolhe a entrada de `n` do mesmo tipo da saída escolhida, no menu (mesmo que só tenha uma).
 func _pick_input(n: SignalNode) -> void:
 	var ins := _compatible_inputs(n)
-	if ins.size() == 1:
-		_link(n, ins[0][0])
-		return
 	var items: Array = []
 	for p: Array in ins:
 		var linked := Signals.is_linked(_src, _src_port, n, p[0])
